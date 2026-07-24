@@ -1,13 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase configuration
-// In production, these should be environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://iswctazjdtirrzswqkor.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlzd2N0YXpqZHRpcnJ6c3dxa29yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMDA4NTcsImV4cCI6MjA5NTg3Njg1N30.gkRkttHD6skjModVTUvCA_vFPec0OjoGNHHOfLQxqMQ';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlzd2N0YXpqZHRpcnJ6c3dxa29yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUxNDYxNTcsImV4cCI6MjA2MDcyMjE1N30.5cdMPq2IUeMi2OwCGFHJ8QFKFD6IZqMGMr4fmEgS-5A';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Database types (will be auto-generated later, but here's a basic structure)
 export interface Provider {
   id: string;
   name: string;
@@ -48,6 +45,7 @@ export interface Training {
   views: number;
   leads: number;
   learning_outcomes?: string[];
+  esco_skills?: { title: string; uri: string }[];
   instructor_name?: string;
   instructor_title?: string;
   instructor_bio?: string;
