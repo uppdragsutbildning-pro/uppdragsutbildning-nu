@@ -7,6 +7,7 @@ import { RequestFlowPage } from "./components/pages/RequestFlowPage";
 import { LoginPage } from "./components/pages/LoginPage";
 import { AdminDashboard } from "./components/pages/AdminDashboard";
 import { NotFound } from "./components/pages/NotFound";
+import { KompetensindexPage } from "./components/pages/KompetensindexPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { ProviderLayout } from "./components/provider/ProviderLayout";
 import { ProviderDashboard } from "./components/provider/ProviderDashboard";
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { index: true, Component: HomePage },
       { path: "catalog", Component: CatalogPage },
       { path: "training/:id", Component: TrainingDetailPage },
+      { path: "kompetensanalys", Component: KompetensindexPage },
       { path: "request", Component: RequestFlowPage },
       { path: "request/:trainingId", Component: RequestFlowPage },
       { path: "login", Component: LoginPage },
