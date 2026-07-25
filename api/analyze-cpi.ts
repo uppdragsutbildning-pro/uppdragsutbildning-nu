@@ -68,6 +68,7 @@ Regler: exakt 3 rekommendationer, priority: high/medium/low, 3-5 escoTerms.`;
 
     const data = await geminiRes.json();
     const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    console.log("Gemini råsvar:", JSON.stringify(text).substring(0, 300));
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON in response');
     const parsed = JSON.parse(jsonMatch[0]);
