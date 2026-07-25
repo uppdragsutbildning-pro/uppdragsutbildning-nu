@@ -1,3 +1,4 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -6,56 +7,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { companyName, industry, companySize, scores, freetext, siScores } = req.body;
   const { AF, PF, OK, TR, total } = scores;
-  const level =
-    total < 25 ? 'Lågt tryck' :
-    total < 50 ? 'Måttligt tryck' :
-    total < 75 ? 'Högt tryck' : 'Kritiskt tryck';
+  const level = total < 25 ? 'Lågt tryck' : total < 50 ? 'Måttligt tryck' : total < 75 ? 'Högt tryck' : 'Kritiskt tryck';
 
-  const prompt = `Du är en expert på strategisk kompetensutveckling i svenska organisationer.
-Svara ALLTID på svenska. Returnera ENBART giltig JSON utan markdown-block.
+  const prompt = `Du är en svensk HR-strateg och kompetensutvecklingsexpert. Analysera följande Kompetensindex-resultat och ge konkreta rekommendationer.
 
-Analysera Kompetensindex (CPI) för ${companyName} (${industry}, ${companySize} medarbetare):
+Företag: ${companyName || 'Okänt'}
+Bransch: ${industry || 'Okänd'}
+Storlek: ${companySize || 'Okänd'} medarbetare
+Kompetensnivå: ${level} (${total}/100)
 
-CPI-total: ${total}/100 (${level})
-- Arbetsförändring (AF): ${AF}/100
-- Prestationsfriktion (PF): ${PF}/100
-- Omställningskapacitet (OK): ${OK}/100
-- Transformationsriktning (TR): ${TR}/100
+Delpoäng:
+- AF (Arbetsförändring): ${AF}/100
+- PF (Prestationsförmåga): ${PF}/100
+- OK (Omställningskapacitet): ${OK}/100
+- TR (Transformationsriktning): ${TR}/100
 
-Strategisk insatsprofil:
-- Rekryteringsbehov: ${siScores?.SI1}/5
-- Reskilling-behov: ${siScores?.SI2}/5
-- Upskilling-behov: ${siScores?.SI3}/5
-- Nya arbetssätt: ${siScores?.SI4}/5
+Fritext från användaren:
+${freetext ? JSON.stringify(freetext) : 'Ingen fritext angiven'}
 
-Fritext – förändringsdrivkrafter: "${freetext?.af4 || 'ej angivet'}"
-Fritext – konkreta friktionspunkter: "${freetext?.pf5 || 'ej angivet'}"
-Fritext – kritiska förmågor 12–24 mån: "${freetext?.tr4 || 'ej angivet'}"
-
-Returnera JSON med exakt denna struktur:
+Svara ENBART med ett JSON-objekt (ingen markdown, inga förklaringar utanför JSON):
 {
-  "summary": "2-3 meningar specifik strategisk analys",
+  "summary": "2-3 meningar som sammanfattar situationen och det viktigaste att agera på",
   "recommendations": [
-    { "title": "Titel", "body": "Beskrivning", "priority": "high" }
+    {"title": "Kort titel", "body": "2-3 meningar med konkret råd", "priority": "high"},
+    {"title": "Kort titel", "body": "2-3 meningar med konkret råd", "priority": "medium"},
+    {"title": "Kort titel", "body": "2-3 meningar med konkret råd", "priority": "low"}
   ],
-  "chiefBriefing": "1 mening för VD/styrelse, max 25 ord",
-  "escoTerms": ["term1", "term2", "term3"]
-}
-
-Regler: exakt 3 rekommendationer, priority: high/medium/low, 3-5 escoTerms.`;
+  "chiefBriefing": "Max 25 ord för ledningsgruppen",
+  "escoTerms": ["kompetensterm1", "kompetensterm2", "kompetensterm3", "kompetensterm4", "kompetensterm5"]
+}`;
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key missing' });
 
   try {
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 800, responseMimeType: "application/json" },
+          generationConfig: {
+            temperature: 0.4,
+            maxOutputTokens: 2000,
+            responseMimeType: 'application/json',
+          },
         }),
       }
     );
@@ -63,19 +60,20 @@ Regler: exakt 3 rekommendationer, priority: high/medium/low, 3-5 escoTerms.`;
     if (!geminiRes.ok) {
       const err = await geminiRes.text();
       console.error('Gemini error:', err);
-      return res.status(500).json({ error: 'Gemini API error' });
+      return res.status(500).json({ error: 'Gemini API error', details: err });
     }
 
     const data = await geminiRes.json();
     const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    console.log("Gemini råsvar:", JSON.stringify(text).substring(0, 300));
-    const stripped = text.replace(/\\\*/g, '').replace(/\*/g, '');
-    const jsonMatch = stripped.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON in response');
-    const parsed = JSON.parse(jsonMatch[0]);
+    const finishReason = data.candidates?.[0]?.finishReason;
+    console.log('Gemini finishReason:', finishReason, '| text preview:', text.substring(0, 100));
+
+    if (!text) throw new Error('Empty response from Gemini');
+
+    const parsed = JSON.parse(text.trim());
     return res.status(200).json(parsed);
   } catch (err) {
     console.error('analyze-cpi error:', err);
-    return res.status(500).json({ error: 'Analys misslyckades' });
+    return res.status(500).json({ error: 'Analys misslyckades', details: String(err) });
   }
 }
