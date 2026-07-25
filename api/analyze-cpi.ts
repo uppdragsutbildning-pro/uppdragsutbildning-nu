@@ -66,7 +66,7 @@ Svara ENBART med ett JSON-objekt (ingen markdown, inga förklaringar utanför JS
     const data = await geminiRes.json();
     const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
     const finishReason = data.candidates?.[0]?.finishReason;
-    console.log('Gemini finishReason:', finishReason, '| text preview:', text.substring(0, 100));
+    
 
     if (!text) throw new Error('Empty response from Gemini');
 
