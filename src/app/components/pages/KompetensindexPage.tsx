@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useLocation } from 'react-router';
-import { CheckCircle, Circle, Loader2, X } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router';
+import { ArrowLeft, CheckCircle, Circle, Loader2, X } from 'lucide-react';
 import { ScaleButtons } from '../kompetensindex/ScaleButtons';
 import { MultiSelectChips } from '../kompetensindex/MultiSelectChips';
 import { QuestionCard } from '../kompetensindex/QuestionCard';
@@ -108,6 +108,7 @@ export interface CPIResult {
 
 export function KompetensindexPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const prefillAf4 = (location.state as { af4?: string } | null)?.af4 ?? '';
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>({ ...initialAnswers, af4: prefillAf4 });
@@ -115,6 +116,7 @@ export function KompetensindexPage() {
   const [loadingStep, setLoadingStep] = useState(0);
   const [result, setResult] = useState<CPIResult | null>(null);
   const [openHint, setOpenHint] = useState<'af4' | 'pf5' | 'tr4' | null>(null);
+  const [showExitDialog, setShowExitDialog] = useState(false);
 
   const toggleHint = (field: 'af4' | 'pf5' | 'tr4') =>
     setOpenHint((prev) => (prev === field ? null : field));
@@ -251,6 +253,12 @@ export function KompetensindexPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const editStep = (targetStep: number) => {
+    setResult(null);
+    setStep(targetStep);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -260,11 +268,7 @@ export function KompetensindexPage() {
             {['Beräknar CPI-index…', 'Söker ESCO-kompetenser…', 'Genererar rekommendationer…'].map(
               (label, i) => (
                 <div key={i} className={`flex items-center gap-3 text-sm ${i <= loadingStep ? 'text-green-600' : 'text-slate-400'}`}>
-                  {i <= loadingStep ? (
-                    <CheckCircle className="w-4 h-4" />
-                  ) : (
-                    <Circle className="w-4 h-4" />
-                  )}
+                  {i <= loadingStep ? <CheckCircle className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
                   {label}
                 </div>
               )
@@ -276,44 +280,75 @@ export function KompetensindexPage() {
   }
 
   if (result) {
-    return <ResultsView result={result} onReset={reset} />;
+    return (
+      <ResultsView
+        result={result}
+        onReset={reset}
+        onEditStep={editStep}
+        onReanalyze={handleAnalyze}
+      />
+    );
   }
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Progress bar */}
+      {showExitDialog && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
+            <h3 className="font-bold text-slate-900 mb-2">Avbryt analysen?</h3>
+            <p className="text-slate-600 text-sm mb-5">Dina svar sparas inte om du lämnar nu.</p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setShowExitDialog(false)}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-medium text-sm transition-colors"
+              >
+                Fortsätt analysen
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="w-full border border-slate-200 text-slate-600 hover:bg-slate-50 py-2.5 rounded-lg font-medium text-sm transition-colors"
+              >
+                Lämna ändå
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            {STEPS.map((s, i) => (
-              <div key={s.id} className="flex items-center">
-                <div className="flex flex-col items-center">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
-                    i < step
-                      ? 'bg-green-600 text-white'
-                      : i === step
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-200 text-slate-500'
-                  }`}>
-                    {i < step ? '✓' : i + 1}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowExitDialog(true)}
+              className="flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600 hover:underline transition-colors shrink-0"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Avbryt
+            </button>
+            <div className="flex items-center justify-between flex-1">
+              {STEPS.map((s, i) => (
+                <div key={s.id} className="flex items-center">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
+                      i < step ? 'bg-green-600 text-white' : i === step ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      {i < step ? '✓' : i + 1}
+                    </div>
+                    <span className={`text-xs mt-1 ${i === step ? 'text-blue-600 font-semibold' : 'text-slate-400'}`}>
+                      {s.label}
+                    </span>
                   </div>
-                  <span className={`text-xs mt-1 ${
-                    i === step ? 'text-blue-600 font-semibold' : i < step ? 'text-slate-400' : 'text-slate-400'
-                  }`}>
-                    {s.label}
-                  </span>
+                  {i < STEPS.length - 1 && (
+                    <div className={`h-px w-8 sm:w-16 mx-1 mb-4 ${i < step ? 'bg-green-400' : 'bg-slate-200'}`} />
+                  )}
                 </div>
-                {i < STEPS.length - 1 && (
-                  <div className={`h-px w-8 sm:w-16 mx-1 mb-4 ${i < step ? 'bg-green-400' : 'bg-slate-200'}`} />
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-3xl mx-auto px-6 py-10">
-        {/* Step 0: Info */}
         {step === 0 && (
           <div className="space-y-6">
             <div>
@@ -323,21 +358,11 @@ export function KompetensindexPage() {
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Företagets namn</label>
-                <input
-                  type="text"
-                  value={answers.companyName}
-                  onChange={(e) => set('companyName', e.target.value)}
-                  placeholder="Ange företagsnamn"
-                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                />
+                <input type="text" value={answers.companyName} onChange={(e) => set('companyName', e.target.value)} placeholder="Ange företagsnamn" className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Bransch</label>
-                <select
-                  value={answers.industry}
-                  onChange={(e) => set('industry', e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                >
+                <select value={answers.industry} onChange={(e) => set('industry', e.target.value)} className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                   <option value="" disabled>Välj bransch</option>
                   <option>Tillverkning &amp; Industri</option>
                   <option>Handel (detaljhandel &amp; grosshandel)</option>
@@ -358,11 +383,7 @@ export function KompetensindexPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Antal medarbetare</label>
-                <select
-                  value={answers.companySize}
-                  onChange={(e) => set('companySize', e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                >
+                <select value={answers.companySize} onChange={(e) => set('companySize', e.target.value)} className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                   <option value="" disabled>Välj storlek</option>
                   <option>1–9</option>
                   <option>10–49</option>
@@ -376,11 +397,7 @@ export function KompetensindexPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Din roll</label>
-                <select
-                  value={answers.userRole}
-                  onChange={(e) => set('userRole', e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                >
+                <select value={answers.userRole} onChange={(e) => set('userRole', e.target.value)} className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                   <option value="" disabled>Välj roll</option>
                   <option>VD / CEO</option>
                   <option>HR-chef / HR-direktör</option>
@@ -400,7 +417,6 @@ export function KompetensindexPage() {
           </div>
         )}
 
-        {/* Step 1: AF */}
         {step === 1 && (
           <div className="space-y-5">
             <div className={`border-l-4 pl-4 ${SECTION_COLORS.af}`}>
@@ -417,18 +433,12 @@ export function KompetensindexPage() {
               <ScaleButtons value={answers.af3} onChange={(v) => set('af3', v)} labelLow="Knappt alls" labelHigh="I mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="AF4" question="Vilka områden driver störst förändring just nu?" meta="Valfritt — hjälper oss att ge mer träffsäkra rekommendationer">
-              <textarea
-                value={answers.af4}
-                onChange={(e) => set('af4', e.target.value)}
-                placeholder="Beskriv de viktigaste förändringsdrivkrafterna, t.ex. AI, digitalisering, regelverk, kundkrav…"
-                className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm min-h-[100px] resize-y focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-              />
+              <textarea value={answers.af4} onChange={(e) => set('af4', e.target.value)} placeholder="Beskriv de viktigaste förändringsdrivkrafterna, t.ex. AI, digitalisering, regelverk, kundkrav…" className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm min-h-[100px] resize-y focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
               <HintBox field="af4" />
             </QuestionCard>
           </div>
         )}
 
-        {/* Step 2: PF */}
         {step === 2 && (
           <div className="space-y-5">
             <div className={`border-l-4 pl-4 ${SECTION_COLORS.pf}`}>
@@ -448,18 +458,12 @@ export function KompetensindexPage() {
               <ScaleButtons value={answers.pf4} onChange={(v) => set('pf4', v)} labelLow="Lågt beroende" labelHigh="Mycket högt beroende" />
             </QuestionCard>
             <QuestionCard id="PF5" question="Vilka arbetsuppgifter undviks, skjuts upp eller tar längre tid på grund av kompetensbrist?" meta="Valfritt">
-              <textarea
-                value={answers.pf5}
-                onChange={(e) => set('pf5', e.target.value)}
-                placeholder="T.ex. offerter dröjer, rapporter fördröjs, tekniska ärenden eskaleras uppåt…"
-                className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm min-h-[100px] resize-y focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-              />
+              <textarea value={answers.pf5} onChange={(e) => set('pf5', e.target.value)} placeholder="T.ex. offerter dröjer, rapporter fördröjs, tekniska ärenden eskaleras uppåt…" className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm min-h-[100px] resize-y focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
               <HintBox field="pf5" />
             </QuestionCard>
           </div>
         )}
 
-        {/* Step 3: OK */}
         {step === 3 && (
           <div className="space-y-5">
             <div className={`border-l-4 pl-4 ${SECTION_COLORS.ok}`}>
@@ -481,7 +485,6 @@ export function KompetensindexPage() {
           </div>
         )}
 
-        {/* Step 4: TR */}
         {step === 4 && (
           <div className="space-y-5">
             <div className={`border-l-4 pl-4 ${SECTION_COLORS.tr}`}>
@@ -498,18 +501,12 @@ export function KompetensindexPage() {
               <ScaleButtons value={answers.tr3} onChange={(v) => set('tr3', v)} labelLow="Ingen plan" labelHigh="Tydlig plan" />
             </QuestionCard>
             <QuestionCard id="TR4" question="Vilka förmågor bedömer ni som mest kritiska de kommande 12–24 månaderna?" meta="Valfritt — används för ESCO-matchning">
-              <textarea
-                value={answers.tr4}
-                onChange={(e) => set('tr4', e.target.value)}
-                placeholder="T.ex. AI och dataanalys, ledarskap i förändring, hållbarhetsrapportering…"
-                className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm min-h-[100px] resize-y focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-              />
+              <textarea value={answers.tr4} onChange={(e) => set('tr4', e.target.value)} placeholder="T.ex. AI och dataanalys, ledarskap i förändring, hållbarhetsrapportering…" className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm min-h-[100px] resize-y focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
               <HintBox field="tr4" />
             </QuestionCard>
           </div>
         )}
 
-        {/* Step 5: SI */}
         {step === 5 && (
           <div className="space-y-5">
             <div className={`border-l-4 pl-4 ${SECTION_COLORS.insats}`}>
@@ -528,65 +525,37 @@ export function KompetensindexPage() {
             <QuestionCard id="SI4" question="I vilken grad ser ni behov av nya arbetssätt eller processförändringar?">
               <ScaleButtons value={answers.si4} onChange={(v) => set('si4', v)} labelLow="Inget behov" labelHigh="Stort behov" />
             </QuestionCard>
-
             <div className="border-t border-slate-200 pt-5 space-y-5">
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-5">
                 <div>
                   <p className="text-slate-900 font-medium mb-3">Vilken typ av kompetensinsats tror ni skulle ge störst effekt?</p>
-                  <MultiSelectChips
-                    options={['Kort kurs (1–3 dagar)', 'Längre program', 'Workshop', 'Coaching & mentoring', 'Skräddarsydd uppdragsutbildning']}
-                    selected={answers.li1}
-                    onChange={(v) => set('li1', v)}
-                  />
+                  <MultiSelectChips options={['Kort kurs (1–3 dagar)', 'Längre program', 'Workshop', 'Coaching & mentoring', 'Skräddarsydd uppdragsutbildning']} selected={answers.li1} onChange={(v) => set('li1', v)} />
                 </div>
                 <div>
                   <p className="text-slate-900 font-medium mb-3">Vilket upplägg passar er verksamhet bäst?</p>
-                  <MultiSelectChips
-                    options={['Digitalt/online', 'Fysiskt/på plats', 'Blended (mix)', 'Cohort-baserat', 'Självstudier i egen takt']}
-                    selected={answers.li2}
-                    onChange={(v) => set('li2', v)}
-                  />
+                  <MultiSelectChips options={['Digitalt/online', 'Fysiskt/på plats', 'Blended (mix)', 'Cohort-baserat', 'Självstudier i egen takt']} selected={answers.li2} onChange={(v) => set('li2', v)} />
                 </div>
                 <div>
                   <p className="text-slate-900 font-medium mb-3">Vilka målgrupper är mest prioriterade?</p>
-                  <MultiSelectChips
-                    options={['Ledare & chefer', 'Specialister', 'Frontlinje/operativ', 'Stödfunktioner', 'Projektledare', 'Hela organisationen']}
-                    selected={answers.li3}
-                    onChange={(v) => set('li3', v)}
-                  />
+                  <MultiSelectChips options={['Ledare & chefer', 'Specialister', 'Frontlinje/operativ', 'Stödfunktioner', 'Projektledare', 'Hela organisationen']} selected={answers.li3} onChange={(v) => set('li3', v)} />
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Navigation */}
         <div className="flex justify-between mt-8">
           {step > 0 ? (
-            <button
-              onClick={() => setStep((s) => s - 1)}
-              className="px-6 py-3 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
-            >
+            <button onClick={() => setStep((s) => s - 1)} className="px-6 py-3 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
               ← Tillbaka
             </button>
-          ) : (
-            <div />
-          )}
-
+          ) : <div />}
           {step < 5 ? (
-            <button
-              onClick={() => { setStep((s) => s + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              disabled={!canProceed()}
-              className="px-8 py-3 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
+            <button onClick={() => { setStep((s) => s + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }} disabled={!canProceed()} className="px-8 py-3 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               Nästa →
             </button>
           ) : (
-            <button
-              onClick={handleAnalyze}
-              disabled={!canProceed()}
-              className="px-8 py-3 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
+            <button onClick={handleAnalyze} disabled={!canProceed()} className="px-8 py-3 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               Analysera →
             </button>
           )}

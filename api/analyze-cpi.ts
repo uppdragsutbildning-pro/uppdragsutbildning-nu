@@ -1,6 +1,6 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
 export const config = { runtime: "edge" };
+
+declare const process: { env: Record<string, string | undefined> };
 
 export default async function handler(req: Request) {
   if (req.method !== "POST") {
@@ -18,8 +18,7 @@ export default async function handler(req: Request) {
     total < 50 ? "Måttligt tryck" :
     total < 75 ? "Högt tryck" : "Kritiskt tryck";
 
-  const prompt = `
-Du är en expert på strategisk kompetensutveckling i svenska organisationer.
+  const prompt = `Du är en expert på strategisk kompetensutveckling i svenska organisationer.
 Svara ALLTID på svenska. Returnera ENBART giltig JSON utan markdown-block.
 
 Analysera Kompetensindex (CPI) för ${companyName} (${industry}, ${companySize} medarbetare):
@@ -58,24 +57,34 @@ Regler:
 - summary ska referera till specifika svar, inte vara generisk
 - recommendations: exakt 3 st, priority: high/medium/low
 - escoTerms: 3-5 svenska kompetensbegrepp för ESCO-matchning
-- chiefBriefing: max 25 ord, affärsfokuserat
-`;
+- chiefBriefing: max 25 ord, affärsfokuserat`;
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return new Response(JSON.stringify({ error: "API key missing" }), { status: 500 });
+  }
 
   try {
-    const genAI = new GoogleGenerativeAI(
-      process.env.GEMINI_API_KEY as string
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.4, maxOutputTokens: 800 },
+        }),
+      }
     );
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
-      generationConfig: {
-        temperature: 0.4,
-        maxOutputTokens: 800,
-      },
-    });
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    if (!geminiRes.ok) {
+      const err = await geminiRes.text();
+      console.error("Gemini API error:", err);
+      return new Response(JSON.stringify({ error: "Gemini API error" }), { status: 500 });
+    }
 
+    const data = await geminiRes.json();
+    const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     const clean = text.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean);
 
@@ -84,10 +93,7 @@ Regler:
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("Gemini error:", err);
-    return new Response(
-      JSON.stringify({ error: "Analys misslyckades" }),
-      { status: 500 }
-    );
+    console.error("analyze-cpi error:", err);
+    return new Response(JSON.stringify({ error: "Analys misslyckades" }), { status: 500 });
   }
 }
