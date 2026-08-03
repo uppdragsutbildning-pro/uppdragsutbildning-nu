@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 import { useEffect, useState } from 'react';
-import { Sparkles, ExternalLink, Pencil, X, ChevronDown, ChevronUp, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Sparkles, ExternalLink, Pencil, X, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { CPIResult } from '../pages/KompetensindexPage';
 
 const cpiLevel = (score: number) => {
@@ -24,10 +24,10 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 const PRIORITY_LABELS: Record<string, string> = { high: 'Hög', medium: 'Medel', low: 'Låg' };
 
-interface GeminiResult {
+interface AnalysisResult {
   summary: string;
-  recommendations: { title: string; body: string; priority: 'high' | 'medium' | 'low' }[];
   chiefBriefing: string;
+  recommendations: { title: string; body: string; priority: 'high' | 'medium' | 'low' }[];
   escoTerms: string[];
 }
 
@@ -42,6 +42,112 @@ interface ResultsViewProps {
   onReset: () => void;
   onEditStep?: (step: number) => void;
   onReanalyze?: () => void;
+}
+
+function buildAnalysis(result: CPIResult): AnalysisResult {
+  const { scores, siScores, answers } = result;
+  const { AF, PF, OK, TR, total } = scores;
+
+  const dims = ['AF', 'PF', 'OK', 'TR'] as const;
+  const weakest = dims.reduce((a, b) => (scores[a] < scores[b] ? a : b));
+  const strongest = dims.reduce((a, b) => (scores[a] > scores[b] ? a : b));
+
+  const dimName: Record<string, string> = {
+    AF: 'arbetsförändring', PF: 'prestationsfriktion', OK: 'omställningskapacitet', TR: 'transformationsriktning',
+  };
+  const dimNameCap: Record<string, string> = {
+    AF: 'Arbetsförändring', PF: 'Prestationsfriktion', OK: 'Omställningskapacitet', TR: 'Transformationsriktning',
+  };
+
+  const pressureDesc = total < 25 ? 'lågt' : total < 50 ? 'måttligt' : total < 75 ? 'högt' : 'kritiskt';
+
+  const chiefBriefing =
+    `${answers.companyName} visar ett ${pressureDesc} kompetensstryck (${total}/100). ` +
+    `Starkast inom ${dimName[strongest]} (${scores[strongest]}p), svagast inom ${dimName[weakest]} (${scores[weakest]}p). ` +
+    `Prioritera insatser inom ${dimName[weakest]} för störst effekt.`;
+
+  const summary =
+    `Analysen av ${answers.companyName} inom ${answers.industry} visar ett sammanvägt kompetensindex på ${total}/100, ` +
+    `vilket indikerar ${pressureDesc} tryck. ${dimNameCap[strongest]}-dimensionen är er starkaste tillgång med ${scores[strongest]} poäng. ` +
+    `Däremot utgör ${dimName[weakest]} (${scores[weakest]}p) ett prioriterat förbättringsområde. ` +
+    (answers.af4 ? `Förändringsdrivkrafter: "${answers.af4}". ` : '') +
+    (answers.tr4 ? `Kritiska förmågor: "${answers.tr4}". ` : '') +
+    `En balanserad satsning på reskilling och nya arbetssätt rekommenderas för att stärka den totala kompetensförsörjningen.`;
+
+  const recommendations: AnalysisResult['recommendations'] = [];
+
+  if (PF >= 50) {
+    recommendations.push({
+      title: 'Minska prestationsfriktion med riktad kompetensutveckling',
+      body: `Med ett PF-värde på ${PF} finns tydliga hinder för effektiv prestation. Strukturerade kompetensprogram inom kärnprocesser kan snabbt minska friktion och förbättra leveransförmågan.`,
+      priority: PF >= 70 ? 'high' : 'medium',
+    });
+  }
+
+  if (AF >= 50) {
+    recommendations.push({
+      title: 'Stärk förändringsförmågan inför framtida omställning',
+      body: `Arbetsförändringsdimensionen (${AF}p) signalerar att era roller och processer förändras snabbt. Utbildning i förändringsledning och digitala verktyg bör prioriteras för berörda team.`,
+      priority: AF >= 70 ? 'high' : 'medium',
+    });
+  }
+
+  if (OK < 50) {
+    recommendations.push({
+      title: 'Bygg intern omställningskapacitet',
+      body: `Omställningskapaciteten på ${OK}p är lägre än önskat. Investera i lärande strukturer — t.ex. lärande i arbetet, mentorskap och korta intensivutbildningar — för att höja organisationens adaptiva förmåga.`,
+      priority: OK < 30 ? 'high' : 'medium',
+    });
+  }
+
+  if (TR < 60) {
+    recommendations.push({
+      title: 'Tydliggör transformationsriktningen',
+      body: `Med TR-värde ${TR}p saknas delvis tydlig färdriktning för kompetensförsörjningen. Ta fram en kompetensförsörjningsplan som kopplar lärande till verksamhetsmålen på 1–3 års sikt.`,
+      priority: TR < 40 ? 'high' : 'medium',
+    });
+  }
+
+  if (siScores.si2 >= 4) {
+    recommendations.push({
+      title: 'Prioritera reskilling framför rekrytering',
+      body: 'Era svar indikerar högt reskilling-behov. Att vidareutbilda befintlig personal är ofta snabbare och mer kostnadseffektivt än extern rekrytering, särskilt i ett tight kompetensläge.',
+      priority: 'medium',
+    });
+  }
+
+  if (siScores.si4 >= 4) {
+    recommendations.push({
+      title: 'Implementera nya arbetssätt och agila metoder',
+      body: 'Behovet av nya arbetssätt är markant. Satsa på tvärfunktionella team, snabbare beslutscykler och kontinuerligt lärande som en del av det dagliga arbetet.',
+      priority: 'medium',
+    });
+  }
+
+  if (recommendations.length === 0) {
+    recommendations.push({
+      title: 'Fortsätt det goda arbetet med kompetensutveckling',
+      body: `${answers.companyName} visar balanserade kompetensindexvärden. Fokusera på att upprätthålla nuvarande insatser och följa upp kompetensgapen kontinuerligt.`,
+      priority: 'low',
+    });
+  }
+
+  const escoMap: Record<string, string[]> = {
+    teknik: ['mjukvaruutveckling', 'cybersäkerhet', 'molntjänster', 'AI och maskininlärning', 'DevOps'],
+    vård: ['patientvård', 'medicinsk dokumentation', 'omvårdnad', 'hälsoinformatik', 'rehabilitering'],
+    handel: ['kundservice', 'e-handel', 'supply chain management', 'merchandising', 'försäljningsstrategi'],
+    utbildning: ['pedagogik', 'digitalt lärande', 'kursdesign', 'bedömning och utvärdering', 'mentorskap'],
+    finans: ['finansiell analys', 'riskhantering', 'regelefterlevnad', 'redovisning', 'investeringsstrategi'],
+    industri: ['processteknik', 'kvalitetsledning', 'lean produktion', 'underhållsteknik', 'produktionsstyrning'],
+  };
+
+  const industryLower = answers.industry.toLowerCase();
+  const matchedKey = Object.keys(escoMap).find((k) => industryLower.includes(k));
+  const escoTerms = matchedKey
+    ? escoMap[matchedKey]
+    : ['ledarskap och förändringsledning', 'digital kompetens', 'dataanalys', 'projektledning', 'agila arbetsmetoder'];
+
+  return { summary, chiefBriefing, recommendations, escoTerms };
 }
 
 function AnswerSummaryDrawer({
@@ -69,47 +175,47 @@ function AnswerSummaryDrawer({
     {
       label: 'Arbetsförändring',
       rows: [
-        { q: 'AF1 — Förändring i arbetssätt', a: `${answers.af1}/5` },
-        { q: 'AF2 — Förväntad rollförändring', a: `${answers.af2}/5` },
-        { q: 'AF3 — Ökad komplexitet', a: `${answers.af3}/5` },
-        { q: 'AF4 — Förändringsdrivkrafter', a: answers.af4 || '—' },
+        { q: 'AF1', a: `${answers.af1}/5` },
+        { q: 'AF2', a: `${answers.af2}/5` },
+        { q: 'AF3', a: `${answers.af3}/5` },
+        { q: 'AF4', a: answers.af4 || '—' },
       ],
     },
     {
       label: 'Prestationsfriktion',
       rows: [
-        { q: 'PF1 — Kvalitetspåverkan', a: `${answers.pf1}/5` },
-        { q: 'PF2 — Tempopåverkan', a: `${answers.pf2}/5` },
-        { q: 'PF3 — Leveranspåverkan', a: `${answers.pf3}/5` },
-        { q: 'PF4 — Nyckelpersonsberoende', a: `${answers.pf4}/5` },
-        { q: 'PF5 — Undvikta uppgifter', a: answers.pf5 || '—' },
+        { q: 'PF1', a: `${answers.pf1}/5` },
+        { q: 'PF2', a: `${answers.pf2}/5` },
+        { q: 'PF3', a: `${answers.pf3}/5` },
+        { q: 'PF4', a: `${answers.pf4}/5` },
+        { q: 'PF5', a: answers.pf5 || '—' },
       ],
     },
     {
       label: 'Omställningskapacitet',
       rows: [
-        { q: 'OK1 — Tid & struktur för lärande', a: `${answers.ok1}/5` },
-        { q: 'OK2 — Förmåga att lära om', a: `${answers.ok2}/5` },
-        { q: 'OK3 — Trygghet i förändring', a: `${answers.ok3}/5` },
-        { q: 'OK4 — Lärande över gränser', a: `${answers.ok4}/5` },
+        { q: 'OK1', a: `${answers.ok1}/5` },
+        { q: 'OK2', a: `${answers.ok2}/5` },
+        { q: 'OK3', a: `${answers.ok3}/5` },
+        { q: 'OK4', a: `${answers.ok4}/5` },
       ],
     },
     {
       label: 'Transformationsriktning',
       rows: [
-        { q: 'TR1 — Tydlighet kring förmågor', a: `${answers.tr1}/5` },
-        { q: 'TR2 — Koppling till verksamhetsmål', a: `${answers.tr2}/5` },
-        { q: 'TR3 — Plan för kompetensförsörjning', a: `${answers.tr3}/5` },
-        { q: 'TR4 — Kritiska förmågor', a: answers.tr4 || '—' },
+        { q: 'TR1', a: `${answers.tr1}/5` },
+        { q: 'TR2', a: `${answers.tr2}/5` },
+        { q: 'TR3', a: `${answers.tr3}/5` },
+        { q: 'TR4', a: answers.tr4 || '—' },
       ],
     },
     {
       label: 'Strategisk insats',
       rows: [
-        { q: 'SI1 — Rekryteringsbehov', a: `${answers.si1}/5` },
-        { q: 'SI2 — Reskilling-behov', a: `${answers.si2}/5` },
-        { q: 'SI3 — Upskilling-behov', a: `${answers.si3}/5` },
-        { q: 'SI4 — Nya arbetssätt', a: `${answers.si4}/5` },
+        { q: 'SI1', a: `${answers.si1}/5` },
+        { q: 'SI2', a: `${answers.si2}/5` },
+        { q: 'SI3', a: `${answers.si3}/5` },
+        { q: 'SI4', a: `${answers.si4}/5` },
       ],
     },
   ];
@@ -171,43 +277,28 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
   const siVals = [siScores.si1, siScores.si2, siScores.si3, siScores.si4];
   const [showDrawer, setShowDrawer] = useState(false);
 
-  const [gemini, setGemini] = useState<GeminiResult | null>(null);
-  const [geminiLoading, setGeminiLoading] = useState(true);
-  const [geminiError, setGeminiError] = useState(false);
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [loading, setLoading] = useState(true);
   const [escoResolved, setEscoResolved] = useState<EscoResolved[]>([]);
 
-  const runGemini = async () => {
-    setGeminiLoading(true);
-    setGeminiError(false);
-    try {
-      const res = await fetch('/api/analyze-cpi', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          companyName: answers.companyName,
-          industry: answers.industry,
-          companySize: answers.companySize,
-          scores: { AF: scores.AF, PF: scores.PF, OK: scores.OK, TR: scores.TR, total: scores.total },
-          siScores: { SI1: siScores.si1, SI2: siScores.si2, SI3: siScores.si3, SI4: siScores.si4 },
-          freetext: { af4: answers.af4, pf5: answers.pf5, tr4: answers.tr4 },
-        }),
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setGemini(data);
-    } catch {
-      setGeminiError(true);
-    } finally {
-      setGeminiLoading(false);
-    }
+  const runAnalysis = () => {
+    setLoading(true);
+    setAnalysis(null);
+    setTimeout(() => {
+      const data = buildAnalysis(result);
+      setAnalysis(data);
+      setLoading(false);
+    }, 1200);
   };
 
-  useEffect(() => { runGemini(); }, []);
+  useEffect(() => {
+    runAnalysis();
+  }, []);
 
   useEffect(() => {
-    if (!gemini?.escoTerms?.length) return;
+    if (!analysis?.escoTerms?.length) return;
     Promise.allSettled(
-      gemini.escoTerms.map(async (term): Promise<EscoResolved> => {
+      analysis.escoTerms.map(async (term): Promise<EscoResolved> => {
         try {
           const res = await fetch(
             `https://ec.europa.eu/esco/api/search?text=${encodeURIComponent(term)}&type=skill&language=sv`
@@ -216,7 +307,7 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
           const data = await res.json();
           const hit = data._embedded?.results?.[0];
           return hit ? { title: hit.title, uri: hit.uri, term } : { title: term, uri: null, term };
-        } catch {
+        } catch (e) {
           return { title: term, uri: null, term };
         }
       })
@@ -227,7 +318,7 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
           .map((r) => (r as PromiseFulfilledResult<EscoResolved>).value)
       );
     });
-  }, [gemini]);
+  }, [analysis]);
 
   const escoDisplay: EscoResolved[] =
     escoResolved.length > 0
@@ -246,6 +337,7 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
 
       <div className="max-w-3xl mx-auto px-6 space-y-6">
 
+        {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Kompetensindex — Resultat</h1>
@@ -260,6 +352,7 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
           </button>
         </div>
 
+        {/* CPI Score card */}
         <div className="bg-white rounded-xl border shadow-sm p-8 text-center"
           style={{ borderColor: level.border, backgroundColor: level.bg }}>
           <div className="text-7xl font-bold mb-2" style={{ color: level.text }}>
@@ -272,6 +365,7 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
           <p className="text-slate-600 text-sm max-w-md mx-auto">{level.desc}</p>
         </div>
 
+        {/* Dimension scores */}
         <div className="grid grid-cols-2 gap-4">
           {(['AF', 'PF', 'OK', 'TR'] as const).map((dim) => {
             const s = scores[dim];
@@ -293,6 +387,7 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
           })}
         </div>
 
+        {/* Strategic profile */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
           <h3 className="font-semibold text-slate-900 mb-4">Strategisk insatsprofil</h3>
           <div className="space-y-3">
@@ -312,55 +407,51 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
           </div>
         </div>
 
+        {/* AI-analys */}
         <div className="bg-white rounded-xl border-l-4 border-blue-600 border border-slate-200 shadow-sm p-6">
           <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-blue-600" />
             AI-analys
           </h3>
-          {geminiLoading ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4 text-blue-400" />
-                </div>
-                <div>
-                  <p className="font-medium text-slate-900 text-sm">AI-analys genereras</p>
-                  <p className="text-slate-500 text-xs mt-0.5">Vi analyserar era svar och sammanställer en personlig kompetensprofil. Detta tar vanligtvis 10–30 sekunder.</p>
-                </div>
+          {loading ? (
+            <div className="animate-pulse space-y-4">
+              {/* Chefsbriefing skeleton */}
+              <div className="bg-slate-50 rounded-lg px-4 py-3 border border-slate-100">
+                <div className="h-3 bg-gray-200 rounded w-24 mb-2" />
+                <div className="h-5 bg-gray-200 rounded w-[90%]" />
               </div>
-              <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                <div className="h-full bg-blue-400 rounded-full w-full animate-pulse" />
+              {/* Summary skeleton */}
+              <div className="space-y-2">
+                <div className="h-[14px] bg-gray-200 rounded w-full" />
+                <div className="h-[14px] bg-gray-200 rounded w-[95%]" />
+                <div className="h-[14px] bg-gray-200 rounded w-[70%]" />
               </div>
             </div>
-          ) : geminiError || !gemini ? (
+          ) : analysis ? (
+            <div className="transition-opacity duration-300 opacity-100" style={{ animation: 'fadeIn 300ms ease-in' }}>
+              {analysis.chiefBriefing && (
+                <div className="bg-slate-50 rounded-lg px-4 py-3 mb-3 border border-slate-200">
+                  <p className="text-xs text-slate-500 mb-1 font-medium">CHEFSBRIEFING</p>
+                  <p className="text-slate-800 text-sm font-medium">{analysis.chiefBriefing}</p>
+                </div>
+              )}
+              <p className="text-slate-700 text-sm leading-relaxed">{analysis.summary}</p>
+            </div>
+          ) : (
             <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-4 h-4 text-amber-500" />
-                </div>
-                <div>
-                  <p className="font-medium text-slate-900 text-sm">Analysen kunde inte slutföras</p>
-                  <p className="text-slate-500 text-xs mt-0.5">Något gick fel. Prova att ladda om sidan eller gör analysen igen.</p>
-                </div>
-              </div>
-              <button onClick={runGemini} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+              <p className="text-slate-600 text-sm">Analysen kunde inte genereras.</p>
+              <button
+                onClick={runAnalysis}
+                className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
                 <RefreshCw className="w-3.5 h-3.5" />
                 Försök igen
               </button>
             </div>
-          ) : (
-            <>
-              {gemini.chiefBriefing && (
-                <div className="bg-slate-50 rounded-lg px-4 py-3 mb-3 border border-slate-200">
-                  <p className="text-xs text-slate-500 mb-1 font-medium">CHEFSBRIEFING</p>
-                  <p className="text-slate-800 text-sm font-medium">{gemini.chiefBriefing}</p>
-                </div>
-              )}
-              <p className="text-slate-700 text-sm leading-relaxed">{gemini.summary}</p>
-            </>
           )}
         </div>
 
+        {/* ESCO skills */}
         {escoDisplay.length > 0 && (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
             <h3 className="font-semibold text-slate-900 mb-1 flex items-center gap-2">
@@ -376,69 +467,90 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
                     <ExternalLink className="w-3 h-3 opacity-60" />
                   </a>
                 ) : (
-                  <span key={item.term} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">{item.title}</span>
+                  <span key={item.term} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
+                    {item.title}
+                  </span>
                 )
               )}
             </div>
           </div>
         )}
 
+        {/* Recommendations */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
           <h3 className="font-semibold text-slate-900 mb-4">Rekommendationer</h3>
-          {geminiLoading ? (
-            <div className="space-y-4">
+          {loading ? (
+            <div className="animate-pulse space-y-5">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="flex gap-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0 animate-pulse">
-                  <div className="w-7 h-7 rounded-full bg-slate-200 shrink-0 mt-0.5" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-3.5 bg-slate-200 rounded w-2/3" />
-                    <div className="h-3 bg-slate-100 rounded w-full" />
-                    <div className="h-3 bg-slate-100 rounded w-4/5" />
+                <div key={i} className="flex gap-4 pb-5 border-b border-slate-100 last:border-0 last:pb-0">
+                  {/* Circle */}
+                  <div className="w-10 h-10 rounded-full bg-gray-200 shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-2 pt-1">
+                    {/* Title row */}
+                    <div className="h-[14px] bg-gray-200 rounded w-2/3" />
+                    {/* Body rows */}
+                    <div className="h-[14px] bg-gray-200 rounded w-full" />
+                    <div className="h-[14px] bg-gray-200 rounded w-[85%]" />
+                    {/* Link row */}
+                    <div className="h-[14px] bg-gray-200 rounded w-36 mt-1" />
                   </div>
                 </div>
               ))}
             </div>
-          ) : !gemini?.recommendations?.length ? (
-            <div className="text-center py-6 space-y-3">
-              <div className="text-3xl">📋</div>
-              <div>
-                <p className="font-medium text-slate-900 text-sm">Rekommendationer är på väg</p>
-                <p className="text-slate-500 text-xs mt-1 max-w-xs mx-auto">Baserat på er kompetensanalys matchar vi fram relevanta utbildningar och insatser.</p>
-              </div>
-              <button onClick={runGemini} className="inline-flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                <RefreshCw className="w-3.5 h-3.5" />
-                Ladda om
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {gemini.recommendations.map((rec, i) => (
+          ) : analysis?.recommendations?.length ? (
+            <div className="space-y-4 transition-opacity duration-300 opacity-100" style={{ animation: 'fadeIn 300ms ease-in' }}>
+              {analysis.recommendations.map((rec, i) => (
                 <div key={i} className="flex gap-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
-                  <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</div>
+                  <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                    {i + 1}
+                  </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <p className="font-semibold text-slate-900 text-sm">{rec.title}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PRIORITY_COLORS[rec.priority]}`}>{PRIORITY_LABELS[rec.priority]}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PRIORITY_COLORS[rec.priority]}`}>
+                        {PRIORITY_LABELS[rec.priority]}
+                      </span>
                     </div>
                     <p className="text-slate-600 text-sm leading-relaxed mb-2">{rec.body}</p>
-                    <button onClick={() => navigate('/catalog')} className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors">
+                    <button
+                      onClick={() => navigate('/catalog')}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
+                    >
                       Utforska utbildningar →
                     </button>
                   </div>
                 </div>
               ))}
             </div>
+          ) : (
+            <div className="text-center py-6 space-y-3">
+              <p className="text-slate-600 text-sm">Rekommendationer kunde inte laddas.</p>
+              <button
+                onClick={runAnalysis}
+                className="inline-flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Försök igen
+              </button>
+            </div>
           )}
         </div>
 
+        {/* CTA */}
         <div className="bg-blue-600 rounded-xl p-8 text-center">
           <h3 className="text-xl font-bold text-white mb-2">Redo att hitta rätt utbildning?</h3>
           <p className="text-blue-100 text-sm mb-6">Matcha er kompetensprofil mot utbildningar från ledande lärosäten</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button onClick={onReset} className="px-6 py-3 border border-white text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors">
+            <button
+              onClick={onReset}
+              className="px-6 py-3 border border-white text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
+            >
               Gör en ny analys
             </button>
-            <button onClick={() => navigate('/request?cpi=true')} className="px-6 py-3 bg-white text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors">
+            <button
+              onClick={() => navigate('/request?cpi=true')}
+              className="px-6 py-3 bg-white text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors"
+            >
               Begär offert från lärosäten →
             </button>
           </div>

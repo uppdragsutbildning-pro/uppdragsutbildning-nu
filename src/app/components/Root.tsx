@@ -32,7 +32,7 @@ export function Root() {
             <Logo />
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-6">
+            <nav className="hidden sm:flex items-center gap-6">
               {!isDashboard && (
                 <>
                   <Link 
@@ -45,11 +45,21 @@ export function Root() {
                   >
                     Bläddra Utbildningar
                   </Link>
-                  <Link 
-                    to="/request" 
+                  <Link
+                    to="/kompetensanalys"
                     className={`text-sm transition-colors ${
-                      location.pathname === '/request' 
-                        ? 'text-blue-600 font-medium' 
+                      location.pathname === '/kompetensanalys'
+                        ? 'text-blue-600 font-medium'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Kompetensanalys
+                  </Link>
+                  <Link
+                    to="/request"
+                    className={`text-sm transition-colors ${
+                      location.pathname === '/request'
+                        ? 'text-blue-600 font-medium'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -84,9 +94,9 @@ export function Root() {
             </nav>
 
             {/* Mobile menu button */}
-            <button 
+            <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+              className="sm:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -94,7 +104,7 @@ export function Root() {
 
           {/* Mobile Navigation */}
           {mobileMenuOpen && (
-            <div className="md:hidden py-4 border-t border-slate-200">
+            <div className="sm:hidden py-4 border-t border-slate-200">
               <nav className="flex flex-col gap-2">
                 {!isDashboard && (
                   <>
@@ -109,12 +119,23 @@ export function Root() {
                     >
                       Bläddra Utbildningar
                     </Link>
-                    <Link 
-                      to="/request" 
+                    <Link
+                      to="/kompetensanalys"
                       onClick={() => setMobileMenuOpen(false)}
                       className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                        location.pathname === '/request' 
-                          ? 'bg-blue-50 text-blue-600 font-medium' 
+                        location.pathname === '/kompetensanalys'
+                          ? 'bg-blue-50 text-blue-600 font-medium'
+                          : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      Kompetensanalys
+                    </Link>
+                    <Link
+                      to="/request"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                        location.pathname === '/request'
+                          ? 'bg-blue-50 text-blue-600 font-medium'
                           : 'text-slate-600 hover:bg-slate-100'
                       }`}
                     >
