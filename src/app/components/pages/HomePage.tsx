@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { categories, getFeaturedTrainings, getProviderById, getCategoryById } from '../../data/mockData';
 import { universityPartners } from '../../data/providerLogos';
 
+
 export function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
@@ -39,15 +40,16 @@ export function HomePage() {
               Koppla samman med ledande universitet och utbildningsleverantörer. Få personliga
               rekommendationer med hjälp av AI.
             </p>
+          </div>
 
-            {/* Dual-card hero layout */}
-            <div style={{ maxWidth: '780px' }}>
-              <div className="flex flex-col md:flex-row gap-4 items-stretch">
+          {/* Dual-card hero layout — full width outside max-w-3xl */}
+          <div className="flex flex-col md:flex-row gap-4 items-stretch w-full">
 
                 {/* Card 2: Kompetensanalys — order-1 on mobile (shown first) */}
                 <div
-                  className="flex-1 order-1 md:order-2 flex flex-col"
+                  className="order-1 md:order-2 flex flex-col"
                   style={{
+                    flex: '2 1 0',
                     background: 'rgba(22,163,74,0.85)',
                     border: '1px solid rgba(255,255,255,0.2)',
                     borderRadius: '16px',
@@ -56,19 +58,19 @@ export function HomePage() {
                 >
                   <div className="flex items-center gap-1.5 mb-2" style={{ color: 'rgba(255,255,255,0.85)' }}>
                     <Sparkles className="w-3 h-3" />
-                    <span style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em' }}>KOMPETENSANALYS</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em' }}>STRATEGISK KOMPETENSINDEX ®</span>
                   </div>
                   <p style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '6px' }}>
-                    Vet inte vad ni behöver?
+                    Vilka kompetenser behöver ni för att nå era mål?
                   </p>
                   <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.9)', lineHeight: 1.5, marginBottom: '16px' }}>
-                    Kartlägg ert kompetensgap med AI på 10 minuter och få skräddarsydda utbildningsrekommendationer.
+                    Genomför Strategiskt kompetensindex ® och få en AI baserad analys av ert kompetensbehov, prioriterade utvecklingsområden och rekommenderade uppdragsutbildningar.
                   </p>
                   <div className="flex flex-col mb-5" style={{ gap: '6px' }}>
                     {[
-                      'Baserad på 20 frågor om er verksamhet',
-                      'AI-analys med Gemini 2.0',
-                      'Direkt koppling till offertförfrågan',
+                      'AI - baserad analys av er verksamhet',
+                      'Strategiskt kompetensindex ® med konkreta insikter',
+                      'Matchning mot kvalitetssäkrade uppdragsutbildningar',
                     ].map((point) => (
                       <div key={point} className="flex items-center gap-2" style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.85)' }}>
                         <span>✓</span>
@@ -84,14 +86,15 @@ export function HomePage() {
                     onMouseEnter={(e) => (e.currentTarget.style.background = '#F0FDF4')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}
                   >
-                    Starta Kompetensanalys →
+                    Genomför Strategisk kompetensindex ® →
                   </button>
                 </div>
 
                 {/* Card 1: Sök utbildning — order-2 on mobile (shown second) */}
                 <div
-                  className="flex-1 order-2 md:order-1 flex flex-col"
+                  className="order-2 md:order-1 flex flex-col"
                   style={{
+                    flex: '4 1 0',
                     background: 'rgba(255,255,255,0.12)',
                     border: '1px solid rgba(255,255,255,0.25)',
                     borderRadius: '16px',
@@ -136,8 +139,6 @@ export function HomePage() {
                   </button>
                 </div>
 
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -201,6 +202,7 @@ export function HomePage() {
               Utforska utbildningsprogram inom olika områden och branscher
             </p>
           </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {categories.map((category) => (
               <Link
@@ -226,17 +228,27 @@ export function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-12">
             <div>
-              <h2 className="text-3xl font-bold text-slate-900 mb-3">Utvalda Utbildningar</h2>
-              <p className="text-slate-600">Populära och högt rankade program från toppeleverantörer</p>
+              <h2 className="text-3xl font-bold text-slate-900 mb-3">
+                Utvalda Utbildningar
+              </h2>
+              <p className="text-slate-600">
+                Populära och högt rankade program från toppeleverantörer
+              </p>
             </div>
-            <Link to="/catalog" className="hidden md:flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
-              Visa alla <ArrowRight className="w-4 h-4" />
+            <Link 
+              to="/catalog" 
+              className="hidden md:flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Visa alla
+              <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredTrainings.slice(0, 6).map((training) => {
+            {featuredTrainings.slice(0, 6).map((training, index) => {
               const provider = getProviderById(training.providerId);
               const category = getCategoryById(training.categoryId);
+
               return (
                 <Link
                   key={training.id}
@@ -247,13 +259,14 @@ export function HomePage() {
                     className="aspect-video relative overflow-hidden bg-cover bg-center"
                     style={{ backgroundImage: `url(${training.imageUrl})` }}
                   >
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-600/40 to-blue-800/40 group-hover:from-blue-600/20 group-hover:to-blue-800/20 transition-all" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-600/40 to-blue-800/40 group-hover:from-blue-600/20 group-hover:to-blue-800/20 transition-all"></div>
                     <div className="absolute top-4 left-4">
                       <span className="inline-block bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-slate-900">
                         {category?.name}
                       </span>
                     </div>
                   </div>
+                  
                   <div className="p-6">
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <h3 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
@@ -261,7 +274,11 @@ export function HomePage() {
                       </h3>
                       <TrendingUp className="w-4 h-4 text-blue-600 flex-shrink-0 mt-1" />
                     </div>
-                    <p className="text-sm text-slate-600 mb-4 line-clamp-2">{training.description}</p>
+                    
+                    <p className="text-sm text-slate-600 mb-4 line-clamp-2">
+                      {training.description}
+                    </p>
+                    
                     <div className="flex items-center justify-between text-xs text-slate-500 mb-4">
                       <span className="flex items-center gap-1">
                         <GraduationCap className="w-3.5 h-3.5" />
@@ -269,6 +286,7 @@ export function HomePage() {
                       </span>
                       <span>{training.duration}</span>
                     </div>
+                    
                     <div className="flex items-center gap-2">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
                         training.format === 'online' ? 'bg-green-100 text-green-700' :
@@ -292,9 +310,14 @@ export function HomePage() {
               );
             })}
           </div>
+
           <div className="text-center mt-8 md:hidden">
-            <Link to="/catalog" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
-              Visa alla utbildningar <ArrowRight className="w-4 h-4" />
+            <Link 
+              to="/catalog" 
+              className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Visa alla utbildningar
+              <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
@@ -308,7 +331,9 @@ export function HomePage() {
               <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full mb-3">
                 ✦ AI-driven analys
               </span>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">Kartlägg ert kompetensgap</h2>
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                Kartlägg ert kompetensgap
+              </h2>
               <p className="text-slate-600 max-w-lg">
                 Svara på 20 frågor och få ett skräddarsytt utbildningsförslag baserat på er verksamhets faktiska behov.
               </p>
@@ -317,7 +342,8 @@ export function HomePage() {
               to="/kompetensanalys"
               className="shrink-0 inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
             >
-              Starta Kompetensanalys <ArrowRight className="w-4 h-4" />
+              Starta Kompetensanalys
+              <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
@@ -327,30 +353,43 @@ export function HomePage() {
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-slate-900 mb-3">Så Fungerar Det</h2>
-            <p className="text-slate-600 max-w-2xl mx-auto">Kom igång i tre enkla steg</p>
+            <h2 className="text-3xl font-bold text-slate-900 mb-3">
+              Så Fungerar Det
+            </h2>
+            <p className="text-slate-600 max-w-2xl mx-auto">
+              Kom igång i tre enkla steg
+            </p>
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Search className="w-8 h-8 text-blue-600" />
               </div>
               <h3 className="font-semibold text-slate-900 mb-2">1. Beskriv Ert Behov</h3>
-              <p className="text-sm text-slate-600">Använd vår AI-drivna sök för att beskriva vilket utbildningsbehov ni har. Vi förstår och rekommenderar de bästa alternativen.</p>
+              <p className="text-sm text-slate-600">
+                Använd vår AI-drivna sök för att beskriva vilket utbildningsbehov ni har. Vi förstår och rekommenderar de bästa alternativen.
+              </p>
             </div>
+
             <div className="text-center">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="w-8 h-8 text-blue-600" />
               </div>
               <h3 className="font-semibold text-slate-900 mb-2">2. Jämför Leverantörer</h3>
-              <p className="text-sm text-slate-600">Bläddra bland program från universitet och utbildningsleverantörer. Jämför innehåll, format och recensioner.</p>
+              <p className="text-sm text-slate-600">
+                Bläddra bland program från universitet och utbildningsleverantörer. Jämför innehåll, format och recensioner.
+              </p>
             </div>
+
             <div className="text-center">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Building className="w-8 h-8 text-blue-600" />
               </div>
               <h3 className="font-semibold text-slate-900 mb-2">3. Efterfråga Offert</h3>
-              <p className="text-sm text-slate-600">Skicka en förfrågan och få skräddarsydda förslag från kvalificerade leverantörer. Välj det som passar bäst.</p>
+              <p className="text-sm text-slate-600">
+                Skicka en förfrågan och få skräddarsydda förslag från kvalificerade leverantörer. Välj det som passar bäst.
+              </p>
             </div>
           </div>
         </div>
@@ -359,7 +398,9 @@ export function HomePage() {
       {/* CTA Section */}
       <section className="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Redo att hitta din perfekta utbildning?</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            Redo att hitta din perfekta utbildning?
+          </h2>
           <p className="text-lg text-blue-100 mb-8">
             Låt vår AI hjälpa dig att upptäcka de bästa utbildningslösningarna för er organisation
           </p>
@@ -375,7 +416,8 @@ export function HomePage() {
               to="/catalog"
               className="inline-flex items-center justify-center gap-2 bg-blue-500 text-white px-8 py-3 rounded-lg font-medium hover:bg-blue-400 transition-colors"
             >
-              Bläddra Katalog <ArrowRight className="w-5 h-5" />
+              Bläddra Katalog
+              <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
         </div>
