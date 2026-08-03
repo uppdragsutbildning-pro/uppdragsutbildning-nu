@@ -53,7 +53,7 @@ export function Root() {
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    Kompetensanalys
+                    Kompetensindex
                   </Link>
                   <Link
                     to="/request"
@@ -128,7 +128,7 @@ export function Root() {
                           : 'text-slate-600 hover:bg-slate-100'
                       }`}
                     >
-                      Kompetensanalys
+                      Kompetensindex
                     </Link>
                     <Link
                       to="/request"

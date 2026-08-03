@@ -16,7 +16,13 @@ const DIM_COLORS: Record<string, string> = {
 const DIM_LABELS: Record<string, string> = {
   AF: 'Arbetsförändring', PF: 'Prestationsfriktion', OK: 'Omställningskapacitet', TR: 'Transformationsriktning',
 };
-const SI_LABELS = ['Rekrytering', 'Reskilling', 'Upskilling', 'Nya arbetssätt'];
+const DIM_DESCRIPTIONS: Record<string, string> = {
+  AF: 'Mäter hur snabbt och djupt arbetsuppgifter, roller och processer förändras i er verksamhet — drivet av teknik, marknad eller omvärldsförändringar.',
+  PF: 'Mäter i vilken grad kompetensbrist skapar friktion, förseningar och ineffektivitet i det dagliga arbetet och påverkar leveransförmågan.',
+  OK: 'Mäter organisationens förmåga att anpassa sig, lära nytt och ställa om när verksamhetens krav förändras.',
+  TR: 'Mäter hur tydlig riktning och strategi ni har för hur kompetens ska förnyas, rekryteras och utvecklas på 1–3 års sikt.',
+};
+const SI_LABELS = ['BRA', 'Kompetensväxling', 'Kompetensutveckling', 'Nya arbetssätt'];
 const PRIORITY_COLORS: Record<string, string> = {
   high: 'bg-red-100 text-red-700',
   medium: 'bg-amber-100 text-amber-700',
@@ -25,8 +31,10 @@ const PRIORITY_COLORS: Record<string, string> = {
 const PRIORITY_LABELS: Record<string, string> = { high: 'Hög', medium: 'Medel', low: 'Låg' };
 
 interface AnalysisResult {
-  summary: string;
-  chiefBriefing: string;
+  overallAssessment: string;
+  topRisk: string;
+  topAction: string;
+  orgVoice: string;
   recommendations: { title: string; body: string; priority: 'high' | 'medium' | 'low' }[];
   escoTerms: string[];
 }
@@ -60,19 +68,46 @@ function buildAnalysis(result: CPIResult): AnalysisResult {
   };
 
   const pressureDesc = total < 25 ? 'lågt' : total < 50 ? 'måttligt' : total < 75 ? 'högt' : 'kritiskt';
+  const pressureLevel = total < 25 ? 'low' : total < 50 ? 'medium' : 'high';
 
-  const chiefBriefing =
-    `${answers.companyName} visar ett ${pressureDesc} kompetensstryck (${total}/100). ` +
-    `Starkast inom ${dimName[strongest]} (${scores[strongest]}p), svagast inom ${dimName[weakest]} (${scores[weakest]}p). ` +
-    `Prioritera insatser inom ${dimName[weakest]} för störst effekt.`;
+  const overallAssessment =
+    `${answers.companyName} visar ett ${pressureDesc} kompetensstryck (${total}/100) inom ${answers.industry}. ` +
+    `Starkast inom ${dimName[strongest]} (${scores[strongest]}p) — er tydligaste tillgång i kompetensarbetet. ` +
+    `Svagast inom ${dimName[weakest]} (${scores[weakest]}p), vilket är det område som kräver mest uppmärksamhet framåt.`;
 
-  const summary =
-    `Analysen av ${answers.companyName} inom ${answers.industry} visar ett sammanvägt kompetensindex på ${total}/100, ` +
-    `vilket indikerar ${pressureDesc} tryck. ${dimNameCap[strongest]}-dimensionen är er starkaste tillgång med ${scores[strongest]} poäng. ` +
-    `Däremot utgör ${dimName[weakest]} (${scores[weakest]}p) ett prioriterat förbättringsområde. ` +
-    (answers.af4 ? `Förändringsdrivkrafter: "${answers.af4}". ` : '') +
-    (answers.tr4 ? `Kritiska förmågor: "${answers.tr4}". ` : '') +
-    `En balanserad satsning på reskilling och nya arbetssätt rekommenderas för att stärka den totala kompetensförsörjningen.`;
+  const riskMap: Record<string, string> = {
+    AF: `Arbetsförändringen går snabbt och riskerar att lämna medarbetare utan rätt förutsättningar. Om roller och processer förändras utan att kompetensen hänger med ökar prestationsgapet successivt.`,
+    PF: `Prestationsfriktionen är hög — kompetensbrist skapar redan märkbara hinder i det dagliga arbetet. Utan riktade insatser riskerar leveransförmågan att försämras ytterligare.`,
+    OK: `Omställningskapaciteten är låg, vilket gör organisationen sårbar när förutsättningarna ändras. Bristen på adaptiv förmåga kan fördröja nödvändiga omställningar och öka omställningskostnaden.`,
+    TR: `Transformationsriktningen är otydlig — det saknas en sammanhållen strategi för hur kompetens ska förnyas. Utan tydlig riktning riskerar insatser att bli fragmenterade och ge begränsad effekt.`,
+  };
+  const topRisk = riskMap[weakest] ?? `${dimNameCap[weakest]}-dimensionen (${scores[weakest]}p) utgör den viktigaste risken och bör adresseras skyndsamt.`;
+
+  const actionMap: Record<string, string> = {
+    AF: `Genomför en strukturerad analys av vilka roller och kompetenser som förändras mest. Inled riktade insatser inom förändringsledning och digital kompetens för berörda team.`,
+    PF: `Kartlägg de arbetsuppgifter som stannar upp eller tar längre tid på grund av kompetensbrist. Prioritera snabba kompetensinsatser — korta kurser eller workshops — inom de mest kritiska processerna.`,
+    OK: `Bygg lärande strukturer in i vardagen: lärcirklar, intern mentoring och korta intensivutbildningar. Mät och följ upp omställningsförmågan regelbundet för att synliggöra framsteg.`,
+    TR: `Ta fram en kompetensförsörjningsplan på 1–3 år som kopplar lärande direkt till verksamhetsmålen. Definiera tydliga prioriteringar kring rekrytering, kompetensväxling och kompetensutveckling.`,
+  };
+  const topAction = actionMap[weakest] ?? `Fokusera insatser på att stärka ${dimName[weakest]} — detta ger störst effekt på det totala kompetensindexet.`;
+
+  const freetextParts: string[] = [];
+  if (answers.af4) freetextParts.push(`Förändringsdrivkrafter: "${answers.af4}"`);
+  if (answers.pf5) freetextParts.push(`Kompetensbristens effekt: "${answers.pf5}"`);
+  if (answers.tr4) freetextParts.push(`Kritiska förmågor framåt: "${answers.tr4}"`);
+
+  let orgVoice = '';
+  if (freetextParts.length > 0) {
+    orgVoice =
+      freetextParts.join('. ') + '. ' +
+      (answers.af4 && answers.af4.toLowerCase().includes('ai')
+        ? 'AI och automatisering är centralt i er omställning — satsa på att bygga AI-litteracitet brett i organisationen. '
+        : '') +
+      `Sammantaget visar era svar på en organisation med ${pressureLevel === 'high' ? 'högt förändringstempo och tydliga kompetensgap' : 'medvetna kompetensbehov och god självkännedom'}. ` +
+      `Ambitionsnivån indikerar att ni är redo för ${pressureLevel === 'high' ? 'riktade och skyndsamma' : 'proaktiva och strategiska'} kompetensinsatser.`;
+  } else {
+    orgVoice = 'Inga fritextsvar registrerades. Fyll i frågorna AF4, PF5 och TR4 för en mer personaliserad analys av organisationens röst och behov.';
+  }
 
   const recommendations: AnalysisResult['recommendations'] = [];
 
@@ -110,8 +145,8 @@ function buildAnalysis(result: CPIResult): AnalysisResult {
 
   if (siScores.si2 >= 4) {
     recommendations.push({
-      title: 'Prioritera reskilling framför rekrytering',
-      body: 'Era svar indikerar högt reskilling-behov. Att vidareutbilda befintlig personal är ofta snabbare och mer kostnadseffektivt än extern rekrytering, särskilt i ett tight kompetensläge.',
+      title: 'Prioritera kompetensväxling framför rekrytering',
+      body: 'Era svar indikerar högt behov av kompetensväxling. Att vidareutbilda befintlig personal är ofta snabbare och mer kostnadseffektivt än extern rekrytering, särskilt i ett tight kompetensläge.',
       priority: 'medium',
     });
   }
@@ -147,7 +182,7 @@ function buildAnalysis(result: CPIResult): AnalysisResult {
     ? escoMap[matchedKey]
     : ['ledarskap och förändringsledning', 'digital kompetens', 'dataanalys', 'projektledning', 'agila arbetsmetoder'];
 
-  return { summary, chiefBriefing, recommendations, escoTerms };
+  return { overallAssessment, topRisk, topAction, orgVoice, recommendations, escoTerms };
 }
 
 function AnswerSummaryDrawer({
@@ -167,7 +202,7 @@ function AnswerSummaryDrawer({
       label: 'Info',
       rows: [
         { q: 'Företag', a: answers.companyName },
-        { q: 'Bransch', a: answers.industry },
+        { q: 'Bransch (SNI)', a: answers.industry },
         { q: 'Antal medarbetare', a: answers.companySize },
         { q: 'Din roll', a: answers.userRole },
       ],
@@ -340,8 +375,10 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Kompetensindex — Resultat</h1>
-            <p className="text-slate-500 text-sm mt-1">{answers.companyName} · {answers.industry}</p>
+            <h1 className="text-2xl font-bold text-slate-900">Kompetensindex ®</h1>
+            <p className="text-slate-500 text-sm mt-1">
+              {answers.companyName} · <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">SNI</span> {answers.industry}
+            </p>
           </div>
           <button
             onClick={() => setShowDrawer(true)}
@@ -379,9 +416,10 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
                   </div>
                   <span className="text-2xl font-bold" style={{ color: dimLevel.text }}>{s}</span>
                 </div>
-                <div className="h-1.5 rounded-full bg-slate-200 mt-3">
+                <div className="h-1.5 rounded-full bg-slate-200 mt-3 mb-3">
                   <div className={`h-1.5 rounded-full ${DIM_COLORS[dim]}`} style={{ width: `${s}%` }} />
                 </div>
+                <p className="text-xs text-slate-500 leading-relaxed">{DIM_DESCRIPTIONS[dim]}</p>
               </div>
             );
           })}
@@ -389,14 +427,14 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
 
         {/* Strategic profile */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-          <h3 className="font-semibold text-slate-900 mb-4">Strategisk insatsprofil</h3>
+          <h3 className="font-semibold text-slate-900 mb-4">Prioriterade kompetensinsatser</h3>
           <div className="space-y-3">
             {SI_LABELS.map((label, i) => {
               const val = siVals[i];
               const pct = Math.round(((val - 1) / 4) * 100);
               return (
                 <div key={label} className="flex items-center gap-3">
-                  <span className="text-sm text-slate-600 w-36 shrink-0">{label}</span>
+                  <span className="text-sm text-slate-600 w-40 shrink-0">{label}</span>
                   <div className="flex-1 h-1.5 rounded-full bg-slate-200">
                     <div className="h-1.5 rounded-full bg-blue-500" style={{ width: `${pct}%` }} />
                   </div>
@@ -415,12 +453,10 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
           </h3>
           {loading ? (
             <div className="animate-pulse space-y-4">
-              {/* Chefsbriefing skeleton */}
               <div className="bg-slate-50 rounded-lg px-4 py-3 border border-slate-100">
-                <div className="h-3 bg-gray-200 rounded w-24 mb-2" />
+                <div className="h-3 bg-gray-200 rounded w-40 mb-2" />
                 <div className="h-5 bg-gray-200 rounded w-[90%]" />
               </div>
-              {/* Summary skeleton */}
               <div className="space-y-2">
                 <div className="h-[14px] bg-gray-200 rounded w-full" />
                 <div className="h-[14px] bg-gray-200 rounded w-[95%]" />
@@ -428,14 +464,36 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
               </div>
             </div>
           ) : analysis ? (
-            <div className="transition-opacity duration-300 opacity-100" style={{ animation: 'fadeIn 300ms ease-in' }}>
-              {analysis.chiefBriefing && (
-                <div className="bg-slate-50 rounded-lg px-4 py-3 mb-3 border border-slate-200">
-                  <p className="text-xs text-slate-500 mb-1 font-medium">CHEFSBRIEFING</p>
-                  <p className="text-slate-800 text-sm font-medium">{analysis.chiefBriefing}</p>
+            <div style={{ animation: 'fadeIn 300ms ease-in' }} className="space-y-4">
+
+              {/* Chefssammanfattning */}
+              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Chefssammanfattning</p>
+
+              <div className="space-y-3">
+                {/* 1. Övergripande bedömning */}
+                <div className="bg-slate-50 rounded-lg px-4 py-3 border border-slate-100">
+                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Övergripande bedömning</p>
+                  <p className="text-slate-800 text-sm leading-relaxed">{analysis.overallAssessment}</p>
                 </div>
-              )}
-              <p className="text-slate-700 text-sm leading-relaxed">{analysis.summary}</p>
+
+                {/* 2. Viktigaste risk */}
+                <div className="bg-red-50 rounded-lg px-4 py-3 border border-red-100">
+                  <p className="text-xs text-red-500 font-semibold uppercase tracking-wide mb-1">Viktigaste risk</p>
+                  <p className="text-slate-800 text-sm leading-relaxed">{analysis.topRisk}</p>
+                </div>
+
+                {/* 3. Högst prioriterade åtgärd */}
+                <div className="bg-amber-50 rounded-lg px-4 py-3 border border-amber-100">
+                  <p className="text-xs text-amber-600 font-semibold uppercase tracking-wide mb-1">Högst prioriterade åtgärd</p>
+                  <p className="text-slate-800 text-sm leading-relaxed">{analysis.topAction}</p>
+                </div>
+
+                {/* 4. Organisationens röst */}
+                <div className="bg-blue-50 rounded-lg px-4 py-3 border border-blue-100">
+                  <p className="text-xs text-blue-600 font-semibold uppercase tracking-wide mb-1">Organisationens röst</p>
+                  <p className="text-slate-800 text-sm leading-relaxed">{analysis.orgVoice}</p>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
@@ -455,7 +513,7 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
         {escoDisplay.length > 0 && (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
             <h3 className="font-semibold text-slate-900 mb-1 flex items-center gap-2">
-              <span>🎯</span> Matchade ESCO-kompetenser
+              <span>🎯</span> Identifierade kompetenser enligt ESCO
             </h3>
             <p className="text-xs text-slate-500 mb-3">EU:s officiella kompetensstandard</p>
             <div className="flex flex-wrap gap-2">
@@ -483,22 +541,18 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
             <div className="animate-pulse space-y-5">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="flex gap-4 pb-5 border-b border-slate-100 last:border-0 last:pb-0">
-                  {/* Circle */}
                   <div className="w-10 h-10 rounded-full bg-gray-200 shrink-0 mt-0.5" />
                   <div className="flex-1 space-y-2 pt-1">
-                    {/* Title row */}
                     <div className="h-[14px] bg-gray-200 rounded w-2/3" />
-                    {/* Body rows */}
                     <div className="h-[14px] bg-gray-200 rounded w-full" />
                     <div className="h-[14px] bg-gray-200 rounded w-[85%]" />
-                    {/* Link row */}
                     <div className="h-[14px] bg-gray-200 rounded w-36 mt-1" />
                   </div>
                 </div>
               ))}
             </div>
           ) : analysis?.recommendations?.length ? (
-            <div className="space-y-4 transition-opacity duration-300 opacity-100" style={{ animation: 'fadeIn 300ms ease-in' }}>
+            <div className="space-y-4" style={{ animation: 'fadeIn 300ms ease-in' }}>
               {analysis.recommendations.map((rec, i) => (
                 <div key={i} className="flex gap-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
                   <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
