@@ -317,38 +317,30 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
   const [escoResolved, setEscoResolved] = useState<EscoResolved[]>([]);
 
 const runAnalysis = async () => {
-  setLoading(true);
-  setAnalysis(null);
-  try {
-    const res = await fetch('/api/analyze-cpi', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        companyName: result.answers?.companyName,
-        industry: result.answers?.industry,
-        companySize: result.answers?.companySize,
-        scores,
-        freetext: result.answers,
-        siScores,
-      }),
-    });
-    if (!res.ok) throw new Error('API error');
-    const data = await res.json();
-    setAnalysis(data);
-  } catch (err) {
-    console.error('Gemini-fel:', err);
-    setAnalysis(buildAnalysis(result));
-  } finally {
-    setLoading(false);
-  }
-};
     setLoading(true);
     setAnalysis(null);
-    setTimeout(() => {
-      const data = buildAnalysis(result);
+    try {
+      const res = await fetch('/api/analyze-cpi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: result.answers?.companyName,
+          industry: result.answers?.industry,
+          companySize: result.answers?.companySize,
+          scores,
+          freetext: result.answers,
+          siScores,
+        }),
+      });
+      if (!res.ok) throw new Error('API error');
+      const data = await res.json();
       setAnalysis(data);
+    } catch (err) {
+      console.error('Gemini-fel:', err);
+      setAnalysis(buildAnalysis(result));
+    } finally {
       setLoading(false);
-    }, 1200);
+    }
   };
 
   useEffect(() => {
