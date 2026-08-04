@@ -251,7 +251,7 @@ export function KompetensindexPage() {
 
     setLoadingStep(2);
     try {
-      await supabase.from('cpi_results').insert({
+      const { error: insertError } = await supabase.from('cpi_results').insert({
         company_name: answers.companyName,
         industry: answers.industry,
         company_size: answers.companySize,
@@ -267,7 +267,9 @@ export function KompetensindexPage() {
         },
         created_at: new Date().toISOString(),
       });
-    } catch (_) { /* fail silently if table doesn't exist yet */ }
+      if (insertError) console.error('Supabase insert error:', insertError);
+      else console.log('CPI result saved successfully');
+    } catch (err) { console.error('Supabase insert exception:', err); }
 
     setResult({
       scores: { AF, PF, OK, TR, total },
