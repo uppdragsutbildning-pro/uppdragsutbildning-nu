@@ -1,10 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://iswctazjdtirrzswqkor.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlzd2N0YXpqZHRpcnJ6c3dxa29yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUxNDYxNTcsImV4cCI6MjA2MDcyMjE1N30.5cdMPq2IUeMi2OwCGFHJ8QFKFD6IZqMGMr4fmEgS-5A';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlzd2N0YXpqZHRpcnJ6c3dxa29yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMDA4NTcsImV4cCI6MjA5NTg3Njg1N30.gkRkttHD6skjModVTUvCA_vFPec0OjoGNHHOfLQxqMQ';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Database types (will be auto-generated later, but here's a basic structure)
 export interface Provider {
   id: string;
   name: string;
