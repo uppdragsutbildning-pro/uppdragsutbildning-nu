@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import { Sparkles, Send, CheckCircle, ArrowRight, Loader2, User, Building, Mail, Phone, Calendar, DollarSign } from 'lucide-react';
 import { getTrainingById } from '../../data/mockData';
 import { toast } from 'sonner';
+import { supabase } from '../../../lib/supabase';
 
 type Step = 'describe' | 'ai-analysis' | 'form' | 'confirmation';
 
@@ -46,16 +47,33 @@ export function RequestFlowPage() {
     setSuggestedFormat('hybrid');
     
     setIsAnalyzing(false);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setStep('form');
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Here we would submit to backend
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
+    const { error } = await supabase.from('custom_requests').insert({
+      training_id: trainingId || null,
+      company: formData.companyName,
+      contact_name: formData.contactName,
+      contact_email: formData.email,
+      contact_phone: formData.phone,
+      budget: formData.budget || null,
+      timeline: formData.timeline,
+      course_topic: training ? training.title : 'Fri förfrågan',
+      description: description,
+      ai_score: 'medium',
+      status: 'new',
+      submitted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    if (error) {
+      console.error('Supabase insert error:', error);
+      toast.error('Något gick fel. Försök igen.');
+      return;
+    }
+
     setStep('confirmation');
     toast.success('Förfrågan skickad!');
   };
@@ -225,6 +243,13 @@ export function RequestFlowPage() {
                         </div>
                       </div>
                     </div>
+
+                    <button
+                      onClick={() => setStep('form')}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                    >
+                      Fortsätt till förfrågan <ArrowRight className="w-4 h-4" />
+                    </button>
                   </>
                 )}
               </div>
