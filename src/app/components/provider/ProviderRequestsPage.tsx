@@ -18,16 +18,52 @@ export function ProviderRequestsPage() {
 
   useEffect(() => {
     loadRequests();
-  }, []);
+  }, [selectedProviderId]);
 
   async function loadRequests() {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('custom_requests')
         .select('*')
         .order('submitted_at', { ascending: false });
 
+      // If provider is selected, filter by their categories
+      if (selectedProviderId) {
+        try {
+          const { data: providerTrainings } = await supabase
+            .from('trainings')
+            .select('category_id')
+            .eq('provider_id', selectedProviderId)
+            .eq('is_active', true);
+
+          if (providerTrainings && providerTrainings.length > 0) {
+            const categoryIds = [...new Set(providerTrainings.map((t: { category_id: string }) => t.category_id))];
+
+            const { data: cats } = await supabase
+              .from('categories')
+              .select('name')
+              .in('id', categoryIds);
+
+            if (cats && cats.length > 0) {
+              const categoryNames = cats.map((c: { name: string }) => c.name);
+              // Client-side filter on recommended_categories overlap
+              const { data: allRequests, error } = await query;
+              if (error) throw error;
+              const filtered = (allRequests || []).filter(req => {
+                const rc: string[] = req.recommended_categories || [];
+                return rc.length === 0 || rc.some((cat: string) => categoryNames.includes(cat));
+              });
+              setRequests(filtered);
+              return;
+            }
+          }
+        } catch {
+          // fallback to all requests
+        }
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       setRequests(data || []);
     } catch (error) {

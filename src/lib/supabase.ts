@@ -106,6 +106,8 @@ export interface CustomRequest {
   ai_score: 'high' | 'medium' | 'low';
   status: 'new' | 'responded' | 'negotiating' | 'accepted' | 'declined';
   response?: string;
+  recommended_categories?: string[];
+  has_provider_match?: boolean;
   submitted_at: string;
   updated_at: string;
 }

@@ -6,7 +6,20 @@ import { exportLeadsToCSV, exportTrainingsToCSV } from '../../utils/exportUtils'
 import { supabase, Profile, Provider } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 
-type Tab = 'overview' | 'trainings' | 'leads' | 'providers' | 'users';
+type Tab = 'overview' | 'trainings' | 'leads' | 'providers' | 'users' | 'kompetensindex';
+
+interface CpiRecord {
+  id: string;
+  company_name: string;
+  industry: string;
+  company_size: string;
+  respondent_role: string;
+  scores: { AF: number; PF: number; OK: number; TR: number; total: number };
+  si_scores: { SI1: number; SI2: number; SI3: number; SI4: number };
+  freetext: { af4: string; pf5: string; tr4: string };
+  li_preferences: { insatstyp: string[]; upplägg: string[]; målgrupp: string[] };
+  created_at: string;
+}
 
 export function AdminDashboard() {
   const { signOut } = useAuth();
@@ -17,6 +30,11 @@ export function AdminDashboard() {
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const [showCreateProvider, setShowCreateProvider] = useState(false);
+  const [cpiRecords, setCpiRecords] = useState<CpiRecord[]>([]);
+  const [cpiLoading, setCpiLoading] = useState(false);
+  const [customRequests, setCustomRequests] = useState<import('../../../lib/supabase').CustomRequest[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [leadsFilter, setLeadsFilter] = useState<'all' | 'unmatched'>('all');
 
   // Form state for creating new provider
   const [newProvider, setNewProvider] = useState({
@@ -54,7 +72,63 @@ export function AdminDashboard() {
     if (activeTab === 'providers') {
       loadProviders();
     }
+    if (activeTab === 'kompetensindex') {
+      loadCpiRecords();
+    }
+    if (activeTab === 'leads') {
+      loadCustomRequests();
+    }
   }, [activeTab]);
+
+  async function loadCustomRequests() {
+    setRequestsLoading(true);
+    const { data, error } = await supabase
+      .from('custom_requests')
+      .select('*')
+      .order('has_provider_match', { ascending: true })
+      .order('submitted_at', { ascending: false });
+    if (!error && data) setCustomRequests(data as import('../../../lib/supabase').CustomRequest[]);
+    setRequestsLoading(false);
+  }
+
+  async function loadCpiRecords() {
+    setCpiLoading(true);
+    const { data, error } = await supabase
+      .from('cpi_results')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (!error && data) setCpiRecords(data as CpiRecord[]);
+    setCpiLoading(false);
+  }
+
+  function exportCpiToCSV() {
+    if (!cpiRecords.length) return;
+    const headers = ['Datum', 'Företag', 'Bransch', 'Storlek', 'Roll', 'Total', 'AF', 'PF', 'OK', 'TR', 'SI1', 'SI2', 'SI3', 'SI4'];
+    const rows = cpiRecords.map((r) => [
+      new Date(r.created_at).toLocaleDateString('sv-SE'),
+      r.company_name,
+      r.industry,
+      r.company_size,
+      r.respondent_role,
+      r.scores?.total ?? '',
+      r.scores?.AF ?? '',
+      r.scores?.PF ?? '',
+      r.scores?.OK ?? '',
+      r.scores?.TR ?? '',
+      r.si_scores?.SI1 ?? '',
+      r.si_scores?.SI2 ?? '',
+      r.si_scores?.SI3 ?? '',
+      r.si_scores?.SI4 ?? '',
+    ]);
+    const csv = [headers, ...rows].map((r) => r.join(';')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kompetensindex-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   async function loadUsers() {
     setLoading(true);
@@ -271,6 +345,16 @@ export function AdminDashboard() {
             >
               Användare
             </button>
+            <button
+              onClick={() => setActiveTab('kompetensindex')}
+              className={`pb-3 border-b-2 transition-colors ${
+                activeTab === 'kompetensindex'
+                  ? 'border-blue-600 text-blue-600 font-medium'
+                  : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Kompetensindex
+            </button>
           </div>
         </div>
       </div>
@@ -483,107 +567,110 @@ export function AdminDashboard() {
         {/* Leads Tab */}
         {activeTab === 'leads' && (
           <div>
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-slate-900 mb-1">
-                Alla Förfrågningar
-              </h2>
-              <p className="text-sm text-slate-600">
-                Övervaka och hantera alla utbildningsförfrågningar
-              </p>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900 mb-1">
+                  Alla Förfrågningar
+                </h2>
+                <p className="text-sm text-slate-600">
+                  Övervaka och hantera alla utbildningsförfrågningar
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setLeadsFilter('all')}
+                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${leadsFilter === 'all' ? 'bg-blue-600 text-white' : 'border border-slate-200 text-slate-700 hover:bg-slate-50'}`}
+                >
+                  Alla
+                </button>
+                <button
+                  onClick={() => setLeadsFilter('unmatched')}
+                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${leadsFilter === 'unmatched' ? 'bg-red-600 text-white' : 'border border-slate-200 text-slate-700 hover:bg-slate-50'}`}
+                >
+                  Ej matchade
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              {leads.map(lead => {
-                const training = lead.trainingId ? getTrainingById(lead.trainingId) : null;
-                const provider = training ? getProviderById(training.providerId) : null;
-
-                return (
-                  <div key={lead.id} className="bg-white rounded-xl border border-slate-200 p-6">
+            {requestsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {customRequests
+                  .filter(req => leadsFilter === 'unmatched' ? req.has_provider_match === false : true)
+                  .map(req => (
+                  <div key={req.id} className="bg-white rounded-xl border border-slate-200 p-6">
                     <div className="flex items-start justify-between gap-4 mb-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-slate-900">{lead.companyName}</h3>
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            lead.aiScore === 'high' ? 'bg-green-100 text-green-700' :
-                            lead.aiScore === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-slate-100 text-slate-700'
-                          }`}>
-                            {lead.aiScore === 'high' ? 'HÖG' : lead.aiScore === 'medium' ? 'MEDEL' : 'LÅG'}
-                          </span>
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            lead.status === 'new' ? 'bg-blue-100 text-blue-700' :
-                            lead.status === 'contacted' ? 'bg-purple-100 text-purple-700' :
-                            lead.status === 'qualified' ? 'bg-green-100 text-green-700' :
-                            'bg-slate-100 text-slate-700'
-                          }`}>
-                            {lead.status === 'new' ? 'Ny' : 
-                             lead.status === 'contacted' ? 'Kontaktad' : 
-                             lead.status === 'qualified' ? 'Kvalificerad' : 
-                             'Förlorad'}
-                          </span>
-                        </div>
-                        
-                        <p className="text-sm text-slate-600 mb-2">
-                          {training ? (
-                            <>Intresserad av: <span className="font-medium">{training.title}</span> från {provider?.name}</>
-                          ) : (
-                            'Allmän förfrågan'
+                        <div className="flex items-center gap-3 mb-2 flex-wrap">
+                          <h3 className="font-semibold text-slate-900">{req.company}</h3>
+                          {req.has_provider_match === false && (
+                            <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700 font-medium">
+                              Ej matchad
+                            </span>
                           )}
-                        </p>
-
-                        <p className="text-sm text-slate-700 mb-3">{lead.description}</p>
-
-                        <div className="bg-blue-50 rounded-lg p-3 mb-3">
-                          <div className="flex items-start gap-2 text-sm">
-                            <Sparkles className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <div className="font-medium text-blue-900 mb-1">AI-Analys</div>
-                              <p className="text-blue-800">{lead.aiSummary}</p>
-                            </div>
-                          </div>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            req.ai_score === 'high' ? 'bg-green-100 text-green-700' :
+                            req.ai_score === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-slate-100 text-slate-700'
+                          }`}>
+                            {req.ai_score === 'high' ? 'HÖG' : req.ai_score === 'medium' ? 'MEDEL' : 'LÅG'}
+                          </span>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            req.status === 'new' ? 'bg-blue-100 text-blue-700' :
+                            req.status === 'responded' ? 'bg-amber-100 text-amber-700' :
+                            req.status === 'accepted' ? 'bg-green-100 text-green-700' :
+                            'bg-slate-100 text-slate-700'
+                          }`}>
+                            {req.status === 'new' ? 'Ny' :
+                             req.status === 'responded' ? 'Besvarad' :
+                             req.status === 'negotiating' ? 'Förhandling' :
+                             req.status === 'accepted' ? 'Accepterad' : 'Avböjd'}
+                          </span>
                         </div>
+
+                        <p className="text-sm font-medium text-slate-800 mb-1">{req.course_topic}</p>
+                        <p className="text-sm text-slate-600 mb-3 line-clamp-2">{req.description}</p>
+
+                        {req.recommended_categories && req.recommended_categories.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-3">
+                            {req.recommended_categories.map((cat, i) => (
+                              <span key={i} className="px-2 py-0.5 text-xs bg-blue-50 text-blue-700 rounded-full border border-blue-100">
+                                {cat}
+                              </span>
+                            ))}
+                          </div>
+                        )}
 
                         <div className="flex flex-wrap gap-4 text-xs text-slate-600">
-                          <span>Kontakt: {lead.contactName}</span>
+                          <span>Kontakt: {req.contact_name}</span>
                           <span>•</span>
-                          <span>{lead.email}</span>
+                          <span>{req.contact_email}</span>
                           <span>•</span>
-                          <span>Tidslinje: {lead.timeline}</span>
-                          {lead.budget && (
+                          <span>Tidsplan: {req.timeline}</span>
+                          {req.budget && (
                             <>
                               <span>•</span>
-                              <span>Budget: {lead.budget}</span>
+                              <span>Budget: {req.budget}</span>
                             </>
                           )}
+                          <span>•</span>
+                          <span>{new Date(req.submitted_at).toLocaleDateString('sv-SE')}</span>
                         </div>
                       </div>
                     </div>
-
-                    <div className="flex gap-2 pt-4 border-t border-slate-200">
-                      <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm">
-                        Tilldela Leverantör
-                      </button>
-                      <button className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium text-sm">
-                        Visa Detaljer
-                      </button>
-                    </div>
                   </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-6">
-              <button
-                onClick={() => {
-                  exportLeadsToCSV(leads);
-                  toast.success('Förfrågningar exporterade till CSV!');
-                }}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                <Download className="w-5 h-5" />
-                Exportera Förfrågningar
-              </button>
-            </div>
+                ))}
+                {customRequests.filter(req => leadsFilter === 'unmatched' ? req.has_provider_match === false : true).length === 0 && (
+                  <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                    <Mail className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500">Inga förfrågningar hittades</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -1042,6 +1129,83 @@ VALUES (
                   </div>
                 )}
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Kompetensindex Tab */}
+        {activeTab === 'kompetensindex' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Kompetensindex — Rapporter</h2>
+                <p className="text-slate-500 text-sm mt-1">{cpiRecords.length} genomförda analyser</p>
+              </div>
+              <button
+                onClick={exportCpiToCSV}
+                disabled={!cpiRecords.length}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+              >
+                <Download className="w-4 h-4" />
+                Exportera CSV
+              </button>
+            </div>
+
+            {cpiLoading ? (
+              <div className="animate-pulse space-y-3">
+                {[1,2,3].map(i => <div key={i} className="h-16 bg-slate-100 rounded-xl" />)}
+              </div>
+            ) : cpiRecords.length === 0 ? (
+              <div className="text-center py-16 text-slate-400">Inga analyser genomförda ännu.</div>
+            ) : (
+              <>
+                {/* Summary stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                  {(['AF', 'PF', 'OK', 'TR'] as const).map((dim) => {
+                    const avg = Math.round(cpiRecords.reduce((s, r) => s + (r.scores?.[dim] ?? 0), 0) / cpiRecords.length);
+                    return (
+                      <div key={dim} className="bg-white rounded-xl border border-slate-200 p-4 text-center">
+                        <p className="text-xs text-slate-500 mb-1">{dim} — snitt</p>
+                        <p className="text-3xl font-bold text-slate-900">{avg}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Records table */}
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="text-left px-4 py-3 font-medium text-slate-600">Datum</th>
+                        <th className="text-left px-4 py-3 font-medium text-slate-600">Företag</th>
+                        <th className="text-left px-4 py-3 font-medium text-slate-600">Bransch</th>
+                        <th className="text-left px-4 py-3 font-medium text-slate-600">Storlek</th>
+                        <th className="text-center px-4 py-3 font-medium text-slate-600">Total</th>
+                        <th className="text-center px-4 py-3 font-medium text-slate-600">AF</th>
+                        <th className="text-center px-4 py-3 font-medium text-slate-600">PF</th>
+                        <th className="text-center px-4 py-3 font-medium text-slate-600">OK</th>
+                        <th className="text-center px-4 py-3 font-medium text-slate-600">TR</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {cpiRecords.map((r) => (
+                        <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3 text-slate-500">{new Date(r.created_at).toLocaleDateString('sv-SE')}</td>
+                          <td className="px-4 py-3 font-medium text-slate-900">{r.company_name}</td>
+                          <td className="px-4 py-3 text-slate-600 max-w-[180px] truncate">{r.industry}</td>
+                          <td className="px-4 py-3 text-slate-600">{r.company_size}</td>
+                          <td className="px-4 py-3 text-center font-bold text-slate-900">{r.scores?.total ?? '—'}</td>
+                          <td className="px-4 py-3 text-center text-blue-600">{r.scores?.AF ?? '—'}</td>
+                          <td className="px-4 py-3 text-center text-red-500">{r.scores?.PF ?? '—'}</td>
+                          <td className="px-4 py-3 text-center text-green-600">{r.scores?.OK ?? '—'}</td>
+                          <td className="px-4 py-3 text-center text-amber-500">{r.scores?.TR ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         )}

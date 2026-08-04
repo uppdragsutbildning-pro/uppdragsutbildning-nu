@@ -52,6 +52,28 @@ export function RequestFlowPage() {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Resolve category names → IDs, then check if any active training matches
+    let hasMatch = false;
+    try {
+      const { data: cats } = await supabase
+        .from('categories')
+        .select('id, name')
+        .in('name', recommendedCategories);
+
+      if (cats && cats.length > 0) {
+        const categoryIds = cats.map((c: { id: string }) => c.id);
+        const { data: matchedTrainings } = await supabase
+          .from('trainings')
+          .select('id')
+          .in('category_id', categoryIds)
+          .eq('is_active', true)
+          .limit(1);
+        hasMatch = (matchedTrainings?.length ?? 0) > 0;
+      }
+    } catch {
+      // fallback: no match
+    }
+
     const { error } = await supabase.from('custom_requests').insert({
       training_id: trainingId || null,
       company: formData.companyName,
@@ -64,6 +86,8 @@ export function RequestFlowPage() {
       description: description,
       ai_score: 'medium',
       status: 'new',
+      recommended_categories: recommendedCategories,
+      has_provider_match: hasMatch,
       submitted_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
