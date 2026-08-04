@@ -27,14 +27,16 @@ ${freetext ? JSON.stringify(freetext) : 'Ingen fritext angiven'}
 
 Svara ENBART med ett JSON-objekt (ingen markdown, inga förklaringar utanför JSON):
 {
-  "summary": "2-3 meningar som sammanfattar situationen och det viktigaste att agera på",
+  "overallAssessment": "2-3 meningar övergripande bedömning av situationen",
+  "topRisk": "1-2 meningar om den viktigaste risken om inget görs",
+  "topAction": "1-2 meningar om den högst prioriterade åtgärden",
+  "orgVoice": "1-2 meningar baserat på fritextsvar som speglar organisationens egna ord",
   "recommendations": [
     {"title": "Kort titel", "body": "2-3 meningar med konkret råd", "priority": "high"},
     {"title": "Kort titel", "body": "2-3 meningar med konkret råd", "priority": "medium"},
     {"title": "Kort titel", "body": "2-3 meningar med konkret råd", "priority": "low"}
   ],
-  "chiefBriefing": "Max 25 ord för ledningsgruppen",
-  "escoTerms": ["kompetensterm1", "kompetensterm2", "kompetensterm3", "kompetensterm4", "kompetensterm5"]
+  "escoTerms": ["term1", "term2", "term3", "term4", "term5"]
 }`;
 
   const apiKey = process.env.GEMINI_API_KEY;
