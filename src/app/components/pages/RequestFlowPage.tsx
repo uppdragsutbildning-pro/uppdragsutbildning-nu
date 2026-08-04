@@ -84,6 +84,7 @@ export function RequestFlowPage() {
       timeline: formData.timeline,
       course_topic: training ? training.title : 'Fri förfrågan',
       description: description,
+      participants_count: '',
       ai_score: 'medium',
       status: 'new',
       recommended_categories: recommendedCategories,
