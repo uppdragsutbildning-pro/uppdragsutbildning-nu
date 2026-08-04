@@ -15,6 +15,7 @@ const STEPS = [
   { id: 'ok', label: 'OK' },
   { id: 'tr', label: 'TR' },
   { id: 'insats', label: 'Insats' },
+  { id: 'larande', label: 'LI' },
 ];
 
 const SECTION_COLORS: Record<string, string> = {
@@ -23,6 +24,7 @@ const SECTION_COLORS: Record<string, string> = {
   ok: 'border-green-600',
   tr: 'border-blue-600',
   insats: 'border-amber-500',
+  larande: 'border-purple-500',
 };
 
 type ESCOSkill = { title: string; uri: string };
@@ -229,6 +231,7 @@ export function KompetensindexPage() {
     if (step === 3) return answers.ok1 > 0 && answers.ok2 > 0 && answers.ok3 > 0 && answers.ok4 > 0;
     if (step === 4) return answers.tr1 > 0 && answers.tr2 > 0 && answers.tr3 > 0 && answers.tr4.trim().length > 0;
     if (step === 5) return answers.si1 > 0 && answers.si2 > 0 && answers.si3 > 0 && answers.si4 > 0;
+    if (step === 6) return answers.li1.length > 0 && answers.li2.length > 0 && answers.li3.length > 0;
     return false;
   };
 
@@ -598,7 +601,7 @@ export function KompetensindexPage() {
           <div className="space-y-5">
             <div className={`border-l-4 pl-4 ${SECTION_COLORS.insats}`}>
               <h2 className="text-xl font-semibold text-slate-900">Strategisk insats</h2>
-              <p className="text-slate-500 text-sm">Vilka insatser och vilket upplägg passar er bäst?</p>
+              <p className="text-slate-500 text-sm">Vilka insatser behöver ni prioritera</p>
             </div>
             <QuestionCard id="SI1" question="I vilken grad ser ni behov av rekrytering av ny kompetens?">
               <ScaleButtons value={answers.si1} onChange={(v) => set('si1', v)} labelLow="Inget behov" labelHigh="Stort behov" />
@@ -613,34 +616,37 @@ export function KompetensindexPage() {
               <ScaleButtons value={answers.si4} onChange={(v) => set('si4', v)} labelLow="Inget behov" labelHigh="Stort behov" />
             </QuestionCard>
 
-            <div className="border-t border-slate-200 pt-5 space-y-5">
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-5">
-                <div>
-                  <p className="text-slate-900 font-medium mb-3">Välj ett eller flera alternativ!</p>
-                  <MultiSelectChips
-                    options={['Kort kurs (1–3 dagar)', 'Längre program', 'Workshop', 'Coaching & mentoring', 'Företagsanpassad uppdragsutbildning']}
-                    selected={answers.li1}
-                    onChange={(v) => set('li1', v)}
-                  />
-                </div>
-                <div>
-                  <p className="text-slate-900 font-medium mb-3">Vilket upplägg passar er verksamhet bäst?</p>
-                  <MultiSelectChips
-                    options={['Digitalt/online', 'Fysiskt/på plats', 'Blandat lärande', 'Cohort-baserat', 'Självstudier i egen takt']}
-                    selected={answers.li2}
-                    onChange={(v) => set('li2', v)}
-                  />
-                </div>
-                <div>
-                  <p className="text-slate-900 font-medium mb-3">Vilka målgrupper är mest prioriterade?</p>
-                  <MultiSelectChips
-                    options={['Ledare & chefer', 'Specialister', 'Frontlinje/operativ', 'Stödfunktioner', 'Projektledare', 'Hela organisationen']}
-                    selected={answers.li3}
-                    onChange={(v) => set('li3', v)}
-                  />
-                </div>
-              </div>
+          </div>
+        )}
+
+        {/* Step 6: LI — Lärande & insatser */}
+        {step === 6 && (
+          <div className="space-y-5">
+            <div className={`border-l-4 pl-4 ${SECTION_COLORS.larande}`}>
+              <h2 className="text-xl font-semibold text-slate-900">Lärande &amp; insatser</h2>
+              <p className="text-slate-500 text-sm">Hur vill ni utveckla kompetensen?</p>
             </div>
+            <QuestionCard id="LI1" question="Vilken typ av kompetensinsats tror ni skulle ge störst effekt?">
+              <MultiSelectChips
+                options={['Kort kurs (1–3 dagar)', 'Längre program', 'Workshop', 'Coaching & mentoring', 'Företagsanpassad uppdragsutbildning']}
+                selected={answers.li1}
+                onChange={(v) => set('li1', v)}
+              />
+            </QuestionCard>
+            <QuestionCard id="LI2" question="Vilket upplägg passar er verksamhet bäst?">
+              <MultiSelectChips
+                options={['Digitalt/online', 'Fysiskt/på plats', 'Blandat lärande', 'Cohort-baserat', 'Självstudier i egen takt']}
+                selected={answers.li2}
+                onChange={(v) => set('li2', v)}
+              />
+            </QuestionCard>
+            <QuestionCard id="LI3" question="Vilka målgrupper är mest prioriterade?">
+              <MultiSelectChips
+                options={['Ledare & chefer', 'Specialister', 'Frontlinje/operativ', 'Stödfunktioner', 'Projektledare', 'Hela organisationen']}
+                selected={answers.li3}
+                onChange={(v) => set('li3', v)}
+              />
+            </QuestionCard>
           </div>
         )}
 
@@ -657,7 +663,7 @@ export function KompetensindexPage() {
             <div />
           )}
 
-          {step < 5 ? (
+          {step < 6 ? (
             <button
               onClick={() => { setStep((s) => s + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               disabled={!canProceed()}

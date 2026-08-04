@@ -375,7 +375,7 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Kompetensindex ®</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Strategisk kompetensindex ®</h1>
             <p className="text-slate-500 text-sm mt-1">
               {answers.companyName} · <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">SNI</span> {answers.industry}
             </p>
