@@ -28,7 +28,7 @@ export function AdminDashboard() {
   const [supabaseProviders, setSupabaseProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreateUser, setShowCreateUser] = useState(false);
-  const [showInstructions, setShowInstructions] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
   const [showCreateProvider, setShowCreateProvider] = useState(false);
   const [cpiRecords, setCpiRecords] = useState<CpiRecord[]>([]);
   const [cpiLoading, setCpiLoading] = useState(false);
@@ -177,15 +177,31 @@ export function AdminDashboard() {
 
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
-
-    // Show instructions modal instead
-    toast.info('Skapa användare i Supabase Dashboard', {
-      description: 'Följ instruktionerna nedan för att skapa en ny användare',
-      duration: 10000
-    });
-
-    setShowCreateUser(false);
-    setShowInstructions(true);
+    setCreatingUser(true);
+    try {
+      const res = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: newUser.email,
+          password: newUser.password,
+          full_name: newUser.full_name,
+          role: newUser.role,
+          provider_id: newUser.provider_id || null,
+          phone: newUser.phone || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Okänt fel');
+      toast.success('Användare skapad!', { description: `${newUser.email} har fått ett konto.` });
+      setNewUser({ email: '', password: '', full_name: '', phone: '', role: 'provider', provider_id: '' });
+      setShowCreateUser(false);
+      loadUsers();
+    } catch (err: unknown) {
+      toast.error('Kunde inte skapa användare', { description: err instanceof Error ? err.message : 'Okänt fel' });
+    } finally {
+      setCreatingUser(false);
+    }
   }
 
   async function toggleUserActive(userId: string, currentStatus: boolean) {
@@ -917,7 +933,7 @@ export function AdminDashboard() {
                 </p>
               </div>
               <button
-                onClick={() => setShowInstructions(!showInstructions)}
+                onClick={() => setShowCreateUser(!showCreateUser)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
               >
                 <UserPlus className="w-5 h-5" />
@@ -925,114 +941,102 @@ export function AdminDashboard() {
               </button>
             </div>
 
-            {/* Instructions Modal */}
-            {showInstructions && (
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border-2 border-blue-200 p-8 mb-6">
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <UserPlus className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">Så skapar du en ny användare</h3>
-                    <p className="text-slate-700">
-                      Följ dessa steg för att skapa ett nytt leverantörs- eller admin-konto
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-lg p-6 space-y-6">
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white font-bold text-sm">1</span>
+            {/* Create User Form */}
+            {showCreateUser && (
+              <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
+                <h3 className="font-semibold text-slate-900 mb-4">Skapa Ny Användare</h3>
+                <form onSubmit={handleCreateUser} className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Namn *</label>
+                      <input
+                        type="text"
+                        value={newUser.full_name}
+                        onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
+                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Anna Andersson"
+                        required
+                      />
                     </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-slate-900 mb-2">Gå till Supabase Dashboard</h4>
-                      <p className="text-sm text-slate-600 mb-2">
-                        Öppna: <a
-                          href="https://supabase.com/dashboard/project/iswctazjdtirrzswqkor/auth/users"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline font-medium"
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">E-post *</label>
+                      <input
+                        type="email"
+                        value={newUser.email}
+                        onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="anna@exempel.se"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Lösenord *</label>
+                      <input
+                        type="password"
+                        value={newUser.password}
+                        onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Minst 8 tecken"
+                        minLength={8}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Telefon</label>
+                      <input
+                        type="tel"
+                        value={newUser.phone}
+                        onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
+                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="+46 70 000 00 00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Roll *</label>
+                      <select
+                        value={newUser.role}
+                        onChange={(e) => setNewUser({ ...newUser, role: e.target.value as 'admin' | 'provider' })}
+                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        <option value="provider">Leverantör</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    {newUser.role === 'provider' && (
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Leverantör *</label>
+                        <select
+                          value={newUser.provider_id}
+                          onChange={(e) => setNewUser({ ...newUser, provider_id: e.target.value })}
+                          className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          required
                         >
-                          Authentication → Users
-                        </a>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white font-bold text-sm">2</span>
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-slate-900 mb-2">Skapa användare</h4>
-                      <p className="text-sm text-slate-600 mb-2">
-                        Klicka på <strong>"Add user" → "Create new user"</strong>
-                      </p>
-                      <ul className="text-sm text-slate-600 space-y-1 list-disc list-inside">
-                        <li>Fyll i e-post och lösenord</li>
-                        <li>✅ Kryssa i "Auto Confirm User"</li>
-                        <li>Klicka "Create user"</li>
-                        <li><strong>Kopiera User ID</strong> (UUID från användarlistan)</li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white font-bold text-sm">3</span>
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-slate-900 mb-2">Skapa profil i SQL Editor</h4>
-                      <p className="text-sm text-slate-600 mb-2">
-                        Gå till <strong>SQL Editor</strong> och kör:
-                      </p>
-                      <div className="bg-slate-900 rounded-lg p-4 overflow-x-auto">
-                        <pre className="text-xs text-slate-100 font-mono">
-{`INSERT INTO profiles (id, email, full_name, role, is_active, provider_id)
-VALUES (
-  'USER_ID_FRÅN_STEG_2',
-  'email@exempel.se',  -- Samma e-post som i Auth
-  'Användarens Namn',
-  'provider',  -- eller 'admin'
-  true,
-  'PROVIDER_ID'  -- NULL för admins
-);`}
-                        </pre>
+                          <option value="">Välj leverantör...</option>
+                          {supabaseProviders.map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                          ))}
+                        </select>
                       </div>
-                    </div>
+                    )}
                   </div>
-
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Check className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-slate-900 mb-2">Klart!</h4>
-                      <p className="text-sm text-slate-600">
-                        Användaren kan nu logga in med sin e-post och lösenord. Klicka på knappen nedan för att ladda om användarlistan.
-                      </p>
-                    </div>
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="submit"
+                      disabled={creatingUser}
+                      className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium transition-colors"
+                    >
+                      {creatingUser ? 'Skapar...' : 'Skapa Användare'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateUser(false)}
+                      className="px-6 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+                    >
+                      Avbryt
+                    </button>
                   </div>
-                </div>
-
-                <div className="flex gap-3 mt-6">
-                  <button
-                    onClick={() => {
-                      loadUsers();
-                      setShowInstructions(false);
-                    }}
-                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-                  >
-                    Ladda om användarlistan
-                  </button>
-                  <button
-                    onClick={() => setShowInstructions(false)}
-                    className="px-6 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
-                  >
-                    Stäng
-                  </button>
-                </div>
+                </form>
               </div>
             )}
 
