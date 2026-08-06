@@ -7,15 +7,16 @@ import linkopingLogoImg from '../../imports/Linkoping_university_logo15.png';
 import luleaLogoImg     from '../../imports/Lulea_tekniska_universitet_Logo.svg.png';
 import kthLogoImg       from '../../imports/KTH.png';
 
-/** Maps provider ID → imported logo URL */
+/** Maps provider name → imported logo URL. Keyed by name (not ID) since provider
+ *  IDs are database-generated UUIDs that differ between staging and production. */
 export const providerLogos: Record<string, string> = {
-  '1': sseLogoImg,
-  '2': kiLogoImg,
-  '3': lundLogoImg,
-  '4': uppsalaLogoImg,
-  '5': linkopingLogoImg,
-  '6': luleaLogoImg,
-  '7': kthLogoImg,
+  'Handelshögskolan i Stockholm': sseLogoImg,
+  'Karolinska Institutet': kiLogoImg,
+  'Lunds Universitet': lundLogoImg,
+  'Uppsala Universitet': uppsalaLogoImg,
+  'Linköpings Universitet': linkopingLogoImg,
+  'Luleå tekniska universitet': luleaLogoImg,
+  'KTH Kungliga Tekniska Högskolan': kthLogoImg,
 };
 
 export interface UniversityPartner {
