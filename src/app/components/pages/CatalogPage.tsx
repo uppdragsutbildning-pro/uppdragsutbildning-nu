@@ -1,12 +1,27 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { Filter, X, GraduationCap, TrendingUp, ArrowRight, BookOpen } from 'lucide-react';
-import { trainings, categories, providers, getCategoryById, getProviderById } from '../../data/mockData';
+import { supabase } from '../../../lib/supabase';
+import { adaptTraining, adaptCategory, adaptProvider, type AdaptedTraining, type AdaptedCategory, type AdaptedProvider } from '../../../lib/marketplaceAdapters';
 import { providerLogos } from '../../data/providerLogos';
+import { usePaginatedQuery, getPaginationRange } from '../../../hooks/usePaginatedQuery';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from '../ui/pagination';
+
+const PAGE_SIZE = 12;
 
 export function CatalogPage() {
   const [searchParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
+  const [categories, setCategories] = useState<AdaptedCategory[]>([]);
+  const [providers, setProviders] = useState<AdaptedProvider[]>([]);
 
   // Filter states
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
@@ -15,46 +30,50 @@ export function CatalogPage() {
   const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<'popular' | 'newest'>('popular');
-  const [searchQuery] = useState(searchParams.get('q') || '');
+  const searchQuery = searchParams.get('q') || '';
 
-  // Filter trainings
-  const filteredTrainings = useMemo(() => {
-    let result = [...trainings];
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from('categories').select('*').order('name');
+      if (data) setCategories(data.map(adaptCategory));
+    })();
+    (async () => {
+      const { data } = await supabase.from('providers').select('*').eq('is_active', true).order('name');
+      if (data) setProviders(data.map(adaptProvider));
+    })();
+  }, []);
 
-    // Filter by category
-    if (selectedCategories.length > 0) {
-      result = result.filter(t => selectedCategories.includes(t.categoryId));
-    }
+  const {
+    rows: trainingRows,
+    page,
+    setPage,
+    totalPages,
+    count,
+  } = usePaginatedQuery<AdaptedTraining>({
+    pageSize: PAGE_SIZE,
+    deps: [selectedCategories, selectedFormats, selectedProviders, searchQuery, sortBy],
+    queryFn: async ({ from, to }) => {
+      let query = supabase
+        .from('trainings')
+        .select('*, providers(*), categories(*)', { count: 'exact' })
+        .eq('is_active', true);
 
-    // Filter by format
-    if (selectedFormats.length > 0) {
-      result = result.filter(t => selectedFormats.includes(t.format));
-    }
+      if (selectedCategories.length > 0) query = query.in('category_id', selectedCategories);
+      if (selectedFormats.length > 0) query = query.in('format', selectedFormats);
+      if (selectedProviders.length > 0) query = query.in('provider_id', selectedProviders);
+      if (searchQuery) {
+        const q = searchQuery.replace(/[%,]/g, '');
+        query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%,target_audience.ilike.%${q}%`);
+      }
 
-    // Filter by provider
-    if (selectedProviders.length > 0) {
-      result = result.filter(t => selectedProviders.includes(t.providerId));
-    }
+      query = query.order(sortBy === 'popular' ? 'views' : 'leads', { ascending: false });
 
-    // Search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(t => 
-        t.title.toLowerCase().includes(query) || 
-        t.description.toLowerCase().includes(query) ||
-        t.targetAudience.toLowerCase().includes(query)
-      );
-    }
+      const { data, count: total, error } = await query.range(from, to);
+      return { data: data ? (data as any[]).map(adaptTraining) : null, count: total, error };
+    },
+  });
 
-    // Sort
-    if (sortBy === 'popular') {
-      result.sort((a, b) => b.views - a.views);
-    } else {
-      result.sort((a, b) => b.leads - a.leads);
-    }
-
-    return result;
-  }, [selectedCategories, selectedFormats, selectedProviders, searchQuery, sortBy]);
+  const filteredTrainings = trainingRows;
 
   const toggleCategory = (id: string) => {
     setSelectedCategories(prev => 
@@ -91,7 +110,7 @@ export function CatalogPage() {
             Utbildningskatalog
           </h1>
           <p className="text-slate-600">
-            Bläddra bland {trainings.length} utbildningsprogram från ledande leverantörer
+            Bläddra bland {count} utbildningsprogram från ledande leverantörer
           </p>
           {searchQuery && (
             <p className="text-sm text-slate-500 mt-2">
@@ -197,7 +216,7 @@ export function CatalogPage() {
 
               <div className="flex items-center gap-3">
                 <span className="text-sm text-slate-600">
-                  {filteredTrainings.length} resultat
+                  {count} resultat
                 </span>
                 <select
                   value={sortBy}
@@ -295,8 +314,8 @@ export function CatalogPage() {
             {/* Training List */}
             <div className="space-y-4">
               {filteredTrainings.map((training, index) => {
-                const provider = getProviderById(training.providerId);
-                const category = getCategoryById(training.categoryId);
+                const provider = training.provider;
+                const category = training.category;
                 const backgroundImage = training.imageUrl;
 
                 return (
@@ -332,9 +351,9 @@ export function CatalogPage() {
 
                         <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500 mb-4">
                           <span className="flex items-center gap-1.5">
-                            {providerLogos[training.providerId] ? (
+                            {providerLogos[provider.name] ? (
                               <img
-                                src={providerLogos[training.providerId]}
+                                src={providerLogos[provider.name]}
                                 alt={provider?.name}
                                 className="h-5 w-auto object-contain"
                               />
@@ -397,6 +416,44 @@ export function CatalogPage() {
                 </div>
               )}
             </div>
+
+            {totalPages > 1 && (
+              <Pagination className="mt-8">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => { e.preventDefault(); if (page > 1) setPage(page - 1); }}
+                      className={page === 1 ? 'pointer-events-none opacity-50' : ''}
+                    />
+                  </PaginationItem>
+                  {getPaginationRange(page, totalPages).map((p, i) =>
+                    p === 'ellipsis' ? (
+                      <PaginationItem key={`ellipsis-${i}`}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    ) : (
+                      <PaginationItem key={p}>
+                        <PaginationLink
+                          href="#"
+                          isActive={p === page}
+                          onClick={(e) => { e.preventDefault(); setPage(p); }}
+                        >
+                          {p}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )
+                  )}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => { e.preventDefault(); if (page < totalPages) setPage(page + 1); }}
+                      className={page === totalPages ? 'pointer-events-none opacity-50' : ''}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
           </div>
         </div>
       </div>
