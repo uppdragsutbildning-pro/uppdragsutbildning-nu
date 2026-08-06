@@ -3,44 +3,42 @@ import {
   Plus, Search, Filter, Eye, Users, Edit, Trash2,
   MoreVertical, Copy, TrendingUp, Calendar, BookOpen
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useProviderContext } from '../../../contexts/ProviderContext';
 import { supabase, Training } from '../../../lib/supabase';
+import { usePaginatedQuery, getPaginationRange } from '../../../hooks/usePaginatedQuery';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from '../ui/pagination';
+
+const PAGE_SIZE = 12;
 
 export function ProviderCoursesPage() {
   const { profile } = useAuth();
   const { selectedProviderId, isAdmin } = useProviderContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'draft'>('all');
-  const [courses, setCourses] = useState<Training[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (selectedProviderId) {
-      loadCourses();
-    }
-  }, [selectedProviderId]);
-
-  async function loadCourses() {
-    if (!selectedProviderId) return;
-
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
+  const { rows: courses, page, setPage, totalPages, loading } = usePaginatedQuery<Training>({
+    pageSize: PAGE_SIZE,
+    deps: [selectedProviderId],
+    queryFn: async ({ from, to }) => {
+      if (!selectedProviderId) return { data: [], count: 0, error: null };
+      return supabase
         .from('trainings')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('provider_id', selectedProviderId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setCourses(data || []);
-    } catch (error) {
-      console.error('Error loading courses:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
+        .order('created_at', { ascending: false })
+        .range(from, to);
+    },
+  });
 
   const filteredCourses = courses.filter(course => {
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -225,6 +223,44 @@ export function ProviderCoursesPage() {
           ))
         )}
       </div>
+
+      {totalPages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => { e.preventDefault(); if (page > 1) setPage(page - 1); }}
+                className={page === 1 ? 'pointer-events-none opacity-50' : ''}
+              />
+            </PaginationItem>
+            {getPaginationRange(page, totalPages).map((p, i) =>
+              p === 'ellipsis' ? (
+                <PaginationItem key={`ellipsis-${i}`}>
+                  <PaginationEllipsis />
+                </PaginationItem>
+              ) : (
+                <PaginationItem key={p}>
+                  <PaginationLink
+                    href="#"
+                    isActive={p === page}
+                    onClick={(e) => { e.preventDefault(); setPage(p); }}
+                  >
+                    {p}
+                  </PaginationLink>
+                </PaginationItem>
+              )
+            )}
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => { e.preventDefault(); if (page < totalPages) setPage(page + 1); }}
+                className={page === totalPages ? 'pointer-events-none opacity-50' : ''}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
     </div>
   );
 }
