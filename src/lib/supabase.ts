@@ -1,7 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://iswctazjdtirrzswqkor.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlzd2N0YXpqZHRpcnJ6c3dxa29yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMDA4NTcsImV4cCI6MjA5NTg3Njg1N30.gkRkttHD6skjModVTUvCA_vFPec0OjoGNHHOfLQxqMQ';
+// Utan miljövariabler i en production-build: fail högt hellre än att tyst
+// koppla mot fel databas. I lokal utveckling: fall tillbaka till staging
+// (ALDRIG production) så ett saknat .env.local inte råkar peka mot skarp data.
+let supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+let supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  if (import.meta.env.PROD) {
+    throw new Error(
+      'VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY saknas i en production-build. Kontrollera miljövariablerna i Vercel.'
+    );
+  }
+  console.warn('VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY saknas lokalt — faller tillbaka till staging.');
+  supabaseUrl = 'https://eyksngvbrupmxpjzadqp.supabase.co';
+  supabaseAnonKey =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5a3NuZ3ZicnVwbXhwanphZHFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NDI3NjksImV4cCI6MjEwMDExODc2OX0.gx-nYj0wCnnlQmFSwUSBYy6fjxpH6njcu8X_Z7PtHAw';
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
