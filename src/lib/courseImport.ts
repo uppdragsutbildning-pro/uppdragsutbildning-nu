@@ -97,6 +97,25 @@ function normalizeTrainingType(value?: string): 'custom' | 'scheduled' | 'both' 
   return '';
 }
 
+// Kategori-baserad standardbild för importerade kurser (ingen bilduppladdning
+// finns ännu). Samma bilder som redan används för exempelkurserna i varje
+// kategori, för visuell konsekvens.
+const CATEGORY_DEFAULT_IMAGES: Record<string, string> = {
+  'ai & teknik': 'https://images.unsplash.com/photo-1776039325240-02916820bfeb?w=800',
+  'ledarskap': 'https://images.unsplash.com/photo-1776039325240-02916820bfeb?w=800',
+  'hälsa & vård': 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800',
+  'hållbarhet': 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800',
+  'industri & tillverkning': 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800',
+  'digital transformation': 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800',
+  'hr & personal': 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800',
+  'offentlig sektor': 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800',
+};
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800';
+
+export function defaultImageForCategory(categoryName: string): string {
+  return CATEGORY_DEFAULT_IMAGES[categoryName.trim().toLowerCase()] || FALLBACK_IMAGE;
+}
+
 export function resolveCategory(name: string, categories: SimpleCategory[]): string | null {
   const trimmed = name.trim().toLowerCase();
   if (!trimmed) return null;
@@ -157,7 +176,7 @@ export function toTrainingInsertPayload(row: ParsedCourseRow, providerId: string
     duration: row.duration,
     credits: row.credits,
     target_audience: row.targetAudience,
-    image_url: '',
+    image_url: defaultImageForCategory(row.categoryName),
     training_type: row.trainingType,
     is_popular: false,
     featured: false,
