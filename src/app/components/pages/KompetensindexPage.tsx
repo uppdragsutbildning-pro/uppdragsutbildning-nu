@@ -7,6 +7,7 @@ import { MultiSelectChips } from '../kompetensindex/MultiSelectChips';
 import { QuestionCard } from '../kompetensindex/QuestionCard';
 import { ResultsView } from '../kompetensindex/ResultsView';
 import { supabase } from '../../../lib/supabase';
+import { fetchESCOTerm } from '../../../lib/escoCache';
 
 const STEPS = [
   { id: 'info', label: 'Info' },
@@ -87,14 +88,11 @@ const fetchESCOSkills = async (terms: string[]): Promise<ESCOSkill[]> => {
   const seen = new Set<string>();
   for (const term of terms.slice(0, 4)) {
     try {
-      const res = await fetch(
-        `https://ec.europa.eu/esco/api/search?text=${encodeURIComponent(term)}&type=skill&language=sv&limit=3`
-      );
-      const data = await res.json();
-      for (const item of data?._embedded?.results || []) {
+      const items = await fetchESCOTerm(term, 3);
+      for (const item of items) {
         if (!seen.has(item.uri)) {
           seen.add(item.uri);
-          results.push({ title: item.title || item.preferredLabel, uri: item.uri });
+          results.push(item);
         }
       }
     } catch (_) { /* fail silently */ }

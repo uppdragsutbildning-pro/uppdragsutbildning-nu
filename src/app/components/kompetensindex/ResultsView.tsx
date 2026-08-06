@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router';
 import { useEffect, useState } from 'react';
 import { Sparkles, ExternalLink, Pencil, X, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { CPIResult } from '../pages/KompetensindexPage';
+import { fetchESCOTerm } from '../../../lib/escoCache';
 
 const cpiLevel = (score: number) => {
   if (score < 25) return { label: 'Lågt tryck', bg: '#F0FDF4', border: '#86EFAC', text: '#16A34A', desc: 'Er verksamhet upplever lågt kompetensstryck. Det finns goda förutsättningar att arbeta proaktivt med kompetensutveckling.' };
@@ -352,12 +353,8 @@ const runAnalysis = async () => {
     Promise.allSettled(
       analysis.escoTerms.map(async (term): Promise<EscoResolved> => {
         try {
-          const res = await fetch(
-            `https://ec.europa.eu/esco/api/search?text=${encodeURIComponent(term)}&type=skill&language=sv`
-          );
-          if (!res.ok) return { title: term, uri: null, term };
-          const data = await res.json();
-          const hit = data._embedded?.results?.[0];
+          const items = await fetchESCOTerm(term);
+          const hit = items[0];
           return hit ? { title: hit.title, uri: hit.uri, term } : { title: term, uri: null, term };
         } catch (e) {
           return { title: term, uri: null, term };
