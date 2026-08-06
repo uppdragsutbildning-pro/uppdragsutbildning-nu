@@ -5,6 +5,7 @@ import {
   FileSpreadsheet, FileText
 } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useProviderContext } from '../../../contexts/ProviderContext';
 import { supabase, Training } from '../../../lib/supabase';
@@ -18,6 +19,12 @@ import {
   PaginationNext,
   PaginationEllipsis,
 } from '../ui/pagination';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 
 const PAGE_SIZE = 12;
 
@@ -26,10 +33,11 @@ export function ProviderCoursesPage() {
   const { selectedProviderId, isAdmin } = useProviderContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'draft'>('all');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const { rows: courses, page, setPage, totalPages, loading } = usePaginatedQuery<Training>({
     pageSize: PAGE_SIZE,
-    deps: [selectedProviderId],
+    deps: [selectedProviderId, refreshKey],
     queryFn: async ({ from, to }) => {
       if (!selectedProviderId) return { data: [], count: 0, error: null };
       return supabase
@@ -49,6 +57,35 @@ export function ProviderCoursesPage() {
       (filterStatus === 'draft' && !course.is_active);
     return matchesSearch && matchesStatus;
   });
+
+  async function handleDuplicate(course: Training) {
+    const { id, created_at, updated_at, views, leads, ...rest } = course as any;
+    const { error } = await supabase.from('trainings').insert({
+      ...rest,
+      title: `${course.title} (kopia)`,
+      is_active: false,
+      featured: false,
+      views: 0,
+      leads: 0,
+    });
+    if (error) {
+      toast.error('Kunde inte duplicera kursen', { description: error.message });
+      return;
+    }
+    toast.success('Kurs duplicerad', { description: 'Kopian sparades som utkast.' });
+    setRefreshKey((k) => k + 1);
+  }
+
+  async function handleDelete(course: Training) {
+    if (!window.confirm(`Ta bort "${course.title}"? Detta går inte att ångra.`)) return;
+    const { error } = await supabase.from('trainings').delete().eq('id', course.id);
+    if (error) {
+      toast.error('Kunde inte ta bort kursen', { description: error.message });
+      return;
+    }
+    toast.success('Kurs borttagen');
+    setRefreshKey((k) => k + 1);
+  }
 
   return (
     <div className="space-y-6">
@@ -231,9 +268,23 @@ export function ProviderCoursesPage() {
                     <Eye className="w-4 h-4" />
                     Förhandsgranska
                   </Link>
-                  <button className="md:hidden p-2 text-slate-400 hover:text-slate-600 transition-colors">
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="md:hidden p-2 text-slate-400 hover:text-slate-600 transition-colors">
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleDuplicate(course)}>
+                        <Copy className="w-4 h-4" />
+                        Duplicera
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDelete(course)} className="text-red-600">
+                        <Trash2 className="w-4 h-4" />
+                        Ta bort
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </div>

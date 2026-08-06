@@ -1,9 +1,18 @@
 import { useState } from 'react';
 import { Calendar, Clock, MapPin, Users, BookOpen, ChevronDown, ExternalLink, Globe } from 'lucide-react';
+import { toast } from 'sonner';
 import type { AdaptedCourseStart as CourseStart } from '../../../lib/marketplaceAdapters';
 import { StatusBadge } from './StatusBadge';
 import { SeatIndicator } from './SeatIndicator';
 import { DeadlineAlert } from './DeadlineAlert';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from '../ui/dialog';
 
 interface CourseStartCardProps {
   start: CourseStart;
@@ -22,6 +31,15 @@ export function CourseStartCard({ start, onApply }: CourseStartCardProps) {
   const startDate = new Date(start.startDate).toLocaleDateString('sv-SE', {
     day: 'numeric', month: 'long', year: 'numeric'
   });
+  const deadlineDate = new Date(start.applicationDeadline).toLocaleDateString('sv-SE', {
+    day: 'numeric', month: 'long', year: 'numeric'
+  });
+
+  const handleWatch = () => {
+    toast.success('Vi hör av oss!', {
+      description: 'Vi meddelar dig om fler platser blir tillgängliga på denna kursstart.',
+    });
+  };
 
   const canApply = start.status !== 'full' && start.status !== 'upcoming';
 
@@ -94,14 +112,33 @@ export function CourseStartCard({ start, onApply }: CourseStartCardProps) {
             </button>
           )}
           {start.status === 'upcoming' && (
-            <button className="flex-1 min-w-0 flex items-center justify-center gap-2 border border-blue-300 text-blue-600 hover:bg-blue-50 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors">
+            <button
+              onClick={handleWatch}
+              className="flex-1 min-w-0 flex items-center justify-center gap-2 border border-blue-300 text-blue-600 hover:bg-blue-50 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors"
+            >
               Bevaka start
             </button>
           )}
-          <button className="flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors">
-            <ExternalLink className="w-3.5 h-3.5" />
-            Villkor
-          </button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <button className="flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors">
+                <ExternalLink className="w-3.5 h-3.5" />
+                Villkor
+              </button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Bokningsvillkor</DialogTitle>
+                <DialogDescription>Gäller för kursstarten {startDate}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 text-sm text-slate-700">
+                <p>Anmälan är bindande när den har bekräftats av utbildningsleverantören.</p>
+                <p>Avbokning ska ske skriftligt till leverantören senast <strong>{deadlineDate}</strong> (sista ansökningsdag). Vid avbokning efter detta datum kan avgift utgå enligt leverantörens villkor.</p>
+                <p>Ombokning till en annan kursstart kan erbjudas i mån av tillgänglig plats.</p>
+                <p>Om kursen ställs in på grund av för få deltagare sker full återbetalning.</p>
+              </div>
+            </DialogContent>
+          </Dialog>
           <button
             onClick={() => setExpanded(!expanded)}
             className="flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 px-3 py-2.5 rounded-lg text-sm transition-colors"
