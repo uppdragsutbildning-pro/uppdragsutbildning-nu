@@ -104,6 +104,12 @@ Två lägen: **Quick Scan** (anonym) och **Deep Dive** (gated bakom konto).
 
 ---
 
+## Att göra innan lansering
+
+- [ ] **PDF-broschyr-import timar ut** (`api/extract-course-from-pdf.ts`): Gemini multimodal PDF-analys ryms inte inom Vercel Hobby-planens 10s-tak, testat live även efter att timeouten höjts till 9s. Kräver antingen en Vercel Pro-uppgradering (konfigurerbar `maxDuration`, kostar pengar – Aarons beslut) eller en arkitekturändring (t.ex. asynkron bakgrundsbearbetning/polling). Beslut om Pro avvaktas (2026-08-06). Excel-importen (`ProviderCourseExcelImportPage.tsx`) fungerar och kan användas under tiden.
+
+---
+
 ## UI-riktlinjer
 
 Minimalistisk/luftig estetik (Notion/Linear-stil): typsnitt Inter, blue-600 som primärfärg, green-600 som CTA-färg, vita kort. Undvik mörka overlays och tungt färgade sektioner.
