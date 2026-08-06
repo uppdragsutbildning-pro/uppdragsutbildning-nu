@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router';
 import {
   ArrowLeft, GraduationCap, Clock, MapPin, BookOpen, Sparkles,
   CheckCircle, ChevronDown, Share2, Users, Phone, Mail,
   Star, TrendingUp, CalendarDays, Briefcase, Flame
 } from 'lucide-react';
-import { getTrainingById, getProviderById, getCategoryById } from '../../data/mockData';
+import { supabase } from '../../../lib/supabase';
+import { adaptTraining, providerTypeLabel, type AdaptedTraining } from '../../../lib/marketplaceAdapters';
 import { providerLogos } from '../../data/providerLogos';
 import { StatusBadge } from '../training/StatusBadge';
 import { CourseStartCard } from '../training/CourseStartCard';
@@ -17,13 +18,42 @@ const formatLabel: Record<string, string> = { online: 'Online', onsite: 'På pla
 export function TrainingDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const training = getTrainingById(id || '');
-  const provider = training ? getProviderById(training.providerId) : null;
-  const category = training ? getCategoryById(training.categoryId) : null;
+  const [training, setTraining] = useState<AdaptedTraining | null>(null);
+  const [loading, setLoading] = useState(true);
   const [openCurriculum, setOpenCurriculum] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'starts'>('overview');
 
-  if (!training || !provider || !category) {
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('trainings')
+        .select('*, providers(*), categories(*), scheduled_starts(*), curriculum_modules(*), training_faq(*)')
+        .eq('id', id)
+        .eq('is_active', true)
+        .single();
+      if (!active) return;
+      if (error || !data) {
+        setTraining(null);
+      } else {
+        setTraining(adaptTraining(data as any));
+      }
+      setLoading(false);
+    }
+    if (id) load();
+    return () => { active = false; };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+      </div>
+    );
+  }
+
+  if (!training) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold text-slate-900 mb-4">Utbildning hittades inte</h1>
@@ -31,6 +61,9 @@ export function TrainingDetailPage() {
       </div>
     );
   }
+
+  const provider = training.provider;
+  const category = training.category;
 
   const isCustom = training.trainingType === 'custom' || training.trainingType === 'both';
   const isScheduled = training.trainingType === 'scheduled' || training.trainingType === 'both';
@@ -80,9 +113,9 @@ export function TrainingDetailPage() {
             </div>
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">{training.title}</h1>
             <div className="flex items-center gap-3 mb-5">
-              {providerLogos[provider.id] ? (
+              {providerLogos[provider.name] ? (
                 <div className="w-9 h-9 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center p-1.5 flex-shrink-0">
-                  <img src={providerLogos[provider.id]} alt={provider.name} className="w-full h-full object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
+                  <img src={providerLogos[provider.name]} alt={provider.name} className="w-full h-full object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
                 </div>
               ) : (
                 <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
@@ -274,9 +307,9 @@ export function TrainingDetailPage() {
                 <section className="bg-white rounded-xl border border-slate-200 p-6 md:p-8">
                   <h2 className="text-xl font-bold text-slate-900 mb-5">Om lärosätet</h2>
                   <div className="flex items-start gap-4 mb-4">
-                    {providerLogos[provider.id] ? (
+                    {providerLogos[provider.name] ? (
                       <div className="w-20 h-16 rounded-xl border border-slate-200 bg-white flex items-center justify-center p-3 flex-shrink-0">
-                        <img src={providerLogos[provider.id]} alt={provider.name} className="w-full h-full object-contain" />
+                        <img src={providerLogos[provider.name]} alt={provider.name} className="w-full h-full object-contain" />
                       </div>
                     ) : (
                       <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -286,7 +319,7 @@ export function TrainingDetailPage() {
                     <div>
                       <h3 className="font-semibold text-slate-900 mb-1">{provider.name}</h3>
                       <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100">
-                        {provider.type === 'university' ? 'Universitet & Lärosäte' : 'Privat Leverantör'}
+                        {providerTypeLabel[provider.type]}
                       </span>
                     </div>
                   </div>

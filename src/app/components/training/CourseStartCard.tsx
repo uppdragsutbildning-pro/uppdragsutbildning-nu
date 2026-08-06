@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Calendar, Clock, MapPin, Users, BookOpen, ChevronDown, ExternalLink, Globe } from 'lucide-react';
-import type { CourseStart } from '../../data/mockData';
+import type { AdaptedCourseStart as CourseStart } from '../../../lib/marketplaceAdapters';
 import { StatusBadge } from './StatusBadge';
 import { SeatIndicator } from './SeatIndicator';
 import { DeadlineAlert } from './DeadlineAlert';
@@ -22,9 +22,6 @@ export function CourseStartCard({ start, onApply }: CourseStartCardProps) {
   const startDate = new Date(start.startDate).toLocaleDateString('sv-SE', {
     day: 'numeric', month: 'long', year: 'numeric'
   });
-  const endDate = new Date(
-    new Date(start.startDate).getTime() + start.durationWeeks * 7 * 24 * 60 * 60 * 1000
-  ).toLocaleDateString('sv-SE', { day: 'numeric', month: 'long', year: 'numeric' });
 
   const canApply = start.status !== 'full' && start.status !== 'upcoming';
 
@@ -42,7 +39,6 @@ export function CourseStartCard({ start, onApply }: CourseStartCardProps) {
               <Calendar className="w-4 h-4 text-blue-600" />
               <span className="font-semibold text-slate-900">{startDate}</span>
             </div>
-            <p className="text-sm text-slate-500">Avslutas {endDate}</p>
           </div>
           <StatusBadge status={start.status} />
         </div>
@@ -57,7 +53,7 @@ export function CourseStartCard({ start, onApply }: CourseStartCardProps) {
           </div>
           <div className="bg-slate-50 rounded-lg px-3 py-2">
             <div className="text-xs text-slate-500 mb-0.5">Längd</div>
-            <div className="font-semibold text-slate-900 text-sm">{start.durationWeeks} veckor</div>
+            <div className="font-semibold text-slate-900 text-sm">{start.duration}</div>
           </div>
           <div className="bg-slate-50 rounded-lg px-3 py-2">
             <div className="text-xs text-slate-500 mb-0.5">Format</div>
@@ -151,7 +147,7 @@ export function CourseStartCard({ start, onApply }: CourseStartCardProps) {
               <dt className="text-slate-500 mb-0.5">Utbildningslängd</dt>
               <dd className="text-slate-900 font-medium flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-slate-400" />
-                {start.durationWeeks} veckor
+                {start.duration}
               </dd>
             </div>
           </dl>
