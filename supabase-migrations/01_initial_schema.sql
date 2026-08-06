@@ -187,6 +187,10 @@ CREATE INDEX idx_applications_status ON applications(status);
 CREATE INDEX idx_custom_requests_status ON custom_requests(status);
 CREATE INDEX idx_profiles_provider ON profiles(provider_id);
 CREATE INDEX idx_profiles_role ON profiles(role);
+CREATE INDEX idx_curriculum_modules_training ON curriculum_modules(training_id);
+CREATE INDEX idx_training_faq_training ON training_faq(training_id);
+CREATE INDEX idx_applications_scheduled_start ON applications(scheduled_start_id);
+CREATE INDEX idx_custom_requests_training ON custom_requests(training_id);
 
 -- =====================================================
 -- UPDATED_AT TRIGGERS
