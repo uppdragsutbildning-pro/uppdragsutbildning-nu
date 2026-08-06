@@ -42,6 +42,9 @@ Svara ENBART med ett JSON-objekt (ingen markdown, inga förklaringar utanför JS
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key missing' });
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
   try {
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
@@ -56,8 +59,10 @@ Svara ENBART med ett JSON-objekt (ingen markdown, inga förklaringar utanför JS
             responseMimeType: 'application/json',
           },
         }),
+        signal: controller.signal,
       }
     );
+    clearTimeout(timeoutId);
 
     if (!geminiRes.ok) {
       const err = await geminiRes.text();
@@ -68,13 +73,17 @@ Svara ENBART med ett JSON-objekt (ingen markdown, inga förklaringar utanför JS
     const data = await geminiRes.json();
     const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
     const finishReason = data.candidates?.[0]?.finishReason;
-    
+
 
     if (!text) throw new Error('Empty response from Gemini');
 
     const parsed = JSON.parse(text.trim());
     return res.status(200).json(parsed);
   } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === 'AbortError') {
+      return res.status(504).json({ error: 'AI-analysen tog för lång tid, försök igen' });
+    }
     console.error('analyze-cpi error:', err);
     return res.status(500).json({ error: 'Analys misslyckades', details: String(err) });
   }
