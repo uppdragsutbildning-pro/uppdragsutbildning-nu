@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
   Save, X, Plus, Trash2, ChevronDown, ChevronUp, Image as ImageIcon,
@@ -67,6 +67,8 @@ export function ProviderCourseFormPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
 
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
@@ -257,6 +259,41 @@ export function ProviderCourseFormPage() {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
+  async function handleImageFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !profile?.provider_id) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Endast bildfiler stöds');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Bilden är för stor', { description: 'Max 5MB.' });
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const extensionMatch = file.name.match(/\.[a-zA-Z0-9]+$/);
+      const extension = extensionMatch ? extensionMatch[0] : '.jpg';
+      const path = `${profile.provider_id}/${crypto.randomUUID()}${extension}`;
+      const { error: uploadError } = await supabase.storage.from('course-images').upload(path, file);
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('course-images').getPublicUrl(path);
+      setFormData(prev => ({ ...prev, imageUrl: data.publicUrl }));
+      toast.success('Bild uppladdad');
+    } catch (err) {
+      console.error(err);
+      toast.error('Kunde inte ladda upp bilden', {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
   const addLearningOutcome = () => setFormData(prev => ({ ...prev, learningOutcomes: [...prev.learningOutcomes, ''] }));
   const removeLearningOutcome = (i: number) => setFormData(prev => ({ ...prev, learningOutcomes: prev.learningOutcomes.filter((_, j) => j !== i) }));
   const updateLearningOutcome = (i: number, v: string) => setFormData(prev => ({ ...prev, learningOutcomes: prev.learningOutcomes.map((x, j) => j === i ? v : x) }));
@@ -379,9 +416,22 @@ export function ProviderCourseFormPage() {
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-900 mb-2">Bild-URL *</label>
                   <div className="flex gap-3">
-                    <input type="url" required value={formData.imageUrl} onChange={e => setFormData(p => ({ ...p, imageUrl: e.target.value }))} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://..." />
-                    <button type="button" className="px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
-                      <ImageIcon className="w-5 h-5 text-slate-600" />
+                    <input type="url" required value={formData.imageUrl} onChange={e => setFormData(p => ({ ...p, imageUrl: e.target.value }))} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://... eller ladda upp en bild" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={imageFileInputRef}
+                      onChange={handleImageFileSelect}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => imageFileInputRef.current?.click()}
+                      disabled={uploadingImage}
+                      title="Ladda upp en bild"
+                      className="px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                    >
+                      {uploadingImage ? <Loader2 className="w-5 h-5 text-slate-600 animate-spin" /> : <ImageIcon className="w-5 h-5 text-slate-600" />}
                     </button>
                   </div>
                   {formData.imageUrl && <div className="mt-3 w-full h-40 rounded-lg bg-slate-100 bg-cover bg-center" style={{ backgroundImage: `url(${formData.imageUrl})` }} />}
