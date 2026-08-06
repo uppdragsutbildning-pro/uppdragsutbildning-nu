@@ -38,7 +38,11 @@ export function ProviderCoursePdfImportPage() {
 
     setExtracting(true);
     try {
-      const storagePath = `${profile.provider_id}/${crypto.randomUUID()}-${file.name}`;
+      // Bygg lagringsnyckeln utan originalfilnamnet — Supabase Storage
+      // avvisar mellanslag och icke-ASCII-tecken (t.ex. ä/å/ö) i nycklar.
+      const extensionMatch = file.name.match(/\.[a-zA-Z0-9]+$/);
+      const extension = extensionMatch ? extensionMatch[0] : '.pdf';
+      const storagePath = `${profile.provider_id}/${crypto.randomUUID()}${extension}`;
       const { error: uploadError } = await supabase.storage.from('course-brochures').upload(storagePath, file);
       if (uploadError) throw uploadError;
 
