@@ -1,14 +1,53 @@
 import { Link, useNavigate } from 'react-router';
 import { Search, Sparkles, TrendingUp, Users, Building, GraduationCap, ArrowRight, BookOpen } from 'lucide-react';
-import { useState } from 'react';
-import { categories, getFeaturedTrainings, getProviderById, getCategoryById } from '../../data/mockData';
+import { useState, useEffect } from 'react';
 import { universityPartners } from '../../data/providerLogos';
+import { supabase } from '../../../lib/supabase';
+import { adaptTraining, adaptCategory, type AdaptedTraining, type AdaptedCategory } from '../../../lib/marketplaceAdapters';
 
+const FEATURED_COUNT = 6;
 
 export function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
-  const featuredTrainings = getFeaturedTrainings();
+  const [categories, setCategories] = useState<AdaptedCategory[]>([]);
+  const [featuredTrainings, setFeaturedTrainings] = useState<AdaptedTraining[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from('categories').select('*').order('name');
+      if (data) setCategories(data.map(adaptCategory));
+    })();
+
+    (async () => {
+      const select = '*, providers(*), categories(*)';
+      const { data: featured } = await supabase
+        .from('trainings')
+        .select(select)
+        .eq('featured', true)
+        .eq('is_active', true)
+        .order('views', { ascending: false })
+        .limit(FEATURED_COUNT);
+
+      let rows = featured ?? [];
+      if (rows.length < FEATURED_COUNT) {
+        const excludeIds = rows.map((r: any) => r.id);
+        let topUpQuery = supabase
+          .from('trainings')
+          .select(select)
+          .eq('is_active', true)
+          .order('views', { ascending: false })
+          .limit(FEATURED_COUNT - rows.length);
+        if (excludeIds.length > 0) {
+          topUpQuery = topUpQuery.not('id', 'in', `(${excludeIds.join(',')})`);
+        }
+        const { data: topUp } = await topUpQuery;
+        rows = [...rows, ...(topUp ?? [])];
+      }
+
+      setFeaturedTrainings(rows.map((r: any) => adaptTraining(r)));
+    })();
+  }, []);
 
   const handleSearch = () => {
     window.location.href = `/catalog?q=${encodeURIComponent(searchQuery)}`;
@@ -246,8 +285,8 @@ export function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {featuredTrainings.slice(0, 6).map((training, index) => {
-              const provider = getProviderById(training.providerId);
-              const category = getCategoryById(training.categoryId);
+              const provider = training.provider;
+              const category = training.category;
 
               return (
                 <Link
