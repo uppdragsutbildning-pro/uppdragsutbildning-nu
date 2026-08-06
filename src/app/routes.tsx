@@ -13,6 +13,7 @@ import { ProviderLayout } from "./components/provider/ProviderLayout";
 import { ProviderDashboard } from "./components/provider/ProviderDashboard";
 import { ProviderCoursesPage } from "./components/provider/ProviderCoursesPage";
 import { ProviderCourseFormPage } from "./components/provider/ProviderCourseFormPage";
+import { ProviderCourseExcelImportPage } from "./components/provider/ProviderCourseExcelImportPage";
 import { ProviderApplicationsPage } from "./components/provider/ProviderApplicationsPage";
 import { ProviderRequestsPage } from "./components/provider/ProviderRequestsPage";
 import { ProviderHistoryPage } from "./components/provider/ProviderHistoryPage";
@@ -51,6 +52,7 @@ export const router = createBrowserRouter([
       { path: "dashboard", Component: ProviderDashboard },
       { path: "courses", Component: ProviderCoursesPage },
       { path: "courses/new", Component: ProviderCourseFormPage },
+      { path: "courses/import-excel", Component: ProviderCourseExcelImportPage },
       { path: "courses/:id/edit", Component: ProviderCourseFormPage },
       { path: "applications", Component: ProviderApplicationsPage },
       { path: "requests", Component: ProviderRequestsPage },

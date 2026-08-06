@@ -1,7 +1,8 @@
 import { Link } from 'react-router';
 import {
   Plus, Search, Filter, Eye, Users, Edit, Trash2,
-  MoreVertical, Copy, TrendingUp, Calendar, BookOpen
+  MoreVertical, Copy, TrendingUp, Calendar, BookOpen,
+  FileSpreadsheet, FileText
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -57,13 +58,29 @@ export function ProviderCoursesPage() {
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Mina kurser</h1>
           <p className="text-slate-600">Hantera och publicera dina uppdragsutbildningar</p>
         </div>
-        <Link
-          to="/provider/courses/new"
-          className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-medium transition-colors shadow-sm"
-        >
-          <Plus className="w-5 h-5" />
-          Skapa ny kurs
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/provider/courses/import-excel"
+            className="inline-flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-3 rounded-xl font-medium transition-colors"
+          >
+            <FileSpreadsheet className="w-5 h-5" />
+            Importera från Excel
+          </Link>
+          <Link
+            to="/provider/courses/import-pdf"
+            className="inline-flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-3 rounded-xl font-medium transition-colors"
+          >
+            <FileText className="w-5 h-5" />
+            Importera från PDF
+          </Link>
+          <Link
+            to="/provider/courses/new"
+            className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-medium transition-colors shadow-sm"
+          >
+            <Plus className="w-5 h-5" />
+            Skapa ny kurs
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
