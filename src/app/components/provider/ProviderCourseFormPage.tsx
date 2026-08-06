@@ -7,6 +7,7 @@ import {
 import { toast } from 'sonner';
 import { supabase, Category } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
+import { Switch } from '../ui/switch';
 
 interface CurriculumModule {
   title: string;
@@ -53,6 +54,7 @@ const emptyForm = {
   contactPersonPhone: '',
   contactPersonResponseTime: 'Svarar inom 24 timmar',
   faq: [] as FAQ[],
+  isActive: true,
 };
 
 export function ProviderCourseFormPage() {
@@ -134,6 +136,7 @@ export function ProviderCourseFormPage() {
           contactPersonPhone: t.contact_person_phone || '',
           contactPersonResponseTime: t.contact_person_response_time || 'Svarar inom 24 timmar',
           faq: faqRes.data?.map(f => ({ question: f.question, answer: f.answer })) || [],
+          isActive: t.is_active,
         });
       } catch (err) {
         toast.error('Kunde inte ladda kursdata');
@@ -178,7 +181,7 @@ export function ProviderCourseFormPage() {
         contact_person_email: formData.contactPersonEmail || null,
         contact_person_phone: formData.contactPersonPhone || null,
         contact_person_response_time: formData.contactPersonResponseTime,
-        is_active: true,
+        is_active: formData.isActive,
       };
 
       let trainingId = id;
@@ -238,7 +241,7 @@ export function ProviderCourseFormPage() {
         );
       }
 
-      toast.success(isEdit ? 'Kurs uppdaterad!' : 'Kurs publicerad!', {
+      toast.success(isEdit ? 'Kurs uppdaterad!' : (formData.isActive ? 'Kurs publicerad!' : 'Kurs sparad som utkast!'), {
         description: 'Din kurs har sparats på plattformen.'
       });
       navigate('/provider/courses');
@@ -299,13 +302,22 @@ export function ProviderCourseFormPage() {
           <h1 className="text-3xl font-bold text-slate-900 mb-2">{isEdit ? 'Redigera kurs' : 'Skapa ny kurs'}</h1>
           <p className="text-slate-600">Fyll i informationen om din uppdragsutbildning</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={formData.isActive}
+              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
+            />
+            <span className="text-sm font-medium text-slate-700">
+              {formData.isActive ? 'Publicerad' : 'Utkast'}
+            </span>
+          </div>
           <button type="button" onClick={() => navigate('/provider/courses')} className="flex items-center gap-2 px-5 py-2.5 border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium">
             <X className="w-5 h-5" />Avbryt
           </button>
           <button type="submit" disabled={saving} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-            {isEdit ? 'Spara ändringar' : 'Publicera kurs'}
+            {isEdit ? 'Spara ändringar' : (formData.isActive ? 'Publicera kurs' : 'Spara som utkast')}
           </button>
         </div>
       </div>
