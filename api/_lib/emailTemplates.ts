@@ -12,7 +12,7 @@ function wrapEmail(preheader: string, bodyHtml: string): string {
     <tr><td align="center">
       <table role="presentation" width="480" style="background-color:#ffffff;border-radius:12px;padding:32px;">
         <tr><td>
-          <p style="color:#2563eb;font-weight:bold;font-size:18px;margin:0 0 24px 0;">Uppdragsutbildning.nu</p>
+          <p style="color:#2563eb;font-weight:bold;font-size:18px;margin:0 0 24px 0;">Uppdragsutbildning</p>
           ${bodyHtml}
           <p style="color:#94a3b8;font-size:12px;margin-top:32px;border-top:1px solid #e2e8f0;padding-top:16px;">
             Detta är ett automatiskt meddelande, svara inte på det här mejlet.

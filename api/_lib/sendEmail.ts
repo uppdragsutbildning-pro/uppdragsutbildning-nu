@@ -31,7 +31,7 @@ export async function sendEmail({ to, subject, html, messageType, relatedTable, 
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          sender: { name: 'Uppdragsutbildning.nu', email: 'no-reply@uppdragsutbildning.com' },
+          sender: { name: 'Uppdragsutbildning', email: 'no-reply@uppdragsutbildning.com' },
           to: [{ email: to }],
           subject,
           htmlContent: html,
