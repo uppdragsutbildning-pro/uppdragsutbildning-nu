@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from './_lib/supabaseAdmin';
-import { sendEmail } from './_lib/sendEmail';
-import { rfpEscalated } from './_lib/emailTemplates';
+import { supabaseAdmin } from './_lib/supabaseAdmin.js';
+import { sendEmail } from './_lib/sendEmail.js';
+import { rfpEscalated } from './_lib/emailTemplates.js';
 
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
 const BATCH_SIZE = 25;

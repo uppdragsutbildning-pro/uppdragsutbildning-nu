@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from './_lib/supabaseAdmin';
-import { sendEmail } from './_lib/sendEmail';
+import { supabaseAdmin } from './_lib/supabaseAdmin.js';
+import { sendEmail } from './_lib/sendEmail.js';
 import {
   rfpReceived,
   rfpResponded,
@@ -8,7 +8,7 @@ import {
   rfpDeclined,
   applicationReceived,
   applicationConfirmed,
-} from './_lib/emailTemplates';
+} from './_lib/emailTemplates.js';
 
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
 
