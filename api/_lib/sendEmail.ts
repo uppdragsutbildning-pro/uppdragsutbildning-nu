@@ -15,34 +15,34 @@ interface SendEmailResult {
 }
 
 export async function sendEmail({ to, subject, html, messageType, relatedTable, relatedId }: SendEmailParams): Promise<SendEmailResult> {
-  const apiKey = process.env.RESEND_API_KEY;
+  const apiKey = process.env.BREVO_API_KEY;
   let status: 'sent' | 'failed' = 'failed';
   let errorMessage: string | undefined;
-  let resendId: string | undefined;
+  let providerMessageId: string | undefined;
 
   if (!apiKey) {
-    errorMessage = 'RESEND_API_KEY saknas';
+    errorMessage = 'BREVO_API_KEY saknas';
   } else {
     try {
-      const res = await fetch('https://api.resend.com/emails', {
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          'api-key': apiKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'Uppdragsutbildning.nu <no-reply@uppdragsutbildning.com>',
-          to,
+          sender: { name: 'Uppdragsutbildning.nu', email: 'no-reply@uppdragsutbildning.com' },
+          to: [{ email: to }],
           subject,
-          html,
+          htmlContent: html,
         }),
       });
       const data = await res.json();
       if (res.ok) {
         status = 'sent';
-        resendId = data.id;
+        providerMessageId = data.messageId;
       } else {
-        errorMessage = data.message || `Resend svarade ${res.status}`;
+        errorMessage = data.message || `Brevo svarade ${res.status}`;
       }
     } catch (err) {
       errorMessage = err instanceof Error ? err.message : String(err);
@@ -56,7 +56,7 @@ export async function sendEmail({ to, subject, html, messageType, relatedTable, 
     related_id: relatedId ?? null,
     status,
     error_message: errorMessage ?? null,
-    resend_id: resendId ?? null,
+    provider_message_id: providerMessageId ?? null,
   });
 
   return { success: status === 'sent', error: errorMessage };

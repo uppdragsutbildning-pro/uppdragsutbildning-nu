@@ -135,7 +135,7 @@ export interface EmailLog {
   related_id?: string;
   status: 'sent' | 'failed';
   error_message?: string;
-  resend_id?: string;
+  provider_message_id?: string;
   created_at: string;
 }
 
