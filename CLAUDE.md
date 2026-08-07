@@ -107,6 +107,10 @@ Två lägen: **Quick Scan** (anonym) och **Deep Dive** (gated bakom konto).
 ## Att göra innan lansering
 
 - [ ] **PDF-broschyr-import timar ut** (`api/extract-course-from-pdf.ts`): Gemini multimodal PDF-analys ryms inte inom Vercel Hobby-planens 10s-tak, testat live även efter att timeouten höjts till 9s. Kräver antingen en Vercel Pro-uppgradering (konfigurerbar `maxDuration`, kostar pengar – Aarons beslut) eller en arkitekturändring (t.ex. asynkron bakgrundsbearbetning/polling). Beslut om Pro avvaktas (2026-08-06). Excel-importen (`ProviderCourseExcelImportPage.tsx`) fungerar och kan användas under tiden.
+- [ ] **Hårdkodad production-fallback i `api/create-user.ts`**: samma mönster som fixades i `src/lib/supabase.ts` – om `VITE_SUPABASE_URL` saknas faller admin-funktionen (skapar riktiga användarkonton med service-role-behörighet) tyst tillbaka till production istället för att larma. Bör fixas till fail-loud, samma som `supabase.ts`.
+- [ ] **Föräldralös fil `src/app/components/pages/ProviderDashboard.tsx`**: verkar oanvänd/oroutead (skild från den riktiga, routade `provider/ProviderDashboard.tsx`). Bekräfta att den verkligen är död kod och ta i så fall bort den.
+- [ ] **AdminDashboards "Alla Utbildningsprogram"-flik kör fortfarande på mockdata** (`AdminDashboard.tsx`, `activeTab === 'trainings'`): samma typ av konvertering som Katalog/Hem/Kursdetaljer redan fick 2026-08-06. Godkänn/Avvisa/Förhandsgranska-knapparna där är dessutom inte kopplade till någon funktion.
+- [ ] **ProviderHistoryPage ("Historik") är helt hop-påhittad**: varken statistiken högst upp eller aktivitetsloggen kommer från databasen – hårdkodade exempelvärden. Kräver att en riktig datamodell/query för aktivitetsloggen designas (ingen sådan tabell finns idag) innan sidan kan visa verklig data. "Filtrera"-knappen är av samma anledning inte kopplad.
 
 ---
 
