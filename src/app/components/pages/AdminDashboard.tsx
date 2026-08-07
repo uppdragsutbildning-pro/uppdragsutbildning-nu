@@ -3,7 +3,7 @@ import { Check, X, Eye, TrendingUp, Users, Building, GraduationCap, Mail, Sparkl
 import { trainings, leads, providers, categories, getTrainingById, getProviderById, getCategoryById } from '../../data/mockData';
 import { toast } from 'sonner';
 import { exportLeadsToCSV, exportTrainingsToCSV } from '../../utils/exportUtils';
-import { supabase, Profile, Provider, CustomRequest } from '../../../lib/supabase';
+import { supabase, Profile, Provider, CustomRequest, EmailLog } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePaginatedQuery, getPaginationRange } from '../../../hooks/usePaginatedQuery';
 import {
@@ -16,7 +16,7 @@ import {
   PaginationEllipsis,
 } from '../ui/pagination';
 
-type Tab = 'overview' | 'trainings' | 'leads' | 'providers' | 'users' | 'kompetensindex';
+type Tab = 'overview' | 'trainings' | 'leads' | 'providers' | 'users' | 'kompetensindex' | 'email_log';
 
 interface CpiRecord {
   id: string;
@@ -142,6 +142,25 @@ export function AdminDashboard() {
       if (activeTab !== 'kompetensindex') return { data: [], count: 0, error: null };
       return supabase
         .from('cpi_results')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to);
+    },
+  });
+
+  const {
+    rows: emailLogs,
+    page: emailLogPage,
+    setPage: setEmailLogPage,
+    totalPages: emailLogTotalPages,
+    loading: emailLogLoading,
+  } = usePaginatedQuery<EmailLog>({
+    pageSize: 25,
+    deps: [activeTab],
+    queryFn: async ({ from, to }) => {
+      if (activeTab !== 'email_log') return { data: [], count: 0, error: null };
+      return supabase
+        .from('email_log')
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, to);
@@ -422,6 +441,16 @@ export function AdminDashboard() {
               }`}
             >
               Kompetensindex
+            </button>
+            <button
+              onClick={() => setActiveTab('email_log')}
+              className={`pb-3 border-b-2 transition-colors ${
+                activeTab === 'email_log'
+                  ? 'border-blue-600 text-blue-600 font-medium'
+                  : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              E-postloggar
             </button>
           </div>
         </div>
@@ -1330,6 +1359,99 @@ export function AdminDashboard() {
                             href="#"
                             onClick={(e) => { e.preventDefault(); if (cpiPage < cpiTotalPages) setCpiPage(cpiPage + 1); }}
                             className={cpiPage === cpiTotalPages ? 'pointer-events-none opacity-50' : ''}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Email Log Tab */}
+        {activeTab === 'email_log' && (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-slate-900">E-postloggar</h2>
+              <p className="text-slate-500 text-sm mt-1">Alla utgående notifieringsmejl, lyckade och misslyckade</p>
+            </div>
+
+            {emailLogLoading ? (
+              <div className="animate-pulse space-y-3">
+                {[1, 2, 3].map(i => <div key={i} className="h-16 bg-slate-100 rounded-xl" />)}
+              </div>
+            ) : emailLogs.length === 0 ? (
+              <div className="text-center py-16 text-slate-400">Inga e-postmeddelanden skickade ännu.</div>
+            ) : (
+              <>
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="text-left px-4 py-3 font-medium text-slate-600">Tidpunkt</th>
+                        <th className="text-left px-4 py-3 font-medium text-slate-600">Typ</th>
+                        <th className="text-left px-4 py-3 font-medium text-slate-600">Mottagare</th>
+                        <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
+                        <th className="text-left px-4 py-3 font-medium text-slate-600">Fel</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {emailLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
+                            {new Date(log.created_at).toLocaleString('sv-SE')}
+                          </td>
+                          <td className="px-4 py-3 text-slate-700">{log.message_type}</td>
+                          <td className="px-4 py-3 text-slate-700">{log.recipient_email}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                              log.status === 'sent' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                            }`}>
+                              {log.status === 'sent' ? 'Skickat' : 'Misslyckades'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-red-600 text-xs max-w-xs truncate">{log.error_message}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {emailLogTotalPages > 1 && (
+                  <div className="mt-6">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            href="#"
+                            onClick={(e) => { e.preventDefault(); if (emailLogPage > 1) setEmailLogPage(emailLogPage - 1); }}
+                            className={emailLogPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                          />
+                        </PaginationItem>
+                        {getPaginationRange(emailLogPage, emailLogTotalPages).map((p, i) =>
+                          p === 'ellipsis' ? (
+                            <PaginationItem key={`ellipsis-${i}`}>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          ) : (
+                            <PaginationItem key={p}>
+                              <PaginationLink
+                                href="#"
+                                isActive={p === emailLogPage}
+                                onClick={(e) => { e.preventDefault(); setEmailLogPage(p); }}
+                              >
+                                {p}
+                              </PaginationLink>
+                            </PaginationItem>
+                          )
+                        )}
+                        <PaginationItem>
+                          <PaginationNext
+                            href="#"
+                            onClick={(e) => { e.preventDefault(); if (emailLogPage < emailLogTotalPages) setEmailLogPage(emailLogPage + 1); }}
+                            className={emailLogPage === emailLogTotalPages ? 'pointer-events-none opacity-50' : ''}
                           />
                         </PaginationItem>
                       </PaginationContent>

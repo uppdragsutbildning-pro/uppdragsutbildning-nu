@@ -127,6 +127,18 @@ export interface CustomRequest {
   updated_at: string;
 }
 
+export interface EmailLog {
+  id: string;
+  message_type: string;
+  recipient_email: string;
+  related_table?: string;
+  related_id?: string;
+  status: 'sent' | 'failed';
+  error_message?: string;
+  resend_id?: string;
+  created_at: string;
+}
+
 export interface Profile {
   id: string;
   email?: string;
