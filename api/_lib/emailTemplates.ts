@@ -3,6 +3,17 @@ interface EmailContent {
   html: string;
 }
 
+function ctaButton(linkUrl: string | undefined, label: string): string {
+  if (!linkUrl) return '';
+  return `
+    <table role="presentation">
+      <tr><td style="border-radius:6px;background-color:#16a34a;margin-top:8px;">
+        <a href="${linkUrl}" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:bold;font-size:14px;">${label}</a>
+      </td></tr>
+    </table>
+  `;
+}
+
 function wrapEmail(preheader: string, bodyHtml: string): string {
   return `<!DOCTYPE html>
 <html>
@@ -25,8 +36,8 @@ function wrapEmail(preheader: string, bodyHtml: string): string {
 </html>`;
 }
 
-export function rfpReceived(params: { companyName: string; courseTopic: string }): EmailContent {
-  const { companyName, courseTopic } = params;
+export function rfpReceived(params: { companyName: string; courseTopic: string; linkUrl?: string }): EmailContent {
+  const { companyName, courseTopic, linkUrl } = params;
   return {
     subject: `Ny offertförfrågan: ${courseTopic}`,
     html: wrapEmail('Ni har fått en ny offertförfrågan', `
@@ -35,6 +46,7 @@ export function rfpReceived(params: { companyName: string; courseTopic: string }
         ${companyName} har skickat en offertförfrågan gällande <strong>${courseTopic}</strong>.
         Logga in på Leverantörsportalen för att se detaljer och svara.
       </p>
+      ${ctaButton(linkUrl, 'Logga in på Leverantörsportalen')}
     `),
   };
 }
@@ -52,8 +64,8 @@ export function rfpResponded(params: { courseTopic: string }): EmailContent {
   };
 }
 
-export function bookingConfirmed(params: { companyName: string; courseTopic: string }): EmailContent {
-  const { companyName, courseTopic } = params;
+export function bookingConfirmed(params: { companyName: string; courseTopic: string; linkUrl?: string }): EmailContent {
+  const { companyName, courseTopic, linkUrl } = params;
   return {
     subject: `Bokning bekräftad: ${courseTopic}`,
     html: wrapEmail('En bokning har bekräftats', `
@@ -61,6 +73,7 @@ export function bookingConfirmed(params: { companyName: string; courseTopic: str
       <p style="color:#334155;line-height:1.6;">
         Förfrågan från ${companyName} gällande <strong>${courseTopic}</strong> har bekräftats som en bokning.
       </p>
+      ${ctaButton(linkUrl, 'Logga in')}
     `),
   };
 }
@@ -79,8 +92,8 @@ export function rfpDeclined(params: { courseTopic: string }): EmailContent {
   };
 }
 
-export function rfpEscalated(params: { companyName: string; courseTopic: string; submittedAt: string }): EmailContent {
-  const { companyName, courseTopic, submittedAt } = params;
+export function rfpEscalated(params: { companyName: string; courseTopic: string; submittedAt: string; linkUrl?: string }): EmailContent {
+  const { companyName, courseTopic, submittedAt, linkUrl } = params;
   return {
     subject: `Eskalering: obesvarad förfrågan från ${companyName}`,
     html: wrapEmail('En förfrågan har inte fått svar i tid', `
@@ -89,12 +102,13 @@ export function rfpEscalated(params: { companyName: string; courseTopic: string;
         Förfrågan från <strong>${companyName}</strong> gällande <strong>${courseTopic}</strong>
         (inskickad ${submittedAt}) har inte fått något svar inom svarstiden. Manuell uppföljning krävs.
       </p>
+      ${ctaButton(linkUrl, 'Öppna i Adminpanelen')}
     `),
   };
 }
 
-export function applicationReceived(params: { courseTitle: string; studentName: string }): EmailContent {
-  const { courseTitle, studentName } = params;
+export function applicationReceived(params: { courseTitle: string; studentName: string; linkUrl?: string }): EmailContent {
+  const { courseTitle, studentName, linkUrl } = params;
   return {
     subject: `Ny kursanmälan: ${courseTitle}`,
     html: wrapEmail('Ni har fått en ny kursanmälan', `
@@ -102,12 +116,13 @@ export function applicationReceived(params: { courseTitle: string; studentName: 
       <p style="color:#334155;line-height:1.6;">
         ${studentName} har anmält sig till <strong>${courseTitle}</strong>. Logga in på Leverantörsportalen för att hantera anmälan.
       </p>
+      ${ctaButton(linkUrl, 'Logga in på Leverantörsportalen')}
     `),
   };
 }
 
-export function applicationConfirmed(params: { courseTitle: string }): EmailContent {
-  const { courseTitle } = params;
+export function applicationConfirmed(params: { courseTitle: string; linkUrl?: string }): EmailContent {
+  const { courseTitle, linkUrl } = params;
   return {
     subject: `Din anmälan är bekräftad: ${courseTitle}`,
     html: wrapEmail('Din anmälan är bekräftad', `
@@ -115,6 +130,7 @@ export function applicationConfirmed(params: { courseTitle: string }): EmailCont
       <p style="color:#334155;line-height:1.6;">
         Din anmälan till <strong>${courseTitle}</strong> är nu bekräftad. Vi hörs inför kursstart.
       </p>
+      ${ctaButton(linkUrl, 'Se kursen')}
     `),
   };
 }

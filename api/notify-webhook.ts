@@ -11,6 +11,7 @@ import {
 } from './_lib/emailTemplates.js';
 
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
+const APP_URL = process.env.APP_URL;
 
 async function getProviderContactEmail(trainingId: string): Promise<{ email: string | null; title: string | null }> {
   const { data } = await supabaseAdmin
@@ -40,7 +41,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (record.training_id) {
         const { email } = await getProviderContactEmail(record.training_id);
         if (email) {
-          const content = rfpReceived({ companyName: record.company, courseTopic: record.course_topic });
+          const content = rfpReceived({
+            companyName: record.company,
+            courseTopic: record.course_topic,
+            linkUrl: APP_URL ? `${APP_URL}/provider/requests` : undefined,
+          });
           await sendEmail({ to: email, ...content, messageType: 'rfp_received', relatedTable: 'custom_requests', relatedId: record.id });
         }
       }
@@ -50,15 +55,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const content = rfpResponded({ courseTopic: record.course_topic });
         await sendEmail({ to: record.contact_email, ...content, messageType: 'rfp_responded', relatedTable: 'custom_requests', relatedId: record.id });
       } else if (statusChanged && record.status === 'accepted') {
-        const content = bookingConfirmed({ companyName: record.company, courseTopic: record.course_topic });
-        const recipients: string[] = [];
         if (record.training_id) {
           const { email } = await getProviderContactEmail(record.training_id);
-          if (email) recipients.push(email);
+          if (email) {
+            const content = bookingConfirmed({
+              companyName: record.company,
+              courseTopic: record.course_topic,
+              linkUrl: APP_URL ? `${APP_URL}/provider/requests` : undefined,
+            });
+            await sendEmail({ to: email, ...content, messageType: 'booking_confirmed', relatedTable: 'custom_requests', relatedId: record.id });
+          }
         }
-        if (ADMIN_EMAIL) recipients.push(ADMIN_EMAIL);
-        for (const to of recipients) {
-          await sendEmail({ to, ...content, messageType: 'booking_confirmed', relatedTable: 'custom_requests', relatedId: record.id });
+        if (ADMIN_EMAIL) {
+          const content = bookingConfirmed({
+            companyName: record.company,
+            courseTopic: record.course_topic,
+            linkUrl: APP_URL ? `${APP_URL}/admin` : undefined,
+          });
+          await sendEmail({ to: ADMIN_EMAIL, ...content, messageType: 'booking_confirmed', relatedTable: 'custom_requests', relatedId: record.id });
         }
       } else if (statusChanged && record.status === 'declined') {
         const content = rfpDeclined({ courseTopic: record.course_topic });
@@ -68,7 +82,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (record.training_id) {
         const { email, title } = await getProviderContactEmail(record.training_id);
         if (email) {
-          const content = applicationReceived({ courseTitle: title ?? 'kursen', studentName: record.student_name });
+          const content = applicationReceived({
+            courseTitle: title ?? 'kursen',
+            studentName: record.student_name,
+            linkUrl: APP_URL ? `${APP_URL}/provider/dashboard` : undefined,
+          });
           await sendEmail({ to: email, ...content, messageType: 'application_received', relatedTable: 'applications', relatedId: record.id });
         }
       }
@@ -76,7 +94,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const statusChanged = old_record?.status !== record.status;
       if (statusChanged && record.status === 'confirmed') {
         const { title } = record.training_id ? await getProviderContactEmail(record.training_id) : { title: null };
-        const content = applicationConfirmed({ courseTitle: title ?? 'kursen' });
+        const content = applicationConfirmed({
+          courseTitle: title ?? 'kursen',
+          linkUrl: APP_URL && record.training_id ? `${APP_URL}/training/${record.training_id}` : undefined,
+        });
         await sendEmail({ to: record.student_email, ...content, messageType: 'application_confirmed', relatedTable: 'applications', relatedId: record.id });
       }
     }

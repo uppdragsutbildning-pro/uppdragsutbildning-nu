@@ -4,6 +4,7 @@ import { sendEmail } from './_lib/sendEmail.js';
 import { rfpEscalated } from './_lib/emailTemplates.js';
 
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
+const APP_URL = process.env.APP_URL;
 const BATCH_SIZE = 25;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -35,6 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       companyName: row.company,
       courseTopic: row.course_topic,
       submittedAt: new Date(row.submitted_at).toLocaleDateString('sv-SE'),
+      linkUrl: APP_URL ? `${APP_URL}/admin` : undefined,
     });
     await sendEmail({ to: ADMIN_EMAIL, ...content, messageType: 'rfp_escalated', relatedTable: 'custom_requests', relatedId: row.id });
     await supabaseAdmin.from('custom_requests').update({ escalated_at: new Date().toISOString() }).eq('id', row.id);
