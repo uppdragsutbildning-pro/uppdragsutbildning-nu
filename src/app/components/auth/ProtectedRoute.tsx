@@ -11,7 +11,7 @@ export function ProtectedRoute({ children, requireRole }: ProtectedRouteProps) {
   const { user, profile, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) {
+  if (loading && !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
