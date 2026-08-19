@@ -23,7 +23,7 @@ const DIM_DESCRIPTIONS: Record<string, string> = {
   OK: 'Mäter organisationens förmåga att anpassa sig, lära nytt och ställa om när verksamhetens krav förändras.',
   TR: 'Mäter hur tydlig riktning och strategi ni har för hur kompetens ska förnyas, rekryteras och utvecklas på 1–3 års sikt.',
 };
-const SI_LABELS = ['BRA', 'Kompetensväxling', 'Kompetensutveckling', 'Nya arbetssätt'];
+const SI_LABELS = ['Rekrytering', 'Kompetensväxling', 'Kompetensutveckling', 'Nya arbetssätt'];
 const PRIORITY_COLORS: Record<string, string> = {
   high: 'bg-red-100 text-red-700',
   medium: 'bg-amber-100 text-amber-700',
@@ -266,6 +266,7 @@ function AnswerSummaryDrawer({
             <X className="w-5 h-5" />
           </button>
         </div>
+        <p className="px-4 pt-4 text-xs text-slate-500">Skala: 1 = Inte alls, 5 = Mycket hög grad</p>
         <div className="flex-1 px-4 py-4 space-y-2">
           {stepAnswers.map((s, i) => (
             <div key={i} className="border border-slate-200 rounded-xl overflow-hidden">

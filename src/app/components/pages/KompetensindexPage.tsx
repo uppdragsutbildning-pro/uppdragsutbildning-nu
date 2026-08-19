@@ -605,13 +605,13 @@ export function KompetensindexPage() {
               <p className="text-slate-500 text-sm">I vilken grad förändras er verksamhet?</p>
             </div>
             <QuestionCard id="AF1" question="I vilken grad förändras arbetssätten i er verksamhet idag?">
-              <ScaleButtons value={answers.af1} onChange={(v) => set('af1', v)} labelLow="Knappt alls" labelHigh="I mycket hög grad" />
+              <ScaleButtons value={answers.af1} onChange={(v) => set('af1', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="AF2" question="I vilken grad förväntas roller och arbetsuppgifter förändras de kommande två åren?">
-              <ScaleButtons value={answers.af2} onChange={(v) => set('af2', v)} labelLow="Knappt alls" labelHigh="I mycket hög grad" />
+              <ScaleButtons value={answers.af2} onChange={(v) => set('af2', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="AF3" question="I vilken grad har arbetet blivit mer komplext det senaste året?">
-              <ScaleButtons value={answers.af3} onChange={(v) => set('af3', v)} labelLow="Knappt alls" labelHigh="I mycket hög grad" />
+              <ScaleButtons value={answers.af3} onChange={(v) => set('af3', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="AF4" question="Vilka områden driver störst förändring just nu?" meta="Hjälper oss att ge mer träffsäkra rekommendationer">
               <textarea
@@ -633,16 +633,16 @@ export function KompetensindexPage() {
               <p className="text-slate-500 text-sm">I vilken grad påverkar kompetensbrist er verksamhet?</p>
             </div>
             <QuestionCard id="PF1" question="I vilken grad påverkar kompetensbrist kvaliteten i arbetet?">
-              <ScaleButtons value={answers.pf1} onChange={(v) => set('pf1', v)} labelLow="Ingen påverkan" labelHigh="Stor påverkan" />
+              <ScaleButtons value={answers.pf1} onChange={(v) => set('pf1', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="PF2" question="I vilken grad påverkar kompetensbrist tempo eller produktivitet?">
-              <ScaleButtons value={answers.pf2} onChange={(v) => set('pf2', v)} labelLow="Ingen påverkan" labelHigh="Stor påverkan" />
+              <ScaleButtons value={answers.pf2} onChange={(v) => set('pf2', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="PF3" question="I vilken grad påverkar kompetensbrist leveransförmågan?">
-              <ScaleButtons value={answers.pf3} onChange={(v) => set('pf3', v)} labelLow="Ingen påverkan" labelHigh="Stor påverkan" />
+              <ScaleButtons value={answers.pf3} onChange={(v) => set('pf3', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="PF4" question="I vilken grad är verksamheten beroende av ett fåtal nyckelpersoner?">
-              <ScaleButtons value={answers.pf4} onChange={(v) => set('pf4', v)} labelLow="Lågt beroende" labelHigh="Mycket högt beroende" />
+              <ScaleButtons value={answers.pf4} onChange={(v) => set('pf4', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="PF5" question="Vilka arbetsuppgifter undviks, skjuts upp eller tar längre tid på grund av kompetensbrist?">
               <textarea
@@ -664,16 +664,16 @@ export function KompetensindexPage() {
               <p className="text-slate-500 text-sm">Hur väl rustad är organisationen att lära och ställa om?</p>
             </div>
             <QuestionCard id="OK1" question="I vilken grad har organisationen tid och struktur för lärande i vardagen?">
-              <ScaleButtons value={answers.ok1} onChange={(v) => set('ok1', v)} labelLow="Ingen tid/struktur" labelHigh="Tydlig struktur" />
+              <ScaleButtons value={answers.ok1} onChange={(v) => set('ok1', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="OK2" question="I vilken grad har organisationen förmåga att snabbt lära om och anpassa arbetssätt?">
-              <ScaleButtons value={answers.ok2} onChange={(v) => set('ok2', v)} labelLow="Mycket låg" labelHigh="Mycket hög" />
+              <ScaleButtons value={answers.ok2} onChange={(v) => set('ok2', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="OK3" question="I vilken grad upplever ni att organisationen är trygg i förändring?">
-              <ScaleButtons value={answers.ok3} onChange={(v) => set('ok3', v)} labelLow="Inte alls trygg" labelHigh="Mycket trygg" />
+              <ScaleButtons value={answers.ok3} onChange={(v) => set('ok3', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="OK4" question="I vilken grad utvecklas arbetssätt över team- eller avdelningsgränser?">
-              <ScaleButtons value={answers.ok4} onChange={(v) => set('ok4', v)} labelLow="Sällan/aldrig" labelHigh="Systematiskt" />
+              <ScaleButtons value={answers.ok4} onChange={(v) => set('ok4', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
           </div>
         )}
@@ -686,13 +686,13 @@ export function KompetensindexPage() {
               <p className="text-slate-500 text-sm">Hur tydlig är er strategiska riktning för kompetensutveckling?</p>
             </div>
             <QuestionCard id="TR1" question="I vilken grad är det tydligt vilka förmågor organisationen behöver utveckla framåt?">
-              <ScaleButtons value={answers.tr1} onChange={(v) => set('tr1', v)} labelLow="Oklart" labelHigh="Mycket tydligt" />
+              <ScaleButtons value={answers.tr1} onChange={(v) => set('tr1', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="TR2" question="I vilken grad är framtida kompetensbehov kopplade till affärs- eller verksamhetsmål?">
-              <ScaleButtons value={answers.tr2} onChange={(v) => set('tr2', v)} labelLow="Inte alls" labelHigh="Tydligt kopplade" />
+              <ScaleButtons value={answers.tr2} onChange={(v) => set('tr2', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="TR3" question="I vilken grad finns en tydlig plan för om kompetens ska rekryteras, kompetensväxlas eller utvecklas internt?">
-              <ScaleButtons value={answers.tr3} onChange={(v) => set('tr3', v)} labelLow="Ingen plan" labelHigh="Tydlig plan" />
+              <ScaleButtons value={answers.tr3} onChange={(v) => set('tr3', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="TR4" question="Vilka förmågor bedömer ni som mest kritiska de kommande 12–24 månaderna?" meta="Används för kompetensmatchning">
               <textarea
@@ -714,16 +714,16 @@ export function KompetensindexPage() {
               <p className="text-slate-500 text-sm">Vilka insatser behöver ni prioritera</p>
             </div>
             <QuestionCard id="SI1" question="I vilken grad ser ni behov av rekrytering av ny kompetens?">
-              <ScaleButtons value={answers.si1} onChange={(v) => set('si1', v)} labelLow="Inget behov" labelHigh="Stort behov" />
+              <ScaleButtons value={answers.si1} onChange={(v) => set('si1', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="SI2" question="I vilken grad ser ni behov av kompetensväxling för befintliga medarbetare?">
-              <ScaleButtons value={answers.si2} onChange={(v) => set('si2', v)} labelLow="Inget behov" labelHigh="Stort behov" />
+              <ScaleButtons value={answers.si2} onChange={(v) => set('si2', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="SI3" question="I vilken grad ser ni behov av kompetensutveckling för befintliga medarbetare?">
-              <ScaleButtons value={answers.si3} onChange={(v) => set('si3', v)} labelLow="Inget behov" labelHigh="Stort behov" />
+              <ScaleButtons value={answers.si3} onChange={(v) => set('si3', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
             <QuestionCard id="SI4" question="I vilken grad ser ni behov av nya arbetssätt eller processförändringar?">
-              <ScaleButtons value={answers.si4} onChange={(v) => set('si4', v)} labelLow="Inget behov" labelHigh="Stort behov" />
+              <ScaleButtons value={answers.si4} onChange={(v) => set('si4', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
 
           </div>
