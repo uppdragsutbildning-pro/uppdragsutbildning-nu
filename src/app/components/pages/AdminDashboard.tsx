@@ -3,20 +3,10 @@ import { Check, X, Eye, TrendingUp, Users, Building, GraduationCap, Mail, Sparkl
 import { trainings, leads, providers, categories, getTrainingById, getProviderById, getCategoryById } from '../../data/mockData';
 import { toast } from 'sonner';
 import { exportLeadsToCSV, exportTrainingsToCSV } from '../../utils/exportUtils';
-import { supabase, Profile, Provider, CustomRequest, EmailLog } from '../../../lib/supabase';
+import { supabase, Profile, Provider } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
-import { usePaginatedQuery, getPaginationRange } from '../../../hooks/usePaginatedQuery';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationPrevious,
-  PaginationNext,
-  PaginationEllipsis,
-} from '../ui/pagination';
 
-type Tab = 'overview' | 'trainings' | 'leads' | 'providers' | 'users' | 'kompetensindex' | 'email_log';
+type Tab = 'overview' | 'trainings' | 'leads' | 'providers' | 'users' | 'kompetensindex';
 
 interface CpiRecord {
   id: string;
@@ -40,8 +30,11 @@ export function AdminDashboard() {
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
   const [showCreateProvider, setShowCreateProvider] = useState(false);
+  const [cpiRecords, setCpiRecords] = useState<CpiRecord[]>([]);
+  const [cpiLoading, setCpiLoading] = useState(false);
+  const [customRequests, setCustomRequests] = useState<import('../../../lib/supabase').CustomRequest[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
   const [leadsFilter, setLeadsFilter] = useState<'all' | 'unmatched'>('all');
-  const [avgScores, setAvgScores] = useState<{ AF: number; PF: number; OK: number; TR: number } | null>(null);
 
   // Form state for creating new provider
   const [newProvider, setNewProvider] = useState({
@@ -79,103 +72,39 @@ export function AdminDashboard() {
     if (activeTab === 'providers') {
       loadProviders();
     }
+    if (activeTab === 'kompetensindex') {
+      loadCpiRecords();
+    }
+    if (activeTab === 'leads') {
+      loadCustomRequests();
+    }
   }, [activeTab]);
 
-  // Lätt anrop (bara scores-kolumnen) för snittstatistik över ALLA analyser,
-  // oberoende av vilken sida av cpiRecords som visas i tabellen.
-  useEffect(() => {
-    if (activeTab !== 'kompetensindex') return;
-    (async () => {
-      const { data, error } = await supabase.from('cpi_results').select('scores');
-      if (error || !data || !data.length) {
-        setAvgScores(null);
-        return;
-      }
-      const totals = { AF: 0, PF: 0, OK: 0, TR: 0 };
-      for (const row of data as { scores: CpiRecord['scores'] }[]) {
-        totals.AF += row.scores?.AF ?? 0;
-        totals.PF += row.scores?.PF ?? 0;
-        totals.OK += row.scores?.OK ?? 0;
-        totals.TR += row.scores?.TR ?? 0;
-      }
-      setAvgScores({
-        AF: Math.round(totals.AF / data.length),
-        PF: Math.round(totals.PF / data.length),
-        OK: Math.round(totals.OK / data.length),
-        TR: Math.round(totals.TR / data.length),
-      });
-    })();
-  }, [activeTab]);
+  async function loadCustomRequests() {
+    setRequestsLoading(true);
+    const { data, error } = await supabase
+      .from('custom_requests')
+      .select('*')
+      .order('has_provider_match', { ascending: true })
+      .order('submitted_at', { ascending: false });
+    if (!error && data) setCustomRequests(data as import('../../../lib/supabase').CustomRequest[]);
+    setRequestsLoading(false);
+  }
 
-  const {
-    rows: customRequests,
-    page: requestsPage,
-    setPage: setRequestsPage,
-    totalPages: requestsTotalPages,
-    loading: requestsLoading,
-  } = usePaginatedQuery<CustomRequest>({
-    pageSize: 20,
-    deps: [activeTab, leadsFilter],
-    queryFn: async ({ from, to }) => {
-      if (activeTab !== 'leads') return { data: [], count: 0, error: null };
-      let query = supabase
-        .from('custom_requests')
-        .select('*', { count: 'exact' })
-        .order('has_provider_match', { ascending: true })
-        .order('submitted_at', { ascending: false });
-      if (leadsFilter === 'unmatched') query = query.eq('has_provider_match', false);
-      return query.range(from, to);
-    },
-  });
-
-  const {
-    rows: cpiRecords,
-    page: cpiPage,
-    setPage: setCpiPage,
-    totalPages: cpiTotalPages,
-    loading: cpiLoading,
-    count: cpiTotalRecords,
-  } = usePaginatedQuery<CpiRecord>({
-    pageSize: 25,
-    deps: [activeTab],
-    queryFn: async ({ from, to }) => {
-      if (activeTab !== 'kompetensindex') return { data: [], count: 0, error: null };
-      return supabase
-        .from('cpi_results')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(from, to);
-    },
-  });
-
-  const {
-    rows: emailLogs,
-    page: emailLogPage,
-    setPage: setEmailLogPage,
-    totalPages: emailLogTotalPages,
-    loading: emailLogLoading,
-  } = usePaginatedQuery<EmailLog>({
-    pageSize: 25,
-    deps: [activeTab],
-    queryFn: async ({ from, to }) => {
-      if (activeTab !== 'email_log') return { data: [], count: 0, error: null };
-      return supabase
-        .from('email_log')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(from, to);
-    },
-  });
-
-  async function exportCpiToCSV() {
+  async function loadCpiRecords() {
+    setCpiLoading(true);
     const { data, error } = await supabase
       .from('cpi_results')
       .select('*')
       .order('created_at', { ascending: false });
-    if (error || !data || !data.length) return;
-    const records = data as CpiRecord[];
+    if (!error && data) setCpiRecords(data as CpiRecord[]);
+    setCpiLoading(false);
+  }
+
+  function exportCpiToCSV() {
+    if (!cpiRecords.length) return;
     const headers = ['Datum', 'Företag', 'Bransch', 'Storlek', 'Roll', 'Total', 'AF', 'PF', 'OK', 'TR', 'SI1', 'SI2', 'SI3', 'SI4'];
-    const rows = records.map((r) => [
+    const rows = cpiRecords.map((r) => [
       new Date(r.created_at).toLocaleDateString('sv-SE'),
       r.company_name,
       r.industry,
@@ -442,16 +371,6 @@ export function AdminDashboard() {
             >
               Kompetensindex
             </button>
-            <button
-              onClick={() => setActiveTab('email_log')}
-              className={`pb-3 border-b-2 transition-colors ${
-                activeTab === 'email_log'
-                  ? 'border-blue-600 text-blue-600 font-medium'
-                  : 'border-transparent text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              E-postloggar
-            </button>
           </div>
         </div>
       </div>
@@ -695,7 +614,9 @@ export function AdminDashboard() {
               </div>
             ) : (
               <div className="space-y-4">
-                {customRequests.map(req => (
+                {customRequests
+                  .filter(req => leadsFilter === 'unmatched' ? req.has_provider_match === false : true)
+                  .map(req => (
                   <div key={req.id} className="bg-white rounded-xl border border-slate-200 p-6">
                     <div className="flex items-start justify-between gap-4 mb-4">
                       <div className="flex-1">
@@ -758,51 +679,13 @@ export function AdminDashboard() {
                     </div>
                   </div>
                 ))}
-                {customRequests.length === 0 && (
+                {customRequests.filter(req => leadsFilter === 'unmatched' ? req.has_provider_match === false : true).length === 0 && (
                   <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
                     <Mail className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                     <p className="text-slate-500">Inga förfrågningar hittades</p>
                   </div>
                 )}
               </div>
-            )}
-
-            {requestsTotalPages > 1 && (
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => { e.preventDefault(); if (requestsPage > 1) setRequestsPage(requestsPage - 1); }}
-                      className={requestsPage === 1 ? 'pointer-events-none opacity-50' : ''}
-                    />
-                  </PaginationItem>
-                  {getPaginationRange(requestsPage, requestsTotalPages).map((p, i) =>
-                    p === 'ellipsis' ? (
-                      <PaginationItem key={`ellipsis-${i}`}>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    ) : (
-                      <PaginationItem key={p}>
-                        <PaginationLink
-                          href="#"
-                          isActive={p === requestsPage}
-                          onClick={(e) => { e.preventDefault(); setRequestsPage(p); }}
-                        >
-                          {p}
-                        </PaginationLink>
-                      </PaginationItem>
-                    )
-                  )}
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => { e.preventDefault(); if (requestsPage < requestsTotalPages) setRequestsPage(requestsPage + 1); }}
-                      className={requestsPage === requestsTotalPages ? 'pointer-events-none opacity-50' : ''}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
             )}
           </div>
         )}
@@ -1260,11 +1143,11 @@ export function AdminDashboard() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-xl font-bold text-slate-900">Kompetensindex — Rapporter</h2>
-                <p className="text-slate-500 text-sm mt-1">{cpiTotalRecords} genomförda analyser</p>
+                <p className="text-slate-500 text-sm mt-1">{cpiRecords.length} genomförda analyser</p>
               </div>
               <button
                 onClick={exportCpiToCSV}
-                disabled={!cpiTotalRecords}
+                disabled={!cpiRecords.length}
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
               >
                 <Download className="w-4 h-4" />
@@ -1276,21 +1159,22 @@ export function AdminDashboard() {
               <div className="animate-pulse space-y-3">
                 {[1,2,3].map(i => <div key={i} className="h-16 bg-slate-100 rounded-xl" />)}
               </div>
-            ) : cpiTotalRecords === 0 ? (
+            ) : cpiRecords.length === 0 ? (
               <div className="text-center py-16 text-slate-400">Inga analyser genomförda ännu.</div>
             ) : (
               <>
-                {/* Summary stats (snitt över samtliga analyser, inte bara aktuell sida) */}
-                {avgScores && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                    {(['AF', 'PF', 'OK', 'TR'] as const).map((dim) => (
+                {/* Summary stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                  {(['AF', 'PF', 'OK', 'TR'] as const).map((dim) => {
+                    const avg = Math.round(cpiRecords.reduce((s, r) => s + (r.scores?.[dim] ?? 0), 0) / cpiRecords.length);
+                    return (
                       <div key={dim} className="bg-white rounded-xl border border-slate-200 p-4 text-center">
                         <p className="text-xs text-slate-500 mb-1">{dim} — snitt</p>
-                        <p className="text-3xl font-bold text-slate-900">{avgScores[dim]}</p>
+                        <p className="text-3xl font-bold text-slate-900">{avg}</p>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    );
+                  })}
+                </div>
 
                 {/* Records table */}
                 <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -1325,139 +1209,6 @@ export function AdminDashboard() {
                     </tbody>
                   </table>
                 </div>
-
-                {cpiTotalPages > 1 && (
-                  <div className="mt-6">
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
-                            href="#"
-                            onClick={(e) => { e.preventDefault(); if (cpiPage > 1) setCpiPage(cpiPage - 1); }}
-                            className={cpiPage === 1 ? 'pointer-events-none opacity-50' : ''}
-                          />
-                        </PaginationItem>
-                        {getPaginationRange(cpiPage, cpiTotalPages).map((p, i) =>
-                          p === 'ellipsis' ? (
-                            <PaginationItem key={`ellipsis-${i}`}>
-                              <PaginationEllipsis />
-                            </PaginationItem>
-                          ) : (
-                            <PaginationItem key={p}>
-                              <PaginationLink
-                                href="#"
-                                isActive={p === cpiPage}
-                                onClick={(e) => { e.preventDefault(); setCpiPage(p); }}
-                              >
-                                {p}
-                              </PaginationLink>
-                            </PaginationItem>
-                          )
-                        )}
-                        <PaginationItem>
-                          <PaginationNext
-                            href="#"
-                            onClick={(e) => { e.preventDefault(); if (cpiPage < cpiTotalPages) setCpiPage(cpiPage + 1); }}
-                            className={cpiPage === cpiTotalPages ? 'pointer-events-none opacity-50' : ''}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Email Log Tab */}
-        {activeTab === 'email_log' && (
-          <div>
-            <div className="mb-6">
-              <h2 className="text-xl font-bold text-slate-900">E-postloggar</h2>
-              <p className="text-slate-500 text-sm mt-1">Alla utgående notifieringsmejl, lyckade och misslyckade</p>
-            </div>
-
-            {emailLogLoading ? (
-              <div className="animate-pulse space-y-3">
-                {[1, 2, 3].map(i => <div key={i} className="h-16 bg-slate-100 rounded-xl" />)}
-              </div>
-            ) : emailLogs.length === 0 ? (
-              <div className="text-center py-16 text-slate-400">Inga e-postmeddelanden skickade ännu.</div>
-            ) : (
-              <>
-                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 border-b border-slate-200">
-                      <tr>
-                        <th className="text-left px-4 py-3 font-medium text-slate-600">Tidpunkt</th>
-                        <th className="text-left px-4 py-3 font-medium text-slate-600">Typ</th>
-                        <th className="text-left px-4 py-3 font-medium text-slate-600">Mottagare</th>
-                        <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
-                        <th className="text-left px-4 py-3 font-medium text-slate-600">Fel</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {emailLogs.map((log) => (
-                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
-                            {new Date(log.created_at).toLocaleString('sv-SE')}
-                          </td>
-                          <td className="px-4 py-3 text-slate-700">{log.message_type}</td>
-                          <td className="px-4 py-3 text-slate-700">{log.recipient_email}</td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                              log.status === 'sent' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                            }`}>
-                              {log.status === 'sent' ? 'Skickat' : 'Misslyckades'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-red-600 text-xs max-w-xs truncate">{log.error_message}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {emailLogTotalPages > 1 && (
-                  <div className="mt-6">
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
-                            href="#"
-                            onClick={(e) => { e.preventDefault(); if (emailLogPage > 1) setEmailLogPage(emailLogPage - 1); }}
-                            className={emailLogPage === 1 ? 'pointer-events-none opacity-50' : ''}
-                          />
-                        </PaginationItem>
-                        {getPaginationRange(emailLogPage, emailLogTotalPages).map((p, i) =>
-                          p === 'ellipsis' ? (
-                            <PaginationItem key={`ellipsis-${i}`}>
-                              <PaginationEllipsis />
-                            </PaginationItem>
-                          ) : (
-                            <PaginationItem key={p}>
-                              <PaginationLink
-                                href="#"
-                                isActive={p === emailLogPage}
-                                onClick={(e) => { e.preventDefault(); setEmailLogPage(p); }}
-                              >
-                                {p}
-                              </PaginationLink>
-                            </PaginationItem>
-                          )
-                        )}
-                        <PaginationItem>
-                          <PaginationNext
-                            href="#"
-                            onClick={(e) => { e.preventDefault(); if (emailLogPage < emailLogTotalPages) setEmailLogPage(emailLogPage + 1); }}
-                            className={emailLogPage === emailLogTotalPages ? 'pointer-events-none opacity-50' : ''}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  </div>
-                )}
               </>
             )}
           </div>

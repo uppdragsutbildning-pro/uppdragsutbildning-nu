@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ArrowLeft, CheckCircle, Circle, Loader2, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Circle, Loader2, X, BarChart3, Brain, Target, Sparkles, Clock, Users, FileText, ArrowRight } from 'lucide-react';
 import { searchSni, type SniEntry } from '../../data/sniData';
 import { ScaleButtons } from '../kompetensindex/ScaleButtons';
 import { MultiSelectChips } from '../kompetensindex/MultiSelectChips';
 import { QuestionCard } from '../kompetensindex/QuestionCard';
 import { ResultsView } from '../kompetensindex/ResultsView';
 import { supabase } from '../../../lib/supabase';
-import { fetchESCOTerm } from '../../../lib/escoCache';
 
 const STEPS = [
   { id: 'info', label: 'Info' },
@@ -88,11 +87,14 @@ const fetchESCOSkills = async (terms: string[]): Promise<ESCOSkill[]> => {
   const seen = new Set<string>();
   for (const term of terms.slice(0, 4)) {
     try {
-      const items = await fetchESCOTerm(term, 3);
-      for (const item of items) {
+      const res = await fetch(
+        `https://ec.europa.eu/esco/api/search?text=${encodeURIComponent(term)}&type=skill&language=sv&limit=3`
+      );
+      const data = await res.json();
+      for (const item of data?._embedded?.results || []) {
         if (!seen.has(item.uri)) {
           seen.add(item.uri);
-          results.push(item);
+          results.push({ title: item.title || item.preferredLabel, uri: item.uri });
         }
       }
     } catch (_) { /* fail silently */ }
@@ -118,6 +120,7 @@ export function KompetensindexPage() {
   const [result, setResult] = useState<CPIResult | null>(null);
   const [openHint, setOpenHint] = useState<'af4' | 'pf5' | 'tr4' | null>(null);
   const [showExitDialog, setShowExitDialog] = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
   const [sniQuery, setSniQuery] = useState('');
   const [sniSuggestions, setSniSuggestions] = useState<SniEntry[]>([]);
   const [sniOpen, setSniOpen] = useState(false);
@@ -324,6 +327,113 @@ export function KompetensindexPage() {
         onEditStep={editStep}
         onReanalyze={handleAnalyze}
       />
+    );
+  }
+
+  if (showIntro) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        {/* Hero */}
+        <div className="bg-gradient-to-br from-blue-700 via-blue-600 to-blue-800 text-white">
+          <div className="max-w-4xl mx-auto px-6 py-16 md:py-20">
+            <div className="flex flex-col md:flex-row items-center gap-10">
+              <div className="flex-1">
+                <span className="inline-block bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full mb-5 tracking-wide uppercase">
+                  Strategisk analys
+                </span>
+                <h1 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">
+                  Strategiskt Kompetensindex<span className="text-blue-300">®</span>
+                </h1>
+                <p className="text-blue-100 text-lg leading-relaxed">
+                  En analys som hjälper er ledning att identifiera vilka kompetenser organisationen behöver utveckla för att nå sina mål — och var gapet mellan förändringstryck och förmåga att ställa om är som störst.
+                </p>
+              </div>
+              {/* Icon composition */}
+              <div className="hidden md:grid grid-cols-2 gap-4 flex-shrink-0">
+                {[
+                  { icon: <BarChart3 className="w-7 h-7" />, label: 'Index' },
+                  { icon: <Brain className="w-7 h-7" />, label: 'AI-analys' },
+                  { icon: <Target className="w-7 h-7" />, label: 'Prioritering' },
+                  { icon: <Sparkles className="w-7 h-7" />, label: 'Matchning' },
+                ].map((item, i) => (
+                  <div key={i} className="w-24 h-24 bg-white/15 rounded-2xl flex flex-col items-center justify-center gap-2 text-white">
+                    {item.icon}
+                    <span className="text-xs font-medium">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Info cards */}
+        <div className="max-w-4xl mx-auto px-6 py-12">
+          <div className="grid sm:grid-cols-2 gap-5 mb-8">
+            {[
+              {
+                icon: <Users className="w-5 h-5 text-blue-600" />,
+                title: 'Vem svarar?',
+                text: 'Analysen besvaras av en person med god överblick över organisationens arbetssätt och utvecklingsbehov — vanligtvis HR-chef, VD eller annan verksamhetsansvarig.',
+              },
+              {
+                icon: <FileText className="w-5 h-5 text-blue-600" />,
+                title: 'Hur går det till?',
+                text: 'Ni besvarar 24 frågor uppdelade i sex områden — från hur snabbt era arbetssätt förändras till hur väl ni har struktur för lärande i vardagen. Skalor, flerval och tre öppna frågor.',
+              },
+              {
+                icon: <Clock className="w-5 h-5 text-blue-600" />,
+                title: 'Hur lång tid tar det?',
+                text: 'Räkna med cirka 10–15 minuter.',
+              },
+              {
+                icon: <BarChart3 className="w-5 h-5 text-blue-600" />,
+                title: 'Vad händer med era svar?',
+                text: 'Era svar analyseras med AI-stöd och sammanställs till en ledningsrapport med index, styrkor, risker och konkreta prioriteringar.',
+              },
+            ].map((item, i) => (
+              <div key={i} className="bg-white rounded-xl border border-slate-200 p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                    {item.icon}
+                  </div>
+                  <h3 className="font-semibold text-slate-900">{item.title}</h3>
+                </div>
+                <p className="text-sm text-slate-600 leading-relaxed">{item.text}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Datahantering-not */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-8 flex items-start gap-3">
+            <span className="text-amber-500 text-lg flex-shrink-0">⚠️</span>
+            <p className="text-sm text-amber-800">
+              <strong>Datahantering:</strong> Information om hur era svar lagras och behandlas är under utarbetande och kommer att publiceras inom kort.
+            </p>
+          </div>
+
+          {/* Varför göra analysen — banner */}
+          <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-7 mb-10 flex flex-col md:flex-row items-start md:items-center gap-4">
+            <Target className="w-8 h-8 text-blue-400 flex-shrink-0" />
+            <div>
+              <h3 className="font-bold text-white mb-1">Varför göra analysen?</h3>
+              <p className="text-slate-300 text-sm leading-relaxed">
+                Resultatet ger er ett konkret underlag för att prioritera rätt insatser — och en direkt koppling till relevanta uppdragsutbildningar hos universitet, högskolor och yrkeshögskolor, matchade utifrån era faktiska behov.
+              </p>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="flex justify-center">
+            <button
+              onClick={() => setShowIntro(false)}
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-colors shadow-lg shadow-blue-200"
+            >
+              Starta analysen
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 

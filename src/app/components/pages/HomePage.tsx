@@ -1,53 +1,14 @@
 import { Link, useNavigate } from 'react-router';
-import { Search, Sparkles, TrendingUp, Users, Building, GraduationCap, ArrowRight, BookOpen } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Search, Sparkles, TrendingUp, Users, Building, GraduationCap, ArrowRight, BookOpen, Check, Target } from 'lucide-react';
+import { useState } from 'react';
+import { categories, getFeaturedTrainings, getProviderById, getCategoryById } from '../../data/mockData';
 import { universityPartners } from '../../data/providerLogos';
-import { supabase } from '../../../lib/supabase';
-import { adaptTraining, adaptCategory, type AdaptedTraining, type AdaptedCategory } from '../../../lib/marketplaceAdapters';
 
-const FEATURED_COUNT = 6;
 
 export function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
-  const [categories, setCategories] = useState<AdaptedCategory[]>([]);
-  const [featuredTrainings, setFeaturedTrainings] = useState<AdaptedTraining[]>([]);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from('categories').select('*').order('name');
-      if (data) setCategories(data.map(adaptCategory));
-    })();
-
-    (async () => {
-      const select = '*, providers(*), categories(*)';
-      const { data: featured } = await supabase
-        .from('trainings')
-        .select(select)
-        .eq('featured', true)
-        .eq('is_active', true)
-        .order('views', { ascending: false })
-        .limit(FEATURED_COUNT);
-
-      let rows = featured ?? [];
-      if (rows.length < FEATURED_COUNT) {
-        const excludeIds = rows.map((r: any) => r.id);
-        let topUpQuery = supabase
-          .from('trainings')
-          .select(select)
-          .eq('is_active', true)
-          .order('views', { ascending: false })
-          .limit(FEATURED_COUNT - rows.length);
-        if (excludeIds.length > 0) {
-          topUpQuery = topUpQuery.not('id', 'in', `(${excludeIds.join(',')})`);
-        }
-        const { data: topUp } = await topUpQuery;
-        rows = [...rows, ...(topUp ?? [])];
-      }
-
-      setFeaturedTrainings(rows.map((r: any) => adaptTraining(r)));
-    })();
-  }, []);
+  const featuredTrainings = getFeaturedTrainings();
 
   const handleSearch = () => {
     window.location.href = `/catalog?q=${encodeURIComponent(searchQuery)}`;
@@ -81,102 +42,201 @@ export function HomePage() {
             </p>
           </div>
 
-          {/* Dual-card hero layout — full width outside max-w-3xl */}
+          {/* Dual-card hero layout — white cards with accent borders */}
           <div className="flex flex-col md:flex-row gap-4 items-stretch w-full">
 
-                {/* Card 2: Kompetensanalys — order-1 on mobile (shown first) */}
+            {/* Card 1: Sök utbildning — order-1, broader */}
+            <div
+              className="order-1 flex flex-col"
+              style={{
+                flex: '1.7 1 0',
+                background: '#FAFBFC',
+                border: '2px solid #1D4ED8',
+                borderRadius: '12px',
+                padding: '24px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+              }}
+            >
+              {/* Badge */}
+              <div
+                className="flex items-center gap-1.5 mb-3"
+                style={{
+                  display: 'inline-flex',
+                  width: 'fit-content',
+                  background: '#EFF6FF',
+                  borderRadius: '8px',
+                  padding: '4px 10px',
+                }}
+              >
+                <Search style={{ width: '14px', height: '14px', color: '#1E3A8A' }} />
+                <span style={{ fontSize: '12px', fontWeight: 500, letterSpacing: '0.04em', color: '#1E3A8A' }}>
+                  SÖK UTBILDNING
+                </span>
+              </div>
+
+              {/* Heading */}
+              <p style={{ fontSize: '1.5rem', fontWeight: 500, color: '#0F172A', marginBottom: '6px', marginTop: '8px' }}>
+                Hitta rätt kurs direkt
+              </p>
+
+              {/* Body */}
+              <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '10px' }}>
+                Sök bland 200+ program från ledande lärosäten.
+              </p>
+
+              {/* Trust line — above search field */}
+              <p style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '10px' }}>
+                Redan 50+ organisationer har hittat rätt utbildning.
+              </p>
+
+              {/* Search field */}
+              <div
+                className="flex items-center gap-2 mb-4"
+                style={{ border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 14px', background: '#FAFAFA' }}
+              >
+                <Search style={{ width: '16px', height: '16px', color: '#94A3B8', flexShrink: 0 }} />
+                <input
+                  type="text"
+                  placeholder="T.ex. ledarskapsutbildning för chefer"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  className="flex-1 outline-none bg-transparent placeholder:text-slate-400"
+                  style={{ fontSize: '0.9rem', color: '#0F172A' }}
+                />
+              </div>
+
+              {/* Two-column row: tags + checklist */}
+              <div className="flex gap-4 mb-4" style={{ flexWrap: 'wrap' }}>
+                {/* Tags */}
+                <div className="flex flex-wrap gap-1.5" style={{ flex: '1 1 0' }}>
+                  {['Ledarskap', 'AI och data', 'HR', 'Hållbarhet'].map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => { setSearchQuery(tag); navigate(`/catalog?q=${encodeURIComponent(tag)}`); }}
+                      style={{
+                        fontSize: '12px',
+                        color: '#475569',
+                        background: '#F1F5F9',
+                        border: 'none',
+                        borderRadius: '999px',
+                        padding: '3px 10px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+                {/* Checklist */}
+                <div className="flex flex-col gap-1" style={{ flex: '1 1 0' }}>
+                  {['Jämför leverantörer direkt', 'Inga dolda avgifter'].map((item) => (
+                    <div key={item} className="flex items-center gap-1.5">
+                      <Check style={{ width: '13px', height: '13px', color: '#1D4ED8', flexShrink: 0 }} />
+                      <span style={{ fontSize: '13px', color: '#475569' }}>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* CTA */}
+              <button
+                type="button"
+                onClick={handleSearch}
+                className="w-full flex items-center justify-center gap-2 transition-opacity mt-auto"
+                style={{ background: '#1D4ED8', color: 'white', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 500 }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+              >
+                Sök utbildningar
+                <ArrowRight style={{ width: '16px', height: '16px' }} />
+              </button>
+            </div>
+
+            {/* Card 2: Strategiskt Kompetensindex — order-2, narrower */}
+            <div
+              className="order-2 flex flex-col"
+              style={{
+                flex: '1 1 0',
+                background: '#FAFBFC',
+                border: '0.5px solid #E2E8F0',
+                borderRadius: '12px',
+                padding: '24px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Decorative background icon */}
+              <Target
+                style={{
+                  position: 'absolute',
+                  top: '14px',
+                  right: '14px',
+                  width: '56px',
+                  height: '56px',
+                  color: '#16A34A',
+                  opacity: 0.10,
+                  pointerEvents: 'none',
+                }}
+              />
+
+              {/* Content sits above decorative icon */}
+              <div className="flex flex-col" style={{ position: 'relative', flex: 1 }}>
+                {/* Badge */}
                 <div
-                  className="order-1 md:order-2 flex flex-col"
+                  className="flex items-center gap-1.5"
                   style={{
-                    flex: '2 1 0',
-                    background: 'rgba(22,163,74,0.85)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: '16px',
-                    padding: '24px',
+                    display: 'inline-flex',
+                    width: 'fit-content',
+                    background: '#F0FDF4',
+                    borderRadius: '8px',
+                    padding: '4px 10px',
+                    marginBottom: '8px',
+                    whiteSpace: 'nowrap',
                   }}
                 >
-                  <div className="flex items-center gap-1.5 mb-2" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                    <Sparkles className="w-3 h-3" />
-                    <span style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em' }}>STRATEGISK KOMPETENSINDEX ®</span>
-                  </div>
-                  <p style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '6px' }}>
-                    Vilka kompetenser behöver ni för att nå era mål?
-                  </p>
-                  <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.9)', lineHeight: 1.5, marginBottom: '16px' }}>
-                    Genomför Strategiskt kompetensindex ® och få en AI baserad analys av ert kompetensbehov, prioriterade utvecklingsområden och rekommenderade uppdragsutbildningar.
-                  </p>
-                  <div className="flex flex-col mb-5" style={{ gap: '6px' }}>
-                    {[
-                      'AI - baserad analys av er verksamhet',
-                      'Strategiskt kompetensindex ® med konkreta insikter',
-                      'Matchning mot kvalitetssäkrade uppdragsutbildningar',
-                    ].map((point) => (
-                      <div key={point} className="flex items-center gap-2" style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.85)' }}>
-                        <span>✓</span>
-                        <span>{point}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/kompetensanalys')}
-                    className="w-full rounded-lg transition-colors mt-auto"
-                    style={{ background: 'white', color: '#16A34A', padding: '0.75rem', fontWeight: 700 }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#F0FDF4')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}
-                  >
-                    Genomför Strategisk kompetensindex ® →
-                  </button>
+                  <Target style={{ width: '14px', height: '14px', color: '#166534', flexShrink: 0 }} />
+                  <span style={{ fontSize: '12px', fontWeight: 500, letterSpacing: '0.02em', color: '#166534' }}>
+                    STRATEGISK KOMPETENSINDEX<sup style={{ fontSize: '0.6em', verticalAlign: 'super' }}>®</sup>
+                  </span>
                 </div>
 
-                {/* Card 1: Sök utbildning — order-2 on mobile (shown second) */}
-                <div
-                  className="order-2 md:order-1 flex flex-col"
-                  style={{
-                    flex: '4 1 0',
-                    background: 'rgba(255,255,255,0.12)',
-                    border: '1px solid rgba(255,255,255,0.25)',
-                    borderRadius: '16px',
-                    padding: '24px',
-                    backdropFilter: 'blur(8px)',
-                  }}
-                >
-                  <div className="flex items-center gap-1.5 mb-2" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                    <Search className="w-3 h-3" />
-                    <span style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em' }}>SÖK UTBILDNING</span>
-                  </div>
-                  <p style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', marginBottom: '6px' }}>
-                    Hitta rätt kurs direkt
-                  </p>
-                  <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', marginBottom: '16px' }}>
-                    Sök bland 200+ program från ledande lärosäten
-                  </p>
-                  <div
-                    className="flex items-center gap-2 bg-white mb-3"
-                    style={{ borderRadius: '10px', padding: '0.75rem 1rem' }}
-                  >
-                    <Sparkles className="w-4 h-4 shrink-0" style={{ color: '#94A3B8' }} />
-                    <input
-                      type="text"
-                      placeholder="T.ex. 'ledarskapsutbildning för chefer'"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                      className="flex-1 outline-none text-slate-900 placeholder:text-slate-400 bg-transparent"
-                      style={{ fontSize: '0.9rem' }}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleSearch}
-                    className="w-full text-white transition-colors mt-auto"
-                    style={{ background: '#2563EB', borderRadius: '8px', padding: '0.7rem', fontWeight: 600 }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#1D4ED8')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = '#2563EB')}
-                  >
-                    Sök utbildningar
-                  </button>
+                {/* Heading — allowed to wrap to 2 lines */}
+                <p style={{ fontSize: '16px', fontWeight: 500, color: '#0F172A', lineHeight: 1.3, marginBottom: '6px', marginTop: '8px' }}>
+                  Vilka kompetenser behöver ni?
+                </p>
+
+                {/* Body */}
+                <p style={{ fontSize: '13px', color: '#64748B', marginBottom: '16px' }}>
+                  AI-baserad analys av era utvecklingsbehov.
+                </p>
+
+                {/* Checklist */}
+                <div className="flex flex-col gap-2 mb-4">
+                  {['Konkreta insikter', 'Matchning mot kurser', 'Kostnadsfri analys'].map((item) => (
+                    <div key={item} className="flex items-center gap-1.5">
+                      <Check style={{ width: '13px', height: '13px', color: '#16A34A', flexShrink: 0 }} />
+                      <span style={{ fontSize: '13px', color: '#475569' }}>{item}</span>
+                    </div>
+                  ))}
                 </div>
+
+                {/* CTA */}
+                <button
+                  type="button"
+                  onClick={() => navigate('/kompetensanalys')}
+                  className="w-full flex items-center justify-center gap-2 transition-opacity mt-auto"
+                  style={{ background: '#16A34A', color: 'white', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 500 }}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+                  onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                >
+                  Genomför analys
+                  <ArrowRight style={{ width: '16px', height: '16px' }} />
+                </button>
+              </div>
+            </div>
 
           </div>
         </div>
@@ -285,8 +345,8 @@ export function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {featuredTrainings.slice(0, 6).map((training, index) => {
-              const provider = training.provider;
-              const category = training.category;
+              const provider = getProviderById(training.providerId);
+              const category = getCategoryById(training.categoryId);
 
               return (
                 <Link

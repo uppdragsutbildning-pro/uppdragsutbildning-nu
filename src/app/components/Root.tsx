@@ -35,11 +35,21 @@ export function Root() {
             <nav className="hidden sm:flex items-center gap-6">
               {!isDashboard && (
                 <>
-                  <Link 
-                    to="/catalog" 
+                  <Link
+                    to="/om-tjansten"
                     className={`text-sm transition-colors ${
-                      location.pathname === '/catalog' 
-                        ? 'text-blue-600 font-medium' 
+                      location.pathname === '/om-tjansten'
+                        ? 'text-blue-600 font-medium'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Om tjänsten
+                  </Link>
+                  <Link
+                    to="/catalog"
+                    className={`text-sm transition-colors ${
+                      location.pathname === '/catalog'
+                        ? 'text-blue-600 font-medium'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -108,12 +118,19 @@ export function Root() {
               <nav className="flex flex-col gap-2">
                 {!isDashboard && (
                   <>
-                    <Link 
-                      to="/catalog" 
+                    <Link
+                      to="/om-tjansten"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition-colors"
+                    >
+                      Om tjänsten
+                    </Link>
+                    <Link
+                      to="/catalog"
                       onClick={() => setMobileMenuOpen(false)}
                       className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                        location.pathname === '/catalog' 
-                          ? 'bg-blue-50 text-blue-600 font-medium' 
+                        location.pathname === '/catalog'
+                          ? 'bg-blue-50 text-blue-600 font-medium'
                           : 'text-slate-600 hover:bg-slate-100'
                       }`}
                     >
