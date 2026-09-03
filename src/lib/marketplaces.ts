@@ -47,3 +47,34 @@ export async function getProviderStorefrontTrainingCount(providerId: string): Pr
   if (error) throw error;
   return count ?? 0;
 }
+
+// Vilka trainings.id en marknadsplats ska visa. `null` = ingen scopning
+// (öppna marknadsplatsen, visar allt). Tom array = marknadsplatsen finns
+// men har inget att visa än (t.ex. ingen kuration gjord, beslut #10 i
+// docs/specs/partnermarknadsplatser.md).
+export async function getMarketplaceTrainingIds(marketplace: Marketplace | null): Promise<string[] | null> {
+  if (!marketplace) return null;
+
+  if (marketplace.type === 'provider_storefront') {
+    if (!marketplace.provider_id) return [];
+    const { data, error } = await supabase
+      .from('trainings')
+      .select('id')
+      .eq('provider_id', marketplace.provider_id)
+      .eq('is_active', true);
+    if (error) throw error;
+    return (data ?? []).map((t) => t.id);
+  }
+
+  if (marketplace.type === 'partner_curated') {
+    const { data, error } = await supabase
+      .from('marketplace_trainings')
+      .select('training_id')
+      .eq('marketplace_id', marketplace.id)
+      .is('removed_at', null);
+    if (error) throw error;
+    return (data ?? []).map((row) => row.training_id);
+  }
+
+  return null;
+}

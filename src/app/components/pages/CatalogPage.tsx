@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { Filter, X, GraduationCap, TrendingUp, ArrowRight, BookOpen } from 'lucide-react';
+import { Filter, X, GraduationCap, TrendingUp, ArrowRight, BookOpen, Sparkles } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { adaptTraining, adaptCategory, adaptProvider, type AdaptedTraining, type AdaptedCategory, type AdaptedProvider } from '../../../lib/marketplaceAdapters';
 import { providerLogos } from '../../data/providerLogos';
 import { usePaginatedQuery, getPaginationRange } from '../../../hooks/usePaginatedQuery';
+import { useMarketplace } from '../../../lib/marketplaceContext';
+import { getMarketplaceTrainingIds } from '../../../lib/marketplaces';
 import {
   Pagination,
   PaginationContent,
@@ -22,6 +24,9 @@ export function CatalogPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [categories, setCategories] = useState<AdaptedCategory[]>([]);
   const [providers, setProviders] = useState<AdaptedProvider[]>([]);
+  const { marketplace, loading: marketplaceLoading } = useMarketplace();
+  const [scopedTrainingIds, setScopedTrainingIds] = useState<string[] | null>(null);
+  const [scopeLoading, setScopeLoading] = useState(true);
 
   // Filter states
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
@@ -43,6 +48,26 @@ export function CatalogPage() {
     })();
   }, []);
 
+  // Scopar katalogen till en marknadsplats kuraterade/egna kurser när sidan
+  // nås via en marknadsplats-kontext (subdomän eller ?via=), se Paket D i
+  // docs/specs/partnermarknadsplatser.md avsnitt 13.
+  useEffect(() => {
+    if (marketplaceLoading) return;
+    let active = true;
+    (async () => {
+      setScopeLoading(true);
+      try {
+        const ids = await getMarketplaceTrainingIds(marketplace);
+        if (active) setScopedTrainingIds(ids);
+      } finally {
+        if (active) setScopeLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [marketplace, marketplaceLoading]);
+
   const {
     rows: trainingRows,
     page,
@@ -51,13 +76,23 @@ export function CatalogPage() {
     count,
   } = usePaginatedQuery<AdaptedTraining>({
     pageSize: PAGE_SIZE,
-    deps: [selectedCategories, selectedFormats, selectedProviders, searchQuery, sortBy],
+    deps: [selectedCategories, selectedFormats, selectedProviders, searchQuery, sortBy, scopedTrainingIds, scopeLoading],
     queryFn: async ({ from, to }) => {
+      // Marknadsplatsen är känd men scopningen (kuraterade/egna kurs-id:n)
+      // har inte laddat klart än, eller marknadsplatsen har inget att visa
+      // ännu (beslut #10) – visa tomt istället för att köra en okuraterad fråga.
+      if (marketplace && (scopeLoading || (scopedTrainingIds && scopedTrainingIds.length === 0))) {
+        return { data: [], count: 0, error: null };
+      }
+
       let query = supabase
         .from('trainings')
         .select('*, providers(*), categories(*)', { count: 'exact' })
         .eq('is_active', true);
 
+      if (marketplace && scopedTrainingIds && scopedTrainingIds.length > 0) {
+        query = query.in('id', scopedTrainingIds);
+      }
       if (selectedCategories.length > 0) query = query.in('category_id', selectedCategories);
       if (selectedFormats.length > 0) query = query.in('format', selectedFormats);
       if (selectedProviders.length > 0) query = query.in('provider_id', selectedProviders);
@@ -107,10 +142,12 @@ export function CatalogPage() {
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            Utbildningskatalog
+            {marketplace ? `Kurser hos ${marketplace.name}` : 'Utbildningskatalog'}
           </h1>
           <p className="text-slate-600">
-            Bläddra bland {count} utbildningsprogram från ledande leverantörer
+            {marketplace
+              ? `${count} utvalda utbildningsprogram`
+              : `Bläddra bland ${count} utbildningsprogram från ledande leverantörer`}
           </p>
           {searchQuery && (
             <p className="text-sm text-slate-500 mt-2">
@@ -396,7 +433,19 @@ export function CatalogPage() {
                 );
               })}
 
-              {filteredTrainings.length === 0 && (
+              {filteredTrainings.length === 0 && marketplace && activeFiltersCount === 0 && !searchQuery ? (
+                <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                  <div className="max-w-md mx-auto">
+                    <Sparkles className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                      Inga kurser ännu
+                    </h3>
+                    <p className="text-slate-600">
+                      {marketplace.name} har inte lagt till några utbildningar här ännu. Kom tillbaka snart.
+                    </p>
+                  </div>
+                </div>
+              ) : filteredTrainings.length === 0 && (
                 <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
                   <div className="max-w-md mx-auto">
                     <Filter className="w-12 h-12 text-slate-300 mx-auto mb-4" />
