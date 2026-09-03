@@ -5,8 +5,9 @@ import { toast } from 'sonner';
 import { exportLeadsToCSV, exportTrainingsToCSV } from '../../utils/exportUtils';
 import { supabase, Profile, Provider } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
+import { MarketplacesTab } from '../admin/MarketplacesTab';
 
-type Tab = 'overview' | 'trainings' | 'leads' | 'providers' | 'users' | 'kompetensindex';
+type Tab = 'overview' | 'trainings' | 'leads' | 'providers' | 'marketplaces' | 'users' | 'kompetensindex';
 
 interface CpiRecord {
   id: string;
@@ -350,6 +351,16 @@ export function AdminDashboard() {
               }`}
             >
               Leverantörer
+            </button>
+            <button
+              onClick={() => setActiveTab('marketplaces')}
+              className={`pb-3 border-b-2 transition-colors ${
+                activeTab === 'marketplaces'
+                  ? 'border-blue-600 text-blue-600 font-medium'
+                  : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Marknadsplatser
             </button>
             <button
               onClick={() => setActiveTab('users')}
@@ -919,6 +930,9 @@ export function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* Marketplaces Tab */}
+        {activeTab === 'marketplaces' && <MarketplacesTab />}
 
         {/* Users Tab */}
         {activeTab === 'users' && (

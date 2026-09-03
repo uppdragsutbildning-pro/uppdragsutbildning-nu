@@ -17,6 +17,9 @@ import { ProviderCourseFormPage } from "./components/provider/ProviderCourseForm
 import { ProviderApplicationsPage } from "./components/provider/ProviderApplicationsPage";
 import { ProviderRequestsPage } from "./components/provider/ProviderRequestsPage";
 import { ProviderHistoryPage } from "./components/provider/ProviderHistoryPage";
+import { MarketplaceFormPage } from "./components/admin/MarketplaceFormPage";
+import { MarketplaceBrandingPage } from "./components/admin/MarketplaceBrandingPage";
+import { MarketplaceCurationPage } from "./components/admin/MarketplaceCurationPage";
 
 export const router = createBrowserRouter([
   {
@@ -36,6 +39,38 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requireRole="admin">
             <AdminDashboard />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: "admin/marketplaces/new",
+        element: (
+          <ProtectedRoute requireRole="admin">
+            <MarketplaceFormPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: "admin/marketplaces/:id/edit",
+        element: (
+          <ProtectedRoute requireRole="admin">
+            <MarketplaceFormPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: "admin/marketplaces/:id/branding",
+        element: (
+          <ProtectedRoute requireRole="admin">
+            <MarketplaceBrandingPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: "admin/marketplaces/:id/curation",
+        element: (
+          <ProtectedRoute requireRole="admin">
+            <MarketplaceCurationPage />
           </ProtectedRoute>
         )
       },
