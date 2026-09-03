@@ -1,7 +1,8 @@
 import { Outlet, Link, useLocation } from 'react-router';
 import { LayoutDashboard, Menu, X } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type CSSProperties } from 'react';
 import { Logo } from './Logo';
+import { useMarketplace } from '../../lib/marketplaceContext';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -16,20 +17,46 @@ function ScrollToTop() {
 export function Root() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
+  const { marketplace, branding } = useMarketplace();
+
   const isProviderRoute = location.pathname.startsWith('/provider');
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isDashboard = isProviderRoute || isAdminRoute;
+  const showBranding = !!marketplace && !isDashboard;
+
+  const brandingStyle = branding?.primary_color
+    ? ({
+        '--marketplace-primary': branding.primary_color,
+        '--marketplace-secondary': branding.secondary_color ?? branding.primary_color,
+      } as CSSProperties)
+    : undefined;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50" style={brandingStyle}>
       <ScrollToTop />
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+        {showBranding && branding?.tagline && (
+          <div
+            className="text-center text-sm text-white py-1.5 px-4"
+            style={{ backgroundColor: branding.primary_color ?? '#2563eb' }}
+          >
+            {branding.tagline}
+          </div>
+        )}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <Logo />
+            {showBranding && branding?.logo_url ? (
+              <div className="flex items-center gap-3 min-w-0">
+                <img src={branding.logo_url} alt={marketplace.name} className="h-8 w-auto object-contain flex-shrink-0" />
+                <div className="hidden sm:flex items-center gap-1.5 pl-3 border-l border-slate-200 opacity-60 flex-shrink-0">
+                  <Logo className="scale-90 origin-left" />
+                </div>
+              </div>
+            ) : (
+              <Logo />
+            )}
 
             {/* Desktop Navigation */}
             <nav className="hidden sm:flex items-center gap-6">
@@ -77,6 +104,7 @@ export function Root() {
                   </Link>
                 </>
               )}
+              {!showBranding && (
               <div className="flex items-center gap-3 pl-3 border-l border-slate-200">
                 <Link
                   to="/provider/dashboard"
@@ -101,6 +129,7 @@ export function Root() {
                   Admin
                 </Link>
               </div>
+              )}
             </nav>
 
             {/* Mobile menu button */}
@@ -160,9 +189,11 @@ export function Root() {
                     </Link>
                   </>
                 )}
+                {!showBranding && (
+                <>
                 <div className="border-t border-slate-200 my-2"></div>
-                <Link 
-                  to="/provider" 
+                <Link
+                  to="/provider"
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                     isProviderRoute
@@ -173,8 +204,8 @@ export function Root() {
                   <LayoutDashboard className="w-4 h-4" />
                   Provider Dashboard
                 </Link>
-                <Link 
-                  to="/admin" 
+                <Link
+                  to="/admin"
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                     isAdminRoute
@@ -185,6 +216,8 @@ export function Root() {
                   <LayoutDashboard className="w-4 h-4" />
                   Admin Dashboard
                 </Link>
+                </>
+                )}
               </nav>
             </div>
           )}
