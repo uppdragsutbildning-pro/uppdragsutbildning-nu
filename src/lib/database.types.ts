@@ -20,6 +20,7 @@ export type Database = {
           company: string
           department: string | null
           id: string
+          marketplace_id: string | null
           notes: string | null
           scheduled_start_id: string
           status: string
@@ -34,6 +35,7 @@ export type Database = {
           company?: string
           department?: string | null
           id?: string
+          marketplace_id?: string | null
           notes?: string | null
           scheduled_start_id: string
           status?: string
@@ -48,6 +50,7 @@ export type Database = {
           company?: string
           department?: string | null
           id?: string
+          marketplace_id?: string | null
           notes?: string | null
           scheduled_start_id?: string
           status?: string
@@ -59,6 +62,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "applications_marketplace_id_fkey"
+            columns: ["marketplace_id"]
+            isOneToOne: false
+            referencedRelation: "marketplaces"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "applications_scheduled_start_id_fkey"
             columns: ["scheduled_start_id"]
@@ -188,6 +198,7 @@ export type Database = {
           description: string
           escalated_at: string | null
           id: string
+          marketplace_id: string | null
           participants_count: string
           response: string | null
           response_deadline: string | null
@@ -208,6 +219,7 @@ export type Database = {
           description?: string
           escalated_at?: string | null
           id?: string
+          marketplace_id?: string | null
           participants_count?: string
           response?: string | null
           response_deadline?: string | null
@@ -228,6 +240,7 @@ export type Database = {
           description?: string
           escalated_at?: string | null
           id?: string
+          marketplace_id?: string | null
           participants_count?: string
           response?: string | null
           response_deadline?: string | null
@@ -238,6 +251,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "custom_requests_marketplace_id_fkey"
+            columns: ["marketplace_id"]
+            isOneToOne: false
+            referencedRelation: "marketplaces"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "custom_requests_training_id_fkey"
             columns: ["training_id"]

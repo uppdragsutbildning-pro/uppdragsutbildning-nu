@@ -4,6 +4,7 @@ import { Sparkles, Send, CheckCircle, ArrowRight, Loader2, User, Building, Mail,
 import { getTrainingById } from '../../data/mockData';
 import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabase';
+import { useMarketplace } from '../../../lib/marketplaceContext';
 
 type Step = 'describe' | 'ai-analysis' | 'form' | 'confirmation';
 
@@ -11,6 +12,7 @@ export function RequestFlowPage() {
   const { trainingId } = useParams();
   const navigate = useNavigate();
   const training = trainingId ? getTrainingById(trainingId) : null;
+  const { marketplace } = useMarketplace();
   
   const [step, setStep] = useState<Step>('describe');
   const [description, setDescription] = useState('');
@@ -89,6 +91,7 @@ export function RequestFlowPage() {
       status: 'new',
       recommended_categories: recommendedCategories,
       has_provider_match: hasMatch,
+      marketplace_id: marketplace?.id ?? null,
       submitted_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
