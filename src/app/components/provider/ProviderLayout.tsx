@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import {
   LayoutDashboard, BookOpen, Users, MessageSquare,
-  History, LogOut, Menu, X
+  History, LogOut, Menu, X, Globe
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -21,6 +21,7 @@ import { ProviderProvider } from '../../../contexts/ProviderContext';
 const navItems = [
   { icon: LayoutDashboard, label: 'Översikt', path: '/provider/dashboard' },
   { icon: BookOpen, label: 'Mina kurser', path: '/provider/courses' },
+  { icon: Globe, label: 'Var visas mina kurser', path: '/provider/marketplaces' },
   { icon: Users, label: 'Kursanmälningar', path: '/provider/applications' },
   { icon: MessageSquare, label: 'Förfrågningar', path: '/provider/requests' },
   { icon: History, label: 'Historik', path: '/provider/history' },

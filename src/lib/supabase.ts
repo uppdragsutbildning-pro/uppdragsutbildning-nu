@@ -108,6 +108,7 @@ export interface CustomRequest {
   response?: string;
   recommended_categories?: string[];
   has_provider_match?: boolean;
+  marketplace_id?: string | null;
   submitted_at: string;
   updated_at: string;
 }

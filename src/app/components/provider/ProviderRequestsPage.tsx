@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Search, MessageSquare, Eye, Send, Clock, CheckCircle,
-  X, Briefcase, Users, Calendar, DollarSign, FileText
+  X, Briefcase, Users, Calendar, DollarSign, FileText, Globe
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProviderContext } from '../../../contexts/ProviderContext';
@@ -15,10 +15,28 @@ export function ProviderRequestsPage() {
   const [responseText, setResponseText] = useState('');
   const [requests, setRequests] = useState<CustomRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [marketplaceNames, setMarketplaceNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadRequests();
   }, [selectedProviderId]);
+
+  // "Via: X"-attribution (Paket F/G, docs/specs/partnermarknadsplatser.md avsnitt 10)
+  useEffect(() => {
+    const ids = [...new Set(requests.map((r) => r.marketplace_id).filter((id): id is string => !!id))];
+    const missing = ids.filter((id) => !(id in marketplaceNames));
+    if (missing.length === 0) return;
+    (async () => {
+      const { data } = await supabase.from('marketplaces').select('id, name').in('id', missing);
+      if (!data) return;
+      setMarketplaceNames((prev) => {
+        const next = { ...prev };
+        data.forEach((m) => (next[m.id] = m.name));
+        return next;
+      });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requests]);
 
   async function loadRequests() {
     setLoading(true);
@@ -241,6 +259,12 @@ export function ProviderRequestsPage() {
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getScoreColor(req.ai_score)}`}>
                       AI-poäng: {req.ai_score === 'high' ? 'Hög' : req.ai_score === 'medium' ? 'Medel' : 'Låg'}
                     </span>
+                    {req.marketplace_id && marketplaceNames[req.marketplace_id] && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-100">
+                        <Globe className="w-3 h-3" />
+                        Via: {marketplaceNames[req.marketplace_id]}
+                      </span>
+                    )}
                   </div>
                   <h4 className="text-base font-semibold text-slate-700 mb-2">{req.course_topic}</h4>
                   <p className="text-sm text-slate-600 mb-3 line-clamp-2">{req.description}</p>
@@ -333,8 +357,14 @@ export function ProviderRequestsPage() {
                   AI-matchning: {selectedRequest.aiScore === 'high' ? 'Hög' : selectedRequest.aiScore === 'medium' ? 'Medel' : 'Låg'}
                 </span>
                 <span className="text-sm text-slate-500">
-                  {new Date(selectedRequest.submittedAt).toLocaleString('sv-SE')}
+                  {new Date(selectedRequest.submitted_at).toLocaleString('sv-SE')}
                 </span>
+                {selectedRequest.marketplace_id && marketplaceNames[selectedRequest.marketplace_id] && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium bg-violet-50 text-violet-700 border border-violet-100">
+                    <Globe className="w-4 h-4" />
+                    Via: {marketplaceNames[selectedRequest.marketplace_id]}
+                  </span>
+                )}
               </div>
 
               {/* Course topic */}

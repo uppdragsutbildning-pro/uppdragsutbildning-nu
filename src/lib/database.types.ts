@@ -776,6 +776,7 @@ export type Database = {
       }
       get_user_provider_id: { Args: never; Returns: string }
       is_admin: { Args: never; Returns: boolean }
+      provider_curated_marketplace_ids: { Args: never; Returns: string[] }
     }
     Enums: {
       [_ in never]: never
