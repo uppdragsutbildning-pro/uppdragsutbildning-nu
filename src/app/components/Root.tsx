@@ -24,6 +24,15 @@ export function Root() {
   const isDashboard = isProviderRoute || isAdminRoute;
   const showBranding = !!marketplace && !isDashboard;
 
+  // Sätter webbläsarflikens titel site-brett utifrån marknadsplatskontext
+  // (annars stod "Uppdragsutbildning.nu" kvar i fliken på varje sida utom
+  // kursdetaljsidan, som redan satte en egen mer specifik titel).
+  // TrainingDetailPage sätter sin egen (kurstitel + marknadsplats/plattform)
+  // och återställer till detta bas-värde när den avmonteras.
+  useEffect(() => {
+    document.title = showBranding ? marketplace.name : 'Uppdragsutbildning.nu';
+  }, [showBranding, marketplace]);
+
   const brandingStyle = branding?.primary_color
     ? ({
         '--marketplace-primary': branding.primary_color,
@@ -46,14 +55,16 @@ export function Root() {
         )}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            {showBranding && branding?.logo_url ? (
-              <div className="flex items-center gap-3 min-w-0">
-                <img src={branding.logo_url} alt={marketplace.name} className="h-8 w-auto object-contain flex-shrink-0" />
-                <div className="hidden sm:flex items-center gap-1.5 pl-3 border-l border-slate-200 opacity-60 flex-shrink-0">
-                  <Logo className="scale-90 origin-left" />
-                </div>
-              </div>
+            {/* Logo — helt vitmärkt på en marknadsplats: bara partnerns egen
+                logga/namn, aldrig Uppdragsutbildning.nu-loggan */}
+            {showBranding ? (
+              <Link to="/" className="flex items-center min-w-0">
+                {branding?.logo_url ? (
+                  <img src={branding.logo_url} alt={marketplace.name} className="h-8 w-auto object-contain" />
+                ) : (
+                  <span className="font-bold text-slate-900 truncate">{marketplace.name}</span>
+                )}
+              </Link>
             ) : (
               <Logo />
             )}
@@ -236,20 +247,38 @@ export function Root() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
               <div className="md:col-span-2">
                 <div className="mb-4">
-                  <Logo variant="light" />
+                  {showBranding ? (
+                    branding?.logo_url ? (
+                      <div className="inline-block bg-white rounded-lg p-2">
+                        <img src={branding.logo_url} alt={marketplace.name} className="h-8 w-auto object-contain" />
+                      </div>
+                    ) : (
+                      <span className="font-bold text-white">{marketplace.name}</span>
+                    )
+                  ) : (
+                    <Logo variant="light" />
+                  )}
                 </div>
-                <p className="text-sm text-slate-400 max-w-md mt-4">
-                  Ledande marknadsplats som kopplar samman företag med universitet och utbildningsleverantörer
-                  för uppdragsutbildning.
-                </p>
+                {showBranding ? (
+                  branding?.tagline && (
+                    <p className="text-sm text-slate-400 max-w-md mt-4">{branding.tagline}</p>
+                  )
+                ) : (
+                  <p className="text-sm text-slate-400 max-w-md mt-4">
+                    Ledande marknadsplats som kopplar samman företag med universitet och utbildningsleverantörer
+                    för uppdragsutbildning.
+                  </p>
+                )}
               </div>
-              
+
               <div>
                 <h3 className="font-medium text-white mb-3">Plattform</h3>
                 <ul className="space-y-2 text-sm">
                   <li><Link to="/catalog" className="hover:text-white transition-colors">Bläddra Utbildningar</Link></li>
                   <li><Link to="/request" className="hover:text-white transition-colors">Efterfråga Utbildning</Link></li>
-                  <li><Link to="/provider" className="hover:text-white transition-colors">För Leverantörer</Link></li>
+                  {!showBranding && (
+                    <li><Link to="/provider" className="hover:text-white transition-colors">För Leverantörer</Link></li>
+                  )}
                 </ul>
               </div>
               
@@ -264,7 +293,7 @@ export function Root() {
             </div>
             
             <div className="border-t border-slate-800 mt-8 pt-8 text-sm text-slate-500 text-center">
-              © 2026 Uppdragsutbildning.nu. Alla rättigheter förbehållna.
+              © 2026 {showBranding ? marketplace.name : 'Uppdragsutbildning.nu'}. Alla rättigheter förbehållna.
             </div>
           </div>
         </footer>

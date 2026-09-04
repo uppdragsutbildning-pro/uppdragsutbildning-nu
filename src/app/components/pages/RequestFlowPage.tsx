@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useLocation } from 'react-router';
 import { Sparkles, Send, CheckCircle, ArrowRight, Loader2, User, Building, Mail, Phone, Calendar, DollarSign } from 'lucide-react';
 import { getTrainingById } from '../../data/mockData';
 import { toast } from 'sonner';
@@ -11,8 +11,15 @@ type Step = 'describe' | 'ai-analysis' | 'form' | 'confirmation';
 export function RequestFlowPage() {
   const { trainingId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const training = trainingId ? getTrainingById(trainingId) : null;
   const { marketplace } = useMarketplace();
+  // Sidan nåddes via en marknadsplats-djuplänk till en kurs som inte längre
+  // tillhör den marknadsplatsen (avpublicerad/borttagen ur kurationen) - se
+  // TrainingDetailPage.goToRequest() och docs/specs/partnermarknadsplatser.md
+  // avsnitt 11c. Attribuera då inte RFP:n till fel marknadsplats.
+  const forceNoMarketplace = (location.state as { forceNoMarketplace?: boolean } | null)?.forceNoMarketplace === true;
+  const effectiveMarketplaceId = forceNoMarketplace ? null : marketplace?.id ?? null;
   
   const [step, setStep] = useState<Step>('describe');
   const [description, setDescription] = useState('');
@@ -91,7 +98,7 @@ export function RequestFlowPage() {
       status: 'new',
       recommended_categories: recommendedCategories,
       has_provider_match: hasMatch,
-      marketplace_id: marketplace?.id ?? null,
+      marketplace_id: effectiveMarketplaceId,
       submitted_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });

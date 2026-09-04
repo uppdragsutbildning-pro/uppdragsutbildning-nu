@@ -12,6 +12,8 @@ import { StatusBadge } from '../training/StatusBadge';
 import { CourseStartCard } from '../training/CourseStartCard';
 import { AccordionItem } from '../training/AccordionItem';
 import { toast } from 'sonner';
+import { useMarketplace } from '../../../lib/marketplaceContext';
+import { getMarketplaceTrainingIds } from '../../../lib/marketplaces';
 
 const formatLabel: Record<string, string> = { online: 'Online', onsite: 'På plats', hybrid: 'Hybrid' };
 
@@ -22,6 +24,8 @@ export function TrainingDetailPage() {
   const [loading, setLoading] = useState(true);
   const [openCurriculum, setOpenCurriculum] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'starts'>('overview');
+  const { marketplace } = useMarketplace();
+  const [inMarketplaceScope, setInMarketplaceScope] = useState<boolean | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -44,6 +48,65 @@ export function TrainingDetailPage() {
     if (id) load();
     return () => { active = false; };
   }, [id]);
+
+  // Deep linking (Paket H, docs/specs/partnermarknadsplatser.md avsnitt 11c):
+  // en delad marknadsplats-länk kan bli inaktuell om kursen tas bort ur
+  // kurationen eller avpubliceras hos leverantören. Sidan 404:ar aldrig i det
+  // läget (kanonisk kurssida visas alltid), men vi ska inte felaktigt
+  // attribuera en RFP till en marknadsplats kursen inte längre tillhör.
+  useEffect(() => {
+    let active = true;
+    if (!marketplace || !id) {
+      setInMarketplaceScope(null);
+      return;
+    }
+    getMarketplaceTrainingIds(marketplace)
+      .then((ids) => {
+        if (active) setInMarketplaceScope(ids === null || ids.includes(id));
+      })
+      .catch(() => {
+        if (active) setInMarketplaceScope(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [marketplace, id]);
+
+  useEffect(() => {
+    if (!training) return;
+    const siteName = marketplace ? marketplace.name : 'Uppdragsutbildning.nu';
+    document.title = `${training.title} | ${siteName}`;
+
+    // Kanonisk URL pekar alltid på huvuddomänen, aldrig en marknadsplats-
+    // subdomän, så sökmotorer inte indexerar samma kurs flera gånger
+    // (docs/specs/partnermarknadsplatser.md avsnitt 11). I dev/preview
+    // (localhost, *.vercel.app) finns ingen egentlig apex att falla tillbaka
+    // till, så där pekar den kanoniska länken på sig själv.
+    const PRODUCTION_APEX = 'uppdragsutbildning.nu';
+    const { protocol, hostname, port, pathname } = window.location;
+    const canonicalHost =
+      hostname === PRODUCTION_APEX || hostname.endsWith(`.${PRODUCTION_APEX}`) ? PRODUCTION_APEX : hostname;
+    const canonicalUrl = `${protocol}//${canonicalHost}${port ? `:${port}` : ''}${pathname}`;
+
+    let link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'canonical';
+      document.head.appendChild(link);
+    }
+    link.href = canonicalUrl;
+
+    return () => {
+      document.title = siteName;
+      link?.remove();
+    };
+  }, [training, marketplace]);
+
+  function goToRequest() {
+    if (!training) return;
+    const forceNoMarketplace = !!marketplace && inMarketplaceScope === false;
+    navigate(`/request/${training.id}`, { state: { forceNoMarketplace } });
+  }
 
   if (loading) {
     return (
@@ -150,7 +213,7 @@ export function TrainingDetailPage() {
             {/* Mobile CTA */}
             <div className="lg:hidden flex gap-3">
               {isCustom && (
-                <button onClick={() => navigate(`/request/${training.id}`)} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl font-medium text-sm transition-colors shadow-sm">
+                <button onClick={goToRequest} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl font-medium text-sm transition-colors shadow-sm">
                   <Sparkles className="w-4 h-4" />Begär offert
                 </button>
               )}
@@ -376,7 +439,7 @@ export function TrainingDetailPage() {
                   </div>
                   <div className="p-5">
                     <p className="text-sm text-slate-600 mb-4 leading-relaxed">{provider.name} kan skräddarsy utbildningen utifrån er verksamhets unika behov, bransch och mål.</p>
-                    <button onClick={() => navigate(`/request/${training.id}`)} className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium text-sm transition-colors mb-2">
+                    <button onClick={goToRequest} className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium text-sm transition-colors mb-2">
                       <Sparkles className="w-4 h-4" />Begär offert
                     </button>
                     <Link to="/request" className="block w-full text-center px-4 py-2.5 border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium text-sm">
@@ -446,7 +509,7 @@ export function TrainingDetailPage() {
                               <p className="text-xs text-slate-600 leading-relaxed">Vi kan anpassa utbildningen efter era behov och schema.</p>
                             </div>
                           </div>
-                          <button onClick={() => navigate(`/request/${training.id}`)} className="w-full flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors">
+                          <button onClick={goToRequest} className="w-full flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors">
                             <Sparkles className="w-4 h-4" />Diskutera anpassad lösning
                           </button>
                         </div>
@@ -493,7 +556,7 @@ export function TrainingDetailPage() {
       {/* MOBILE STICKY BAR */}
       <div className="fixed bottom-0 left-0 right-0 lg:hidden bg-white border-t border-slate-200 px-4 py-3 flex gap-3 z-40 shadow-lg">
         {isCustom && (
-          <button onClick={() => navigate(`/request/${training.id}`)} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium text-sm transition-colors">
+          <button onClick={goToRequest} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium text-sm transition-colors">
             <Sparkles className="w-4 h-4" />Begär offert
           </button>
         )}

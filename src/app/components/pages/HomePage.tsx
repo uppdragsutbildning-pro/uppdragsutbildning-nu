@@ -11,7 +11,7 @@ export function HomePage() {
   const featuredTrainings = getFeaturedTrainings();
 
   const handleSearch = () => {
-    window.location.href = `/catalog?q=${encodeURIComponent(searchQuery)}`;
+    navigate(`/catalog?q=${encodeURIComponent(searchQuery)}`);
   };
 
   return (

@@ -4,6 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Uppdragsutbildning.nu</title>
+    <meta name="description" content="Uppdragsutbildning.nu kopplar samman organisationer med universitet, högskolor och utbildningsleverantörer för kompetensutveckling." />
+    <link rel="canonical" href="https://uppdragsutbildning.nu/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Uppdragsutbildning.nu" />
+    <meta property="og:title" content="Uppdragsutbildning.nu" />
+    <meta property="og:description" content="Uppdragsutbildning.nu kopplar samman organisationer med universitet, högskolor och utbildningsleverantörer för kompetensutveckling." />
+    <meta property="og:locale" content="sv_SE" />
+    <meta name="twitter:card" content="summary" />
+    <!--
+      Dessa taggar är statiska (samma för alla sidor och marknadsplatser).
+      En React SPA kan inte sätta träffsäkra per-sida/per-marknadsplats
+      OG-taggar för länkförhandsgranskningar (Facebook/LinkedIn/Slack m.fl.
+      exekverar inte JS) - det kräver en Vercel Edge Function/middleware som
+      renderar taggar server-side utifrån host/path. Se backlog i CLAUDE.md.
+      TrainingDetailPage sätter document.title + <link rel="canonical"> per
+      kurs client-side, vilket räcker för webbläsarfliken och Googlebot
+      (som kör JS), men inte för länkförhandsgranskningar.
+    -->
+
   </head>
   <body>
     <div id="root"></div>
