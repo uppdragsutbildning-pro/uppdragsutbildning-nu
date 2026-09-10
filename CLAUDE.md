@@ -23,8 +23,8 @@ Plattformen riktar sig INTE till privatpersoner – alltid B2B med en arbetsgiva
 - **Backend/databas:** Supabase (auth, databas, storage, Row Level Security, Edge Functions)
 - **Hosting:** Vercel (Edge Functions, auto-deploy från `develop`-branch)
 - **Betalningar:** Stripe Connect + Stripe Invoicing API
-- **AI-lager:** Gemini 2.0 Flash (multimodal, RAG, CPI-analys, ESCO-taggning)
-- **Klassificering:** ESCO REST API (EU:s kompetenstaxonomi)
+- **AI-lager:** Gemini 2.0 Flash (multimodal, RAG, CPI-analys, SSYK-taggning)
+- **Klassificering:** JobTech Taxonomy API (Arbetsförmedlingen, SSYK 2012)
 - **UI-verktyg:** Figma Make (lokalt läge, skriver direkt till denna projektmapp)
 - **Repo:** `uppdragsutbildning-pro/uppdragsutbildning-nu`
 
@@ -59,7 +59,7 @@ Plattformen riktar sig INTE till privatpersoner – alltid B2B med en arbetsgiva
 
 1. **Quick Scan** – anonym CPI-analys, ingen inloggning krävs
 2. **Deep Dive / AI Requirement Builder** – gated bakom kontoskapelse, flaggskeppsdifferentiator
-3. ESCO-taggad sökning
+3. SSYK-taggad sökning
 4. One-click multi-provider RFP (offertförfrågan till flera leverantörer samtidigt)
 5. Jämförelsematris
 
@@ -71,7 +71,7 @@ Post-MVP-tillägg (URL-import, kurskloning, subdomän fas 2–3 m.m.) hålls sep
 
 **CPI (Kompetenstrycksindex):** Proprietärt gapanalysverktyg, fyra dimensioner:
 - AF – Arbetsförmåga/Arbetsförändring (direkt scoring)
-- PF – Prestationsfriktion (direkt scoring)
+- LF – Leveransfriktion (direkt scoring)
 - OK – Omställningskapacitet (omvänd scoring)
 - TR – Tillit/Relationer / Transformationsriktning (omvänd scoring)
 
@@ -80,13 +80,13 @@ Nivåer: 0–24 Lågt, 25–49 Måttligt, 50–74 Högt, 75–100 Kritiskt.
 
 Två lägen: **Quick Scan** (anonym) och **Deep Dive** (gated bakom konto).
 
-**ESCO:** EU:s kompetens-/yrkestaxonomi för kurstaggning och matchning köpare–leverantör.
+**SSYK 2012:** Arbetsförmedlingens/SCB:s svenska yrkestaxonomi (Yrkesområde → SSYK-grupp → Yrkesroll → Kompetenser), nås via Arbetsförmedlingens publika JobTech Taxonomy API (`taxonomy.api.jobtechdev.se`, ingen API-nyckel krävs). Används för kurstaggning och matchning köpare–leverantör, samt för att koppla Kompetensindex (LI3) mot verkliga yrkesroller och deras kompetenser. Ersatte 2026-09-10 den tidigare ESCO-integrationen (EU:s kompetenstaxonomi).
 
 ---
 
 ## Nyckelprinciper (styr designbeslut)
 
-- ESCO-taggningskvalitet vid onboarding är plattformens största hävstång för matchningskvalitet – LLM-assisterad taggning ska ha ett mänskligt bekräftelsesteg, inte full automatisering.
+- SSYK-taggningskvalitet vid onboarding är plattformens största hävstång för matchningskvalitet – LLM-assisterad taggning ska ha ett mänskligt bekräftelsesteg, inte full automatisering.
 - CPI Deep Dive är flaggskeppsdifferentiatorn – prioritera denna vid resurskonflikter.
 - Bokningsögonblicket är den mest ekonomiskt kritiska kontaktpunkten (20%-provisionen blir synlig).
 - Tystnad i RFP → bokning-flödet är den mest kritiska UX-sårbarheten – kräver systemnivå-eskalering (t.ex. `response_deadline`-fält + cron), inte bara UI-polering.

@@ -4,33 +4,35 @@ import { ArrowLeft, CheckCircle, Circle, Loader2, X, BarChart3, Brain, Target, S
 import { searchSni, type SniEntry } from '../../data/sniData';
 import { ScaleButtons } from '../kompetensindex/ScaleButtons';
 import { MultiSelectChips } from '../kompetensindex/MultiSelectChips';
+import { OccupationPicker } from '../kompetensindex/OccupationPicker';
 import { QuestionCard } from '../kompetensindex/QuestionCard';
 import { ResultsView } from '../kompetensindex/ResultsView';
 import { supabase } from '../../../lib/supabase';
+import { fetchOccupationDetails, type OccupationDetails, type OccupationName, type OccupationSkill } from '../../../lib/jobtechTaxonomy';
 
 const STEPS = [
   { id: 'info', label: 'Info' },
   { id: 'af', label: 'AF' },
-  { id: 'pf', label: 'PF' },
+  { id: 'lf', label: 'LF' },
   { id: 'ok', label: 'OK' },
   { id: 'tr', label: 'TR' },
-  { id: 'insats', label: 'Insats' },
+  { id: 'insats', label: 'SI' },
   { id: 'larande', label: 'LI' },
 ];
 
 const SECTION_COLORS: Record<string, string> = {
   af: 'border-blue-600',
-  pf: 'border-red-500',
+  lf: 'border-red-500',
   ok: 'border-green-600',
   tr: 'border-blue-600',
   insats: 'border-amber-500',
   larande: 'border-purple-500',
 };
 
-type ESCOSkill = { title: string; uri: string };
-
 interface Answers {
+  contactName: string;
   companyName: string;
+  email: string;
   industry: string;
   companySize: string;
   userRole: string;
@@ -39,11 +41,11 @@ interface Answers {
   ok1: number; ok2: number; ok3: number; ok4: number;
   tr1: number; tr2: number; tr3: number; tr4: string;
   si1: number; si2: number; si3: number; si4: number;
-  li1: string[]; li2: string[]; li3: string[];
+  li1: string[]; li2: string[]; li3: OccupationName[];
 }
 
 const initialAnswers: Answers = {
-  companyName: '', industry: '', companySize: '', userRole: '',
+  contactName: '', companyName: '', email: '', industry: '', companySize: '', userRole: '',
   af1: 0, af2: 0, af3: 0, af4: '',
   pf1: 0, pf2: 0, pf3: 0, pf4: 0, pf5: '',
   ok1: 0, ok2: 0, ok3: 0, ok4: 0,
@@ -61,51 +63,11 @@ function dimScore(vals: number[], reversed: boolean): number {
     : Math.round(((avg - 1) / 4) * 100);
 }
 
-const extractTerms = (tr4: string, af4: string): string[] => {
-  const text = (tr4 + ' ' + af4).toLowerCase();
-  const map: [string, string][] = [
-    ['ai', 'artificiell intelligens'],
-    ['data', 'dataanalys'],
-    ['digital', 'digital transformation'],
-    ['ledarskap', 'ledarskap'],
-    ['förändring', 'förändringsledning'],
-    ['hållbar', 'hållbarhetsstrategi'],
-    ['juridik', 'juridik'],
-    ['compliance', 'regulatorisk efterlevnad'],
-    ['projekt', 'projektledning'],
-    ['kund', 'kundrelationer'],
-    ['sälj', 'säljkompetens'],
-    ['process', 'processutveckling'],
-    ['kommunik', 'kommunikation'],
-  ];
-  const terms = map.filter(([kw]) => text.includes(kw)).map(([, t]) => t);
-  return [...new Set(terms.length ? terms : ['kompetensutveckling'])];
-};
-
-const fetchESCOSkills = async (terms: string[]): Promise<ESCOSkill[]> => {
-  const results: ESCOSkill[] = [];
-  const seen = new Set<string>();
-  for (const term of terms.slice(0, 4)) {
-    try {
-      const res = await fetch(
-        `https://ec.europa.eu/esco/api/search?text=${encodeURIComponent(term)}&type=skill&language=sv&limit=3`
-      );
-      const data = await res.json();
-      for (const item of data?._embedded?.results || []) {
-        if (!seen.has(item.uri)) {
-          seen.add(item.uri);
-          results.push({ title: item.title || item.preferredLabel, uri: item.uri });
-        }
-      }
-    } catch (_) { /* fail silently */ }
-  }
-  return results.slice(0, 8);
-};
-
 export interface CPIResult {
-  scores: { AF: number; PF: number; OK: number; TR: number; total: number };
+  scores: { AF: number; LF: number; OK: number; TR: number; total: number };
   siScores: { si1: number; si2: number; si3: number; si4: number };
-  escoSkills: ESCOSkill[];
+  ssykSkills: OccupationSkill[];
+  occupations: OccupationDetails[];
   answers: Answers;
 }
 
@@ -222,11 +184,11 @@ export function KompetensindexPage() {
     );
   };
 
-  const set = (field: keyof Answers, value: number | string | string[]) =>
+  const set = (field: keyof Answers, value: number | string | string[] | OccupationName[]) =>
     setAnswers((prev) => ({ ...prev, [field]: value }));
 
   const canProceed = (): boolean => {
-    if (step === 0) return !!(answers.companyName && answers.industry && answers.companySize && answers.userRole);
+    if (step === 0) return !!(answers.contactName && answers.companyName && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(answers.email) && answers.industry && answers.companySize && answers.userRole);
     if (step === 1) return answers.af1 > 0 && answers.af2 > 0 && answers.af3 > 0 && answers.af4.trim().length > 0;
     if (step === 2) return answers.pf1 > 0 && answers.pf2 > 0 && answers.pf3 > 0 && answers.pf4 > 0 && answers.pf5.trim().length > 0;
     if (step === 3) return answers.ok1 > 0 && answers.ok2 > 0 && answers.ok3 > 0 && answers.ok4 > 0;
@@ -241,30 +203,45 @@ export function KompetensindexPage() {
     setLoadingStep(0);
 
     const AF = dimScore([answers.af1, answers.af2, answers.af3], false);
-    const PF = dimScore([answers.pf1, answers.pf2, answers.pf3, answers.pf4], false);
+    const LF = dimScore([answers.pf1, answers.pf2, answers.pf3, answers.pf4], false);
     const OK = dimScore([answers.ok1, answers.ok2, answers.ok3, answers.ok4], true);
     const TR = dimScore([answers.tr1, answers.tr2, answers.tr3], true);
-    const total = Math.round((AF + PF + OK + TR) / 4);
+    const total = Math.round((AF + LF + OK + TR) / 4);
 
     setLoadingStep(1);
-    const terms = extractTerms(answers.tr4, answers.af4);
-    const escoSkills = await fetchESCOSkills(terms);
+    let occupations: OccupationDetails[] = [];
+    try {
+      occupations = await fetchOccupationDetails(answers.li3.map((r) => r.id));
+    } catch (err) {
+      console.error('JobTech Taxonomy fetch error:', err);
+    }
+    const seenSkillIds = new Set<string>();
+    const ssykSkills: OccupationSkill[] = [];
+    for (const occ of occupations) {
+      for (const skill of occ.skills) {
+        if (seenSkillIds.has(skill.id)) continue;
+        seenSkillIds.add(skill.id);
+        ssykSkills.push(skill);
+      }
+    }
 
     setLoadingStep(2);
     try {
       const { error: insertError } = await supabase.from('cpi_results').insert({
+        contact_name: answers.contactName,
         company_name: answers.companyName,
+        contact_email: answers.email,
         industry: answers.industry,
         company_size: answers.companySize,
         respondent_role: answers.userRole,
-        scores: { AF, PF, OK, TR, total },
+        scores: { AF, LF, OK, TR, total },
         si_scores: { SI1: answers.si1, SI2: answers.si2, SI3: answers.si3, SI4: answers.si4 },
         freetext: { af4: answers.af4, pf5: answers.pf5, tr4: answers.tr4 },
-        esco_skills: escoSkills,
+        ssyk_skills: ssykSkills,
         li_preferences: {
           insatstyp: answers.li1,
           upplägg: answers.li2,
-          målgrupp: answers.li3,
+          yrkesroller: answers.li3,
         },
         created_at: new Date().toISOString(),
       });
@@ -273,9 +250,10 @@ export function KompetensindexPage() {
     } catch (err) { console.error('Supabase insert exception:', err); }
 
     setResult({
-      scores: { AF, PF, OK, TR, total },
+      scores: { AF, LF, OK, TR, total },
       siScores: { si1: answers.si1, si2: answers.si2, si3: answers.si3, si4: answers.si4 },
-      escoSkills,
+      ssykSkills,
+      occupations,
       answers,
     });
     setLoading(false);
@@ -301,7 +279,7 @@ export function KompetensindexPage() {
         <div className="text-center">
           <Loader2 className="w-10 h-10 text-blue-600 animate-spin mx-auto mb-6" />
           <div className="space-y-3">
-            {['Beräknar CPI-index…', 'Söker ESCO-kompetenser…', 'Genererar rekommendationer…'].map(
+            {['Beräknar CPI-index…', 'Hämtar SSYK-kompetenser…', 'Genererar rekommendationer…'].map(
               (label, i) => (
                 <div key={i} className={`flex items-center gap-3 text-sm ${i <= loadingStep ? 'text-green-600' : 'text-slate-400'}`}>
                   {i <= loadingStep ? (
@@ -513,6 +491,26 @@ export function KompetensindexPage() {
             </div>
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
               <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Namn</label>
+                <input
+                  type="text"
+                  value={answers.contactName}
+                  onChange={(e) => set('contactName', e.target.value)}
+                  placeholder="Ange ditt namn"
+                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">E-postadress</label>
+                <input
+                  type="email"
+                  value={answers.email}
+                  onChange={(e) => set('email', e.target.value)}
+                  placeholder="namn@foretag.se"
+                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Företagets namn</label>
                 <input
                   type="text"
@@ -625,26 +623,26 @@ export function KompetensindexPage() {
           </div>
         )}
 
-        {/* Step 2: PF */}
+        {/* Step 2: LF */}
         {step === 2 && (
           <div className="space-y-5">
-            <div className={`border-l-4 pl-4 ${SECTION_COLORS.pf}`}>
-              <h2 className="text-xl font-semibold text-slate-900">Prestationsfriktion</h2>
+            <div className={`border-l-4 pl-4 ${SECTION_COLORS.lf}`}>
+              <h2 className="text-xl font-semibold text-slate-900">Leveransfriktion</h2>
               <p className="text-slate-500 text-sm">I vilken grad påverkar kompetensbrist er verksamhet?</p>
             </div>
-            <QuestionCard id="PF1" question="I vilken grad påverkar kompetensbrist kvaliteten i arbetet?">
+            <QuestionCard id="LF1" question="I vilken grad påverkar kompetensbrist kvaliteten i arbetet?">
               <ScaleButtons value={answers.pf1} onChange={(v) => set('pf1', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
-            <QuestionCard id="PF2" question="I vilken grad påverkar kompetensbrist tempo eller produktivitet?">
+            <QuestionCard id="LF2" question="I vilken grad påverkar kompetensbrist tempo eller produktivitet?">
               <ScaleButtons value={answers.pf2} onChange={(v) => set('pf2', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
-            <QuestionCard id="PF3" question="I vilken grad påverkar kompetensbrist leveransförmågan?">
+            <QuestionCard id="LF3" question="I vilken grad påverkar kompetensbrist leveransförmågan?">
               <ScaleButtons value={answers.pf3} onChange={(v) => set('pf3', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
-            <QuestionCard id="PF4" question="I vilken grad är verksamheten beroende av ett fåtal nyckelpersoner?">
+            <QuestionCard id="LF4" question="I vilken grad är verksamheten beroende av ett fåtal nyckelpersoner?">
               <ScaleButtons value={answers.pf4} onChange={(v) => set('pf4', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
-            <QuestionCard id="PF5" question="Vilka arbetsuppgifter undviks, skjuts upp eller tar längre tid på grund av kompetensbrist?">
+            <QuestionCard id="LF5" question="Vilka arbetsuppgifter undviks, skjuts upp eller tar längre tid på grund av kompetensbrist?">
               <textarea
                 value={answers.pf5}
                 onChange={(e) => set('pf5', e.target.value)}
@@ -694,7 +692,7 @@ export function KompetensindexPage() {
             <QuestionCard id="TR3" question="I vilken grad finns en tydlig plan för om kompetens ska rekryteras, kompetensväxlas eller utvecklas internt?">
               <ScaleButtons value={answers.tr3} onChange={(v) => set('tr3', v)} labelLow="Inte alls" labelHigh="Mycket hög grad" />
             </QuestionCard>
-            <QuestionCard id="TR4" question="Vilka förmågor bedömer ni som mest kritiska de kommande 12–24 månaderna?" meta="Används för kompetensmatchning">
+            <QuestionCard id="TR4" question="Vilka kompetenser bedömer ni som mest kritiska de kommande 12–24 månaderna?" meta="Används för kompetensmatchning">
               <textarea
                 value={answers.tr4}
                 onChange={(e) => set('tr4', e.target.value)}
@@ -750,9 +748,8 @@ export function KompetensindexPage() {
                 onChange={(v) => set('li2', v)}
               />
             </QuestionCard>
-            <QuestionCard id="LI3" question="Vilka målgrupper är mest prioriterade?">
-              <MultiSelectChips
-                options={['Ledare & chefer', 'Specialister', 'Frontlinje/operativ', 'Stödfunktioner', 'Projektledare', 'Hela organisationen']}
+            <QuestionCard id="LI3" question="Vilka yrkesroller vill ni prioritera kompetensutveckling för?" meta="Kopplas mot SSYK 2012 och används för att grunda rapportens kompetensrekommendationer">
+              <OccupationPicker
                 selected={answers.li3}
                 onChange={(v) => set('li3', v)}
               />

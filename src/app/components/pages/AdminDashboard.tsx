@@ -15,7 +15,7 @@ interface CpiRecord {
   industry: string;
   company_size: string;
   respondent_role: string;
-  scores: { AF: number; PF: number; OK: number; TR: number; total: number };
+  scores: { AF: number; LF: number; OK: number; TR: number; total: number };
   si_scores: { SI1: number; SI2: number; SI3: number; SI4: number };
   freetext: { af4: string; pf5: string; tr4: string };
   li_preferences: { insatstyp: string[]; upplägg: string[]; målgrupp: string[] };
@@ -104,7 +104,7 @@ export function AdminDashboard() {
 
   function exportCpiToCSV() {
     if (!cpiRecords.length) return;
-    const headers = ['Datum', 'Företag', 'Bransch', 'Storlek', 'Roll', 'Total', 'AF', 'PF', 'OK', 'TR', 'SI1', 'SI2', 'SI3', 'SI4'];
+    const headers = ['Datum', 'Företag', 'Bransch', 'Storlek', 'Roll', 'Total', 'AF', 'LF', 'OK', 'TR', 'SI1', 'SI2', 'SI3', 'SI4'];
     const rows = cpiRecords.map((r) => [
       new Date(r.created_at).toLocaleDateString('sv-SE'),
       r.company_name,
@@ -113,7 +113,7 @@ export function AdminDashboard() {
       r.respondent_role,
       r.scores?.total ?? '',
       r.scores?.AF ?? '',
-      r.scores?.PF ?? '',
+      r.scores?.LF ?? '',
       r.scores?.OK ?? '',
       r.scores?.TR ?? '',
       r.si_scores?.SI1 ?? '',
@@ -1179,7 +1179,7 @@ export function AdminDashboard() {
               <>
                 {/* Summary stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                  {(['AF', 'PF', 'OK', 'TR'] as const).map((dim) => {
+                  {(['AF', 'LF', 'OK', 'TR'] as const).map((dim) => {
                     const avg = Math.round(cpiRecords.reduce((s, r) => s + (r.scores?.[dim] ?? 0), 0) / cpiRecords.length);
                     return (
                       <div key={dim} className="bg-white rounded-xl border border-slate-200 p-4 text-center">
@@ -1201,7 +1201,7 @@ export function AdminDashboard() {
                         <th className="text-left px-4 py-3 font-medium text-slate-600">Storlek</th>
                         <th className="text-center px-4 py-3 font-medium text-slate-600">Total</th>
                         <th className="text-center px-4 py-3 font-medium text-slate-600">AF</th>
-                        <th className="text-center px-4 py-3 font-medium text-slate-600">PF</th>
+                        <th className="text-center px-4 py-3 font-medium text-slate-600">LF</th>
                         <th className="text-center px-4 py-3 font-medium text-slate-600">OK</th>
                         <th className="text-center px-4 py-3 font-medium text-slate-600">TR</th>
                       </tr>
@@ -1215,7 +1215,7 @@ export function AdminDashboard() {
                           <td className="px-4 py-3 text-slate-600">{r.company_size}</td>
                           <td className="px-4 py-3 text-center font-bold text-slate-900">{r.scores?.total ?? '—'}</td>
                           <td className="px-4 py-3 text-center text-blue-600">{r.scores?.AF ?? '—'}</td>
-                          <td className="px-4 py-3 text-center text-red-500">{r.scores?.PF ?? '—'}</td>
+                          <td className="px-4 py-3 text-center text-red-500">{r.scores?.LF ?? '—'}</td>
                           <td className="px-4 py-3 text-center text-green-600">{r.scores?.OK ?? '—'}</td>
                           <td className="px-4 py-3 text-center text-amber-500">{r.scores?.TR ?? '—'}</td>
                         </tr>

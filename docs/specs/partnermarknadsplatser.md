@@ -118,7 +118,7 @@ Ny sektion i det interna adminpanelen: **"Partnermarknadsplatser"**.
 
 1. **Skapa marknadsplats:** namn, partnerorganisation, subdomän/slug (med kollisionskontroll), initial status (`draft`).
 2. **Varumärkning:** ladda upp logga, välja primär-/sekundärfärg, ladda upp hero-bild, sätta tagline. Förhandsgranskning innan publicering.
-3. **Kurskuration:** en sökbar/filtrerbar vy över hela den öppna marknadsplatsens kurskatalog (samma ESCO-taggning och filter som befintlig sökning), med en "lägg till i marknadsplats"-knapp per kurs. En separat vy visar aktuellt urval, med möjlighet att ta bort kurser.
+3. **Kurskuration:** en sökbar/filtrerbar vy över hela den öppna marknadsplatsens kurskatalog (samma SSYK-taggning och filter som befintlig sökning), med en "lägg till i marknadsplats"-knapp per kurs. En separat vy visar aktuellt urval, med möjlighet att ta bort kurser.
 4. **Publicera/pausa:** växla `status` mellan `draft`, `active`, `paused`. Publicering tillåts med tomt kursurval (beslut #10).
 5. **Åtkomstinställning:** sätt `access_mode` per marknadsplats (beslut #4).
 
@@ -148,7 +148,7 @@ Kursbläddringen på en partnermarknadsplats **återanvänder marknadsplatsens f
 ## 8. Fas 2 (uttryckligen utanför denna spec)
 
 - Delegerad självbetjäningsadmin för partnerorganisationen.
-- Regelbaserad kursdelning (automatisk synk baserat på ESCO-kategori/bransch) som komplement till manuell kuration.
+- Regelbaserad kursdelning (automatisk synk baserat på SSYK-kategori/bransch) som komplement till manuell kuration.
 - Verifierat medlemskap (`partner_organization_members`, kopplat per `buyer_organization_id`) med anslutningsflöde för företag.
 - Inloggad statistikvy åt partnern.
 - Anpassade domäner (t.ex. `karriar.trr.se` i stället för `trr.uppdragsutbildning.nu`) – redan noterat som fas 2–3 för leverantörssubdomänen, samma lösning återanvänds här.

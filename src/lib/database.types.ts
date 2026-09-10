@@ -113,8 +113,9 @@ export type Database = {
         Row: {
           company_name: string
           company_size: string | null
+          contact_email: string
+          contact_name: string
           created_at: string
-          esco_skills: Json | null
           freetext: Json | null
           id: string
           industry: string | null
@@ -122,12 +123,14 @@ export type Database = {
           respondent_role: string | null
           scores: Json
           si_scores: Json | null
+          ssyk_skills: Json | null
         }
         Insert: {
           company_name: string
           company_size?: string | null
+          contact_email: string
+          contact_name: string
           created_at?: string
-          esco_skills?: Json | null
           freetext?: Json | null
           id?: string
           industry?: string | null
@@ -135,12 +138,14 @@ export type Database = {
           respondent_role?: string | null
           scores: Json
           si_scores?: Json | null
+          ssyk_skills?: Json | null
         }
         Update: {
           company_name?: string
           company_size?: string | null
+          contact_email?: string
+          contact_name?: string
           created_at?: string
-          esco_skills?: Json | null
           freetext?: Json | null
           id?: string
           industry?: string | null
@@ -148,6 +153,7 @@ export type Database = {
           respondent_role?: string | null
           scores?: Json
           si_scores?: Json | null
+          ssyk_skills?: Json | null
         }
         Relationships: []
       }
@@ -667,7 +673,7 @@ export type Database = {
           credits: number
           description: string
           duration: string
-          esco_skills: Json | null
+          ssyk_skills: Json | null
           featured: boolean
           format: string
           id: string
@@ -698,7 +704,7 @@ export type Database = {
           credits?: number
           description?: string
           duration?: string
-          esco_skills?: Json | null
+          ssyk_skills?: Json | null
           featured?: boolean
           format: string
           id?: string
@@ -729,7 +735,7 @@ export type Database = {
           credits?: number
           description?: string
           duration?: string
-          esco_skills?: Json | null
+          ssyk_skills?: Json | null
           featured?: boolean
           format?: string
           id?: string

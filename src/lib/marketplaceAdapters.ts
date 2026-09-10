@@ -60,7 +60,7 @@ export interface AdaptedTraining {
   scheduledStarts?: AdaptedCourseStart[];
   contactPerson?: { name: string; title: string; email: string; phone: string; responseTime: string };
   faq?: { question: string; answer: string }[];
-  escoSkills?: { title: string; uri: string }[];
+  ssykSkills?: { title: string; id: string }[];
   provider: AdaptedProvider;
   category: AdaptedCategory;
 }
@@ -131,7 +131,7 @@ interface RawTraining {
   contact_person_email?: string | null;
   contact_person_phone?: string | null;
   contact_person_response_time?: string | null;
-  esco_skills?: { title: string; uri: string }[] | null;
+  ssyk_skills?: { title: string; id: string }[] | null;
   providers: RawProvider;
   categories: RawCategory;
   scheduled_starts?: RawScheduledStart[];
@@ -228,7 +228,7 @@ export function adaptTraining(row: RawTraining): AdaptedTraining {
     scheduledStarts,
     contactPerson,
     faq,
-    escoSkills: row.esco_skills ?? undefined,
+    ssykSkills: row.ssyk_skills ?? undefined,
     provider,
     category,
   };

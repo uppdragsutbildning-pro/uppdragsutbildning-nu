@@ -284,20 +284,17 @@ export function TrainingDetailPage() {
                   </section>
                 )}
 
-                {/* ESCO competencies */}
-                {training.escoSkills && training.escoSkills.length > 0 && (
+                {/* SSYK competencies */}
+                {training.ssykSkills && training.ssykSkills.length > 0 && (
                   <section className="bg-white rounded-xl border border-slate-200 p-6 md:p-8">
-                    <h2 className="text-xl font-bold text-slate-900 mb-1">Kopplade ESCO-kompetenser</h2>
-                    <p className="text-sm text-slate-500 mb-4">Dessa kompetenser är kopplade till europeisk kompetensstandard (ESCO)</p>
+                    <h2 className="text-xl font-bold text-slate-900 mb-1">Kopplade SSYK-kompetenser</h2>
+                    <p className="text-sm text-slate-500 mb-4">Dessa kompetenser är kopplade till svensk yrkestaxonomi (SSYK 2012)</p>
                     <div className="flex flex-wrap gap-2">
-                      {training.escoSkills.map((skill) => (
-                        <a key={skill.uri} href={skill.uri} target="_blank" rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-sm hover:bg-green-200 transition-colors">
+                      {training.ssykSkills.map((skill) => (
+                        <span key={skill.id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-sm">
                           {skill.title}
-                          <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </a>
+                        </span>
                       ))}
                     </div>
                   </section>

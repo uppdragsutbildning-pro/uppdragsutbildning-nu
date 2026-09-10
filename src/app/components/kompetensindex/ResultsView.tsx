@@ -1,8 +1,7 @@
 import { useNavigate } from 'react-router';
 import { useEffect, useState } from 'react';
-import { Sparkles, ExternalLink, Pencil, X, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { Sparkles, Pencil, X, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { CPIResult } from '../pages/KompetensindexPage';
-import { fetchESCOTerm } from '../../../lib/escoCache';
 
 const cpiLevel = (score: number) => {
   if (score < 25) return { label: 'Lågt tryck', bg: '#F0FDF4', border: '#86EFAC', text: '#16A34A', desc: 'Er verksamhet upplever lågt kompetensstryck. Det finns goda förutsättningar att arbeta proaktivt med kompetensutveckling.' };
@@ -12,14 +11,14 @@ const cpiLevel = (score: number) => {
 };
 
 const DIM_COLORS: Record<string, string> = {
-  AF: 'bg-blue-500', PF: 'bg-red-500', OK: 'bg-green-500', TR: 'bg-amber-500',
+  AF: 'bg-blue-500', LF: 'bg-red-500', OK: 'bg-green-500', TR: 'bg-amber-500',
 };
 const DIM_LABELS: Record<string, string> = {
-  AF: 'Arbetsförändring', PF: 'Prestationsfriktion', OK: 'Omställningskapacitet', TR: 'Transformationsriktning',
+  AF: 'Arbetsförändring', LF: 'Leveransfriktion', OK: 'Omställningskapacitet', TR: 'Transformationsriktning',
 };
 const DIM_DESCRIPTIONS: Record<string, string> = {
   AF: 'Mäter hur snabbt och djupt arbetsuppgifter, roller och processer förändras i er verksamhet — drivet av teknik, marknad eller omvärldsförändringar.',
-  PF: 'Mäter i vilken grad kompetensbrist skapar friktion, förseningar och ineffektivitet i det dagliga arbetet och påverkar leveransförmågan.',
+  LF: 'Mäter i vilken grad kompetensbrist skapar friktion, förseningar och ineffektivitet i det dagliga arbetet och påverkar leveransförmågan.',
   OK: 'Mäter organisationens förmåga att anpassa sig, lära nytt och ställa om när verksamhetens krav förändras.',
   TR: 'Mäter hur tydlig riktning och strategi ni har för hur kompetens ska förnyas, rekryteras och utvecklas på 1–3 års sikt.',
 };
@@ -37,13 +36,6 @@ interface AnalysisResult {
   topAction: string;
   orgVoice: string;
   recommendations: { title: string; body: string; priority: 'high' | 'medium' | 'low' }[];
-  escoTerms: string[];
-}
-
-interface EscoResolved {
-  title: string;
-  uri: string | null;
-  term: string;
 }
 
 interface ResultsViewProps {
@@ -55,17 +47,17 @@ interface ResultsViewProps {
 
 function buildAnalysis(result: CPIResult): AnalysisResult {
   const { scores, siScores, answers } = result;
-  const { AF, PF, OK, TR, total } = scores;
+  const { AF, LF, OK, TR, total } = scores;
 
-  const dims = ['AF', 'PF', 'OK', 'TR'] as const;
+  const dims = ['AF', 'LF', 'OK', 'TR'] as const;
   const weakest = dims.reduce((a, b) => (scores[a] < scores[b] ? a : b));
   const strongest = dims.reduce((a, b) => (scores[a] > scores[b] ? a : b));
 
   const dimName: Record<string, string> = {
-    AF: 'arbetsförändring', PF: 'prestationsfriktion', OK: 'omställningskapacitet', TR: 'transformationsriktning',
+    AF: 'arbetsförändring', LF: 'leveransfriktion', OK: 'omställningskapacitet', TR: 'transformationsriktning',
   };
   const dimNameCap: Record<string, string> = {
-    AF: 'Arbetsförändring', PF: 'Prestationsfriktion', OK: 'Omställningskapacitet', TR: 'Transformationsriktning',
+    AF: 'Arbetsförändring', LF: 'Leveransfriktion', OK: 'Omställningskapacitet', TR: 'Transformationsriktning',
   };
 
   const pressureDesc = total < 25 ? 'lågt' : total < 50 ? 'måttligt' : total < 75 ? 'högt' : 'kritiskt';
@@ -78,7 +70,7 @@ function buildAnalysis(result: CPIResult): AnalysisResult {
 
   const riskMap: Record<string, string> = {
     AF: `Arbetsförändringen går snabbt och riskerar att lämna medarbetare utan rätt förutsättningar. Om roller och processer förändras utan att kompetensen hänger med ökar prestationsgapet successivt.`,
-    PF: `Prestationsfriktionen är hög — kompetensbrist skapar redan märkbara hinder i det dagliga arbetet. Utan riktade insatser riskerar leveransförmågan att försämras ytterligare.`,
+    LF: `Leveransfriktionen är hög — kompetensbrist skapar redan märkbara hinder i det dagliga arbetet. Utan riktade insatser riskerar leveransförmågan att försämras ytterligare.`,
     OK: `Omställningskapaciteten är låg, vilket gör organisationen sårbar när förutsättningarna ändras. Bristen på adaptiv förmåga kan fördröja nödvändiga omställningar och öka omställningskostnaden.`,
     TR: `Transformationsriktningen är otydlig — det saknas en sammanhållen strategi för hur kompetens ska förnyas. Utan tydlig riktning riskerar insatser att bli fragmenterade och ge begränsad effekt.`,
   };
@@ -86,7 +78,7 @@ function buildAnalysis(result: CPIResult): AnalysisResult {
 
   const actionMap: Record<string, string> = {
     AF: `Genomför en strukturerad analys av vilka roller och kompetenser som förändras mest. Inled riktade insatser inom förändringsledning och digital kompetens för berörda team.`,
-    PF: `Kartlägg de arbetsuppgifter som stannar upp eller tar längre tid på grund av kompetensbrist. Prioritera snabba kompetensinsatser — korta kurser eller workshops — inom de mest kritiska processerna.`,
+    LF: `Kartlägg de arbetsuppgifter som stannar upp eller tar längre tid på grund av kompetensbrist. Prioritera snabba kompetensinsatser — korta kurser eller workshops — inom de mest kritiska processerna.`,
     OK: `Bygg lärande strukturer in i vardagen: lärcirklar, intern mentoring och korta intensivutbildningar. Mät och följ upp omställningsförmågan regelbundet för att synliggöra framsteg.`,
     TR: `Ta fram en kompetensförsörjningsplan på 1–3 år som kopplar lärande direkt till verksamhetsmålen. Definiera tydliga prioriteringar kring rekrytering, kompetensväxling och kompetensutveckling.`,
   };
@@ -107,16 +99,16 @@ function buildAnalysis(result: CPIResult): AnalysisResult {
       `Sammantaget visar era svar på en organisation med ${pressureLevel === 'high' ? 'högt förändringstempo och tydliga kompetensgap' : 'medvetna kompetensbehov och god självkännedom'}. ` +
       `Ambitionsnivån indikerar att ni är redo för ${pressureLevel === 'high' ? 'riktade och skyndsamma' : 'proaktiva och strategiska'} kompetensinsatser.`;
   } else {
-    orgVoice = 'Inga fritextsvar registrerades. Fyll i frågorna AF4, PF5 och TR4 för en mer personaliserad analys av organisationens röst och behov.';
+    orgVoice = 'Inga fritextsvar registrerades. Fyll i frågorna AF4, LF5 och TR4 för en mer personaliserad analys av organisationens röst och behov.';
   }
 
   const recommendations: AnalysisResult['recommendations'] = [];
 
-  if (PF >= 50) {
+  if (LF >= 50) {
     recommendations.push({
-      title: 'Minska prestationsfriktion med riktad kompetensutveckling',
-      body: `Med ett PF-värde på ${PF} finns tydliga hinder för effektiv prestation. Strukturerade kompetensprogram inom kärnprocesser kan snabbt minska friktion och förbättra leveransförmågan.`,
-      priority: PF >= 70 ? 'high' : 'medium',
+      title: 'Minska leveransfriktion med riktad kompetensutveckling',
+      body: `Med ett LF-värde på ${LF} finns tydliga hinder för effektiv prestation. Strukturerade kompetensprogram inom kärnprocesser kan snabbt minska friktion och förbättra leveransförmågan.`,
+      priority: LF >= 70 ? 'high' : 'medium',
     });
   }
 
@@ -168,22 +160,7 @@ function buildAnalysis(result: CPIResult): AnalysisResult {
     });
   }
 
-  const escoMap: Record<string, string[]> = {
-    teknik: ['mjukvaruutveckling', 'cybersäkerhet', 'molntjänster', 'AI och maskininlärning', 'DevOps'],
-    vård: ['patientvård', 'medicinsk dokumentation', 'omvårdnad', 'hälsoinformatik', 'rehabilitering'],
-    handel: ['kundservice', 'e-handel', 'supply chain management', 'merchandising', 'försäljningsstrategi'],
-    utbildning: ['pedagogik', 'digitalt lärande', 'kursdesign', 'bedömning och utvärdering', 'mentorskap'],
-    finans: ['finansiell analys', 'riskhantering', 'regelefterlevnad', 'redovisning', 'investeringsstrategi'],
-    industri: ['processteknik', 'kvalitetsledning', 'lean produktion', 'underhållsteknik', 'produktionsstyrning'],
-  };
-
-  const industryLower = answers.industry.toLowerCase();
-  const matchedKey = Object.keys(escoMap).find((k) => industryLower.includes(k));
-  const escoTerms = matchedKey
-    ? escoMap[matchedKey]
-    : ['ledarskap och förändringsledning', 'digital kompetens', 'dataanalys', 'projektledning', 'agila arbetsmetoder'];
-
-  return { overallAssessment, topRisk, topAction, orgVoice, recommendations, escoTerms };
+  return { overallAssessment, topRisk, topAction, orgVoice, recommendations };
 }
 
 function AnswerSummaryDrawer({
@@ -218,13 +195,13 @@ function AnswerSummaryDrawer({
       ],
     },
     {
-      label: 'Prestationsfriktion',
+      label: 'Leveransfriktion',
       rows: [
-        { q: 'PF1', a: `${answers.pf1}/5` },
-        { q: 'PF2', a: `${answers.pf2}/5` },
-        { q: 'PF3', a: `${answers.pf3}/5` },
-        { q: 'PF4', a: `${answers.pf4}/5` },
-        { q: 'PF5', a: answers.pf5 || '—' },
+        { q: 'LF1', a: `${answers.pf1}/5` },
+        { q: 'LF2', a: `${answers.pf2}/5` },
+        { q: 'LF3', a: `${answers.pf3}/5` },
+        { q: 'LF4', a: `${answers.pf4}/5` },
+        { q: 'LF5', a: answers.pf5 || '—' },
       ],
     },
     {
@@ -252,6 +229,14 @@ function AnswerSummaryDrawer({
         { q: 'SI2', a: `${answers.si2}/5` },
         { q: 'SI3', a: `${answers.si3}/5` },
         { q: 'SI4', a: `${answers.si4}/5` },
+      ],
+    },
+    {
+      label: 'Lärande & insatser',
+      rows: [
+        { q: 'LI1', a: answers.li1.join(', ') || '—' },
+        { q: 'LI2', a: answers.li2.join(', ') || '—' },
+        { q: 'LI3', a: answers.li3.map((o) => o.label).join(', ') || '—' },
       ],
     },
   ];
@@ -309,16 +294,15 @@ function AnswerSummaryDrawer({
 
 export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
   const navigate = useNavigate();
-  const { scores, siScores, escoSkills, answers } = result;
+  const { scores, siScores, ssykSkills, occupations, answers } = result;
   const level = cpiLevel(scores.total);
   const siVals = [siScores.si1, siScores.si2, siScores.si3, siScores.si4];
   const [showDrawer, setShowDrawer] = useState(false);
 
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
-  const [escoResolved, setEscoResolved] = useState<EscoResolved[]>([]);
 
-const runAnalysis = async () => {
+  const runAnalysis = async () => {
     setLoading(true);
     setAnalysis(null);
     try {
@@ -332,6 +316,12 @@ const runAnalysis = async () => {
           scores,
           freetext: result.answers,
           siScores,
+          occupations: occupations.map((occ) => ({
+            label: occ.label,
+            definition: occ.definition,
+            ssykGroupLabel: occ.ssykGroupLabel,
+            skills: occ.skills.map((s) => s.title),
+          })),
         }),
       });
       if (!res.ok) throw new Error('API error');
@@ -348,32 +338,6 @@ const runAnalysis = async () => {
   useEffect(() => {
     runAnalysis();
   }, []);
-
-  useEffect(() => {
-    if (!analysis?.escoTerms?.length) return;
-    Promise.allSettled(
-      analysis.escoTerms.map(async (term): Promise<EscoResolved> => {
-        try {
-          const items = await fetchESCOTerm(term);
-          const hit = items[0];
-          return hit ? { title: hit.title, uri: hit.uri, term } : { title: term, uri: null, term };
-        } catch (e) {
-          return { title: term, uri: null, term };
-        }
-      })
-    ).then((results) => {
-      setEscoResolved(
-        results
-          .filter((r) => r.status === 'fulfilled')
-          .map((r) => (r as PromiseFulfilledResult<EscoResolved>).value)
-      );
-    });
-  }, [analysis]);
-
-  const escoDisplay: EscoResolved[] =
-    escoResolved.length > 0
-      ? escoResolved
-      : escoSkills.map((s) => ({ title: s.title, uri: (s as any).uri ?? null, term: s.title }));
 
   return (
     <div className="min-h-screen bg-slate-50 py-10">
@@ -419,7 +383,7 @@ const runAnalysis = async () => {
 
         {/* Dimension scores */}
         <div className="grid grid-cols-2 gap-4">
-          {(['AF', 'PF', 'OK', 'TR'] as const).map((dim) => {
+          {(['AF', 'LF', 'OK', 'TR'] as const).map((dim) => {
             const s = scores[dim];
             const dimLevel = cpiLevel(s);
             return (
@@ -524,27 +488,19 @@ const runAnalysis = async () => {
           )}
         </div>
 
-        {/* ESCO skills */}
-        {escoDisplay.length > 0 && (
+        {/* SSYK skills */}
+        {ssykSkills.length > 0 && (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
             <h3 className="font-semibold text-slate-900 mb-1 flex items-center gap-2">
-              <span>🎯</span> Identifierade kompetenser enligt ESCO
+              <span>🎯</span> Kompetenser kopplade till valda yrkesroller (SSYK)
             </h3>
-            <p className="text-xs text-slate-500 mb-3">EU:s officiella kompetensstandard</p>
+            <p className="text-xs text-slate-500 mb-3">Enligt Arbetsförmedlingens yrkestaxonomi SSYK 2012</p>
             <div className="flex flex-wrap gap-2">
-              {escoDisplay.map((item) =>
-                item.uri ? (
-                  <a key={item.uri} href={item.uri} target="_blank" rel="noopener noreferrer"
-                    className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm hover:bg-green-200 transition-colors flex items-center gap-1">
-                    {item.title}
-                    <ExternalLink className="w-3 h-3 opacity-60" />
-                  </a>
-                ) : (
-                  <span key={item.term} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
-                    {item.title}
-                  </span>
-                )
-              )}
+              {ssykSkills.map((item) => (
+                <span key={item.id} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
+                  {item.title}
+                </span>
+              ))}
             </div>
           </div>
         )}

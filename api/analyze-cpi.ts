@@ -5,9 +5,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { companyName, industry, companySize, scores, freetext, siScores } = req.body;
-  const { AF, PF, OK, TR, total } = scores;
+  const { companyName, industry, companySize, scores, freetext, siScores, occupations } = req.body;
+  const { AF, LF, OK, TR, total } = scores;
   const level = total < 25 ? 'Lågt tryck' : total < 50 ? 'Måttligt tryck' : total < 75 ? 'Högt tryck' : 'Kritiskt tryck';
+
+  const occupationsBlock = Array.isArray(occupations) && occupations.length > 0
+    ? occupations.map((occ: { label: string; definition?: string; ssykGroupLabel?: string | null; skills?: string[] }) =>
+        `- ${occ.label}${occ.ssykGroupLabel ? ` (SSYK-grupp: ${occ.ssykGroupLabel})` : ''}: ${
+          occ.skills && occ.skills.length > 0
+            ? `kompetenser enligt SSYK: ${occ.skills.join(', ')}`
+            : occ.definition || 'ingen ytterligare beskrivning tillgänglig'
+        }`
+      ).join('\n')
+    : 'Inga yrkesroller valda';
 
   const prompt = `Du är en svensk HR-strateg och kompetensutvecklingsexpert. Analysera följande Kompetensindex-resultat och ge konkreta rekommendationer.
 
@@ -18,12 +28,17 @@ Kompetensnivå: ${level} (${total}/100)
 
 Delpoäng:
 - AF (Arbetsförändring): ${AF}/100
-- PF (Prestationsförmåga): ${PF}/100
+- LF (Leveransfriktion): ${LF}/100
 - OK (Omställningskapacitet): ${OK}/100
 - TR (Transformationsriktning): ${TR}/100
 
 Fritext från användaren:
 ${freetext ? JSON.stringify(freetext) : 'Ingen fritext angiven'}
+
+Yrkesroller organisationen vill prioritera kompetensutveckling för (enligt SSYK 2012), med tillhörande kompetenser:
+${occupationsBlock}
+
+Grunda särskilt "topAction" och rekommendationerna i de konkreta kompetenser som listas ovan, inte generiska begrepp.
 
 Svara ENBART med ett JSON-objekt (ingen markdown, inga förklaringar utanför JSON):
 {
@@ -35,8 +50,7 @@ Svara ENBART med ett JSON-objekt (ingen markdown, inga förklaringar utanför JS
     {"title": "Kort titel", "body": "2-3 meningar med konkret råd", "priority": "high"},
     {"title": "Kort titel", "body": "2-3 meningar med konkret råd", "priority": "medium"},
     {"title": "Kort titel", "body": "2-3 meningar med konkret råd", "priority": "low"}
-  ],
-  "escoTerms": ["term1", "term2", "term3", "term4", "term5"]
+  ]
 }`;
 
   const apiKey = process.env.GEMINI_API_KEY;

@@ -46,7 +46,7 @@ export interface Training {
   views: number;
   leads: number;
   learning_outcomes?: string[];
-  esco_skills?: { title: string; uri: string }[];
+  ssyk_skills?: { title: string; id: string }[];
   instructor_name?: string;
   instructor_title?: string;
   instructor_bio?: string;
