@@ -1,16 +1,29 @@
 import { useState, useEffect } from 'react';
-import { Check, X, Eye, TrendingUp, Users, Building, GraduationCap, Mail, Sparkles, Download, UserPlus, Shield, UserCog } from 'lucide-react';
+import { Check, X, Eye, TrendingUp, Users, Building, GraduationCap, Mail, Sparkles, Download, UserPlus, Shield, UserCog, Search, Trash2 } from 'lucide-react';
 import { trainings, leads, providers, categories, getTrainingById, getProviderById, getCategoryById } from '../../data/mockData';
 import { toast } from 'sonner';
 import { exportLeadsToCSV, exportTrainingsToCSV } from '../../utils/exportUtils';
 import { supabase, Profile, Provider } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import { MarketplacesTab } from '../admin/MarketplacesTab';
+import { CpiRecordDrawer } from '../admin/CpiRecordDrawer';
+import { getPaginationRange } from '../../../hooks/usePaginatedQuery';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from '../ui/pagination';
 
 type Tab = 'overview' | 'trainings' | 'leads' | 'providers' | 'marketplaces' | 'users' | 'kompetensindex';
 
-interface CpiRecord {
+export interface CpiRecord {
   id: string;
+  contact_name: string;
+  contact_email: string;
   company_name: string;
   industry: string;
   company_size: string;
@@ -18,7 +31,8 @@ interface CpiRecord {
   scores: { AF: number; LF: number; OK: number; TR: number; total: number };
   si_scores: { SI1: number; SI2: number; SI3: number; SI4: number };
   freetext: { af4: string; pf5: string; tr4: string };
-  li_preferences: { insatstyp: string[]; upplägg: string[]; målgrupp: string[] };
+  ssyk_skills: { id: string; title: string }[];
+  li_preferences: { insatstyp: string[]; upplägg: string[]; yrkesroller: { id: string; label: string }[] };
   created_at: string;
 }
 
@@ -33,6 +47,13 @@ export function AdminDashboard() {
   const [showCreateProvider, setShowCreateProvider] = useState(false);
   const [cpiRecords, setCpiRecords] = useState<CpiRecord[]>([]);
   const [cpiLoading, setCpiLoading] = useState(false);
+  const [cpiSearch, setCpiSearch] = useState('');
+  const [cpiIndustryFilter, setCpiIndustryFilter] = useState('');
+  const [cpiSizeFilter, setCpiSizeFilter] = useState('');
+  const [cpiRoleFilter, setCpiRoleFilter] = useState('');
+  const [cpiPage, setCpiPage] = useState(1);
+  const [cpiDetailRecord, setCpiDetailRecord] = useState<CpiRecord | null>(null);
+  const CPI_PAGE_SIZE = 20;
   const [customRequests, setCustomRequests] = useState<import('../../../lib/supabase').CustomRequest[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [leadsFilter, setLeadsFilter] = useState<'all' | 'unmatched'>('all');
@@ -81,6 +102,10 @@ export function AdminDashboard() {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    setCpiPage(1);
+  }, [cpiSearch, cpiIndustryFilter, cpiSizeFilter, cpiRoleFilter]);
+
   async function loadCustomRequests() {
     setRequestsLoading(true);
     const { data, error } = await supabase
@@ -102,11 +127,17 @@ export function AdminDashboard() {
     setCpiLoading(false);
   }
 
-  function exportCpiToCSV() {
-    if (!cpiRecords.length) return;
-    const headers = ['Datum', 'Företag', 'Bransch', 'Storlek', 'Roll', 'Total', 'AF', 'LF', 'OK', 'TR', 'SI1', 'SI2', 'SI3', 'SI4'];
-    const rows = cpiRecords.map((r) => [
+  function exportCpiToCSV(records: CpiRecord[]) {
+    if (!records.length) return;
+    const headers = [
+      'Datum', 'Kontaktnamn', 'E-post', 'Företag', 'Bransch', 'Storlek', 'Roll',
+      'Total', 'AF', 'LF', 'OK', 'TR', 'SI1', 'SI2', 'SI3', 'SI4',
+      'AF4', 'LF5', 'TR4', 'Yrkesroller',
+    ];
+    const rows = records.map((r) => [
       new Date(r.created_at).toLocaleDateString('sv-SE'),
+      r.contact_name,
+      r.contact_email,
       r.company_name,
       r.industry,
       r.company_size,
@@ -120,8 +151,12 @@ export function AdminDashboard() {
       r.si_scores?.SI2 ?? '',
       r.si_scores?.SI3 ?? '',
       r.si_scores?.SI4 ?? '',
+      r.freetext?.af4 ?? '',
+      r.freetext?.pf5 ?? '',
+      r.freetext?.tr4 ?? '',
+      r.li_preferences?.yrkesroller?.map((o) => o.label).join(', ') ?? '',
     ]);
-    const csv = [headers, ...rows].map((r) => r.join(';')).join('\n');
+    const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -129,6 +164,17 @@ export function AdminDashboard() {
     a.download = `kompetensindex-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function handleDeleteCpi(record: CpiRecord) {
+    if (!window.confirm(`Ta bort analysen för "${record.company_name}"? Detta går inte att ångra.`)) return;
+    const { error } = await supabase.from('cpi_results').delete().eq('id', record.id);
+    if (error) {
+      toast.error('Kunde inte ta bort analysen', { description: error.message });
+      return;
+    }
+    toast.success('Analysen borttagen');
+    setCpiRecords((prev) => prev.filter((r) => r.id !== record.id));
   }
 
   async function loadUsers() {
@@ -287,6 +333,34 @@ export function AdminDashboard() {
       });
     }
   }
+
+  const cpiIndustries = Array.from(new Set(cpiRecords.map((r) => r.industry).filter(Boolean))).sort();
+  const cpiSizes = Array.from(new Set(cpiRecords.map((r) => r.company_size).filter(Boolean))).sort();
+  const cpiRoles = Array.from(new Set(cpiRecords.map((r) => r.respondent_role).filter(Boolean))).sort();
+
+  const cpiSearchLower = cpiSearch.trim().toLowerCase();
+  const filteredCpiRecords = cpiRecords.filter((r) => {
+    if (cpiIndustryFilter && r.industry !== cpiIndustryFilter) return false;
+    if (cpiSizeFilter && r.company_size !== cpiSizeFilter) return false;
+    if (cpiRoleFilter && r.respondent_role !== cpiRoleFilter) return false;
+    if (!cpiSearchLower) return true;
+    const haystack = [
+      r.contact_name, r.contact_email, r.company_name, r.industry, r.company_size, r.respondent_role,
+      r.freetext?.af4, r.freetext?.pf5, r.freetext?.tr4,
+      ...(r.li_preferences?.insatstyp ?? []),
+      ...(r.li_preferences?.upplägg ?? []),
+      ...(r.li_preferences?.yrkesroller?.map((o) => o.label) ?? []),
+      ...(r.ssyk_skills?.map((s) => s.title) ?? []),
+    ].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(cpiSearchLower);
+  });
+
+  const cpiTotalPages = Math.max(1, Math.ceil(filteredCpiRecords.length / CPI_PAGE_SIZE));
+  const cpiPageClamped = Math.min(cpiPage, cpiTotalPages);
+  const paginatedCpiRecords = filteredCpiRecords.slice(
+    (cpiPageClamped - 1) * CPI_PAGE_SIZE,
+    cpiPageClamped * CPI_PAGE_SIZE
+  );
 
   return (
     <div className="bg-slate-50 min-h-screen pb-16">
@@ -1154,14 +1228,20 @@ export function AdminDashboard() {
         {/* Kompetensindex Tab */}
         {activeTab === 'kompetensindex' && (
           <div>
+            {cpiDetailRecord && (
+              <CpiRecordDrawer record={cpiDetailRecord} onClose={() => setCpiDetailRecord(null)} />
+            )}
+
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-xl font-bold text-slate-900">Kompetensindex — Rapporter</h2>
-                <p className="text-slate-500 text-sm mt-1">{cpiRecords.length} genomförda analyser</p>
+                <p className="text-slate-500 text-sm mt-1">
+                  {filteredCpiRecords.length} av {cpiRecords.length} genomförda analyser
+                </p>
               </div>
               <button
-                onClick={exportCpiToCSV}
-                disabled={!cpiRecords.length}
+                onClick={() => exportCpiToCSV(filteredCpiRecords)}
+                disabled={!filteredCpiRecords.length}
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
               >
                 <Download className="w-4 h-4" />
@@ -1178,9 +1258,11 @@ export function AdminDashboard() {
             ) : (
               <>
                 {/* Summary stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   {(['AF', 'LF', 'OK', 'TR'] as const).map((dim) => {
-                    const avg = Math.round(cpiRecords.reduce((s, r) => s + (r.scores?.[dim] ?? 0), 0) / cpiRecords.length);
+                    const avg = filteredCpiRecords.length
+                      ? Math.round(filteredCpiRecords.reduce((s, r) => s + (r.scores?.[dim] ?? 0), 0) / filteredCpiRecords.length)
+                      : 0;
                     return (
                       <div key={dim} className="bg-white rounded-xl border border-slate-200 p-4 text-center">
                         <p className="text-xs text-slate-500 mb-1">{dim} — snitt</p>
@@ -1190,6 +1272,52 @@ export function AdminDashboard() {
                   })}
                 </div>
 
+                {/* Search + filters */}
+                <div className="flex flex-wrap items-center gap-3 mb-6">
+                  <div className="relative flex-1 min-w-[220px]">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={cpiSearch}
+                      onChange={(e) => setCpiSearch(e.target.value)}
+                      placeholder="Sök på företag, kontakt, fritextsvar, yrkesroller..."
+                      className="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                    />
+                  </div>
+                  <select
+                    value={cpiIndustryFilter}
+                    onChange={(e) => setCpiIndustryFilter(e.target.value)}
+                    className="border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="">Alla branscher</option>
+                    {cpiIndustries.map((i) => <option key={i} value={i}>{i}</option>)}
+                  </select>
+                  <select
+                    value={cpiSizeFilter}
+                    onChange={(e) => setCpiSizeFilter(e.target.value)}
+                    className="border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="">Alla storlekar</option>
+                    {cpiSizes.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <select
+                    value={cpiRoleFilter}
+                    onChange={(e) => setCpiRoleFilter(e.target.value)}
+                    className="border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="">Alla roller</option>
+                    {cpiRoles.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                  {(cpiSearch || cpiIndustryFilter || cpiSizeFilter || cpiRoleFilter) && (
+                    <button
+                      onClick={() => { setCpiSearch(''); setCpiIndustryFilter(''); setCpiSizeFilter(''); setCpiRoleFilter(''); }}
+                      className="text-sm text-slate-500 hover:text-slate-700 underline"
+                    >
+                      Rensa filter
+                    </button>
+                  )}
+                </div>
+
                 {/* Records table */}
                 <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                   <table className="w-full text-sm">
@@ -1197,6 +1325,7 @@ export function AdminDashboard() {
                       <tr>
                         <th className="text-left px-4 py-3 font-medium text-slate-600">Datum</th>
                         <th className="text-left px-4 py-3 font-medium text-slate-600">Företag</th>
+                        <th className="text-left px-4 py-3 font-medium text-slate-600">Kontakt</th>
                         <th className="text-left px-4 py-3 font-medium text-slate-600">Bransch</th>
                         <th className="text-left px-4 py-3 font-medium text-slate-600">Storlek</th>
                         <th className="text-center px-4 py-3 font-medium text-slate-600">Total</th>
@@ -1204,25 +1333,92 @@ export function AdminDashboard() {
                         <th className="text-center px-4 py-3 font-medium text-slate-600">LF</th>
                         <th className="text-center px-4 py-3 font-medium text-slate-600">OK</th>
                         <th className="text-center px-4 py-3 font-medium text-slate-600">TR</th>
+                        <th className="text-right px-4 py-3 font-medium text-slate-600">Åtgärder</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {cpiRecords.map((r) => (
-                        <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-4 py-3 text-slate-500">{new Date(r.created_at).toLocaleDateString('sv-SE')}</td>
-                          <td className="px-4 py-3 font-medium text-slate-900">{r.company_name}</td>
-                          <td className="px-4 py-3 text-slate-600 max-w-[180px] truncate">{r.industry}</td>
-                          <td className="px-4 py-3 text-slate-600">{r.company_size}</td>
-                          <td className="px-4 py-3 text-center font-bold text-slate-900">{r.scores?.total ?? '—'}</td>
-                          <td className="px-4 py-3 text-center text-blue-600">{r.scores?.AF ?? '—'}</td>
-                          <td className="px-4 py-3 text-center text-red-500">{r.scores?.LF ?? '—'}</td>
-                          <td className="px-4 py-3 text-center text-green-600">{r.scores?.OK ?? '—'}</td>
-                          <td className="px-4 py-3 text-center text-amber-500">{r.scores?.TR ?? '—'}</td>
+                      {paginatedCpiRecords.length === 0 ? (
+                        <tr>
+                          <td colSpan={11} className="px-4 py-10 text-center text-slate-400">
+                            Inga träffar för nuvarande sökning/filter.
+                          </td>
                         </tr>
-                      ))}
+                      ) : (
+                        paginatedCpiRecords.map((r) => (
+                          <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-3 text-slate-500">{new Date(r.created_at).toLocaleDateString('sv-SE')}</td>
+                            <td className="px-4 py-3 font-medium text-slate-900">{r.company_name}</td>
+                            <td className="px-4 py-3 text-slate-600 max-w-[160px] truncate">{r.contact_name}</td>
+                            <td className="px-4 py-3 text-slate-600 max-w-[180px] truncate">{r.industry}</td>
+                            <td className="px-4 py-3 text-slate-600">{r.company_size}</td>
+                            <td className="px-4 py-3 text-center font-bold text-slate-900">{r.scores?.total ?? '—'}</td>
+                            <td className="px-4 py-3 text-center text-blue-600">{r.scores?.AF ?? '—'}</td>
+                            <td className="px-4 py-3 text-center text-red-500">{r.scores?.LF ?? '—'}</td>
+                            <td className="px-4 py-3 text-center text-green-600">{r.scores?.OK ?? '—'}</td>
+                            <td className="px-4 py-3 text-center text-amber-500">{r.scores?.TR ?? '—'}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  onClick={() => setCpiDetailRecord(r)}
+                                  title="Visa detaljer"
+                                  className="p-2 hover:bg-slate-100 text-slate-600 rounded-lg transition-colors"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCpi(r)}
+                                  title="Ta bort"
+                                  className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination */}
+                {cpiTotalPages > 1 && (
+                  <Pagination className="mt-6">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => { e.preventDefault(); setCpiPage((p) => Math.max(1, p - 1)); }}
+                          className={cpiPageClamped === 1 ? 'pointer-events-none opacity-40' : ''}
+                        />
+                      </PaginationItem>
+                      {getPaginationRange(cpiPageClamped, cpiTotalPages).map((p, i) =>
+                        p === 'ellipsis' ? (
+                          <PaginationItem key={`ellipsis-${i}`}>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        ) : (
+                          <PaginationItem key={p}>
+                            <PaginationLink
+                              href="#"
+                              isActive={p === cpiPageClamped}
+                              onClick={(e) => { e.preventDefault(); setCpiPage(p); }}
+                            >
+                              {p}
+                            </PaginationLink>
+                          </PaginationItem>
+                        )
+                      )}
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => { e.preventDefault(); setCpiPage((p) => Math.min(cpiTotalPages, p + 1)); }}
+                          className={cpiPageClamped === cpiTotalPages ? 'pointer-events-none opacity-40' : ''}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                )}
               </>
             )}
           </div>
