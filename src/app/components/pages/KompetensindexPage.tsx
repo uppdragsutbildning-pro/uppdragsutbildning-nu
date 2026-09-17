@@ -174,7 +174,7 @@ export function KompetensindexPage() {
             <ul className="space-y-0.5">
               {hint.examples.map((ex) => (
                 <li key={ex} className="text-slate-600 text-xs flex items-start gap-1.5">
-                  <span className="mt-0.5 text-blue-400">•</span>{ex}
+                  <span className="mt-0.5 text-[var(--marketplace-primary)]">•</span>{ex}
                 </li>
               ))}
             </ul>
@@ -277,7 +277,7 @@ export function KompetensindexPage() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 text-blue-600 animate-spin mx-auto mb-6" />
+          <Loader2 className="w-10 h-10 text-[var(--marketplace-primary)] animate-spin mx-auto mb-6" />
           <div className="space-y-3">
             {['Beräknar CPI-index…', 'Hämtar SSYK-kompetenser…', 'Genererar rekommendationer…'].map(
               (label, i) => (
@@ -312,7 +312,7 @@ export function KompetensindexPage() {
     return (
       <div className="min-h-screen bg-slate-50">
         {/* Hero */}
-        <div className="bg-gradient-to-br from-blue-700 via-blue-600 to-blue-800 text-white">
+        <div className="bg-gradient-to-br from-[var(--marketplace-primary)]/90 via-[var(--marketplace-primary)] to-[var(--marketplace-primary)]/80 text-white">
           <div className="max-w-4xl mx-auto px-6 py-16 md:py-20">
             <div className="flex flex-col md:flex-row items-center gap-10">
               <div className="flex-1">
@@ -322,7 +322,7 @@ export function KompetensindexPage() {
                 <h1 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">
                   Strategiskt Kompetensindex<span className="text-blue-300">®</span>
                 </h1>
-                <p className="text-blue-100 text-lg leading-relaxed">
+                <p className="text-white/80 text-lg leading-relaxed">
                   En analys som hjälper er ledning att identifiera vilka kompetenser organisationen behöver utveckla för att nå sina mål — och var gapet mellan förändringstryck och förmåga att ställa om är som störst.
                 </p>
               </div>
@@ -349,29 +349,29 @@ export function KompetensindexPage() {
           <div className="grid sm:grid-cols-2 gap-5 mb-8">
             {[
               {
-                icon: <Users className="w-5 h-5 text-blue-600" />,
+                icon: <Users className="w-5 h-5 text-[var(--marketplace-primary)]" />,
                 title: 'Vem svarar?',
                 text: 'Analysen besvaras av en person med god överblick över organisationens arbetssätt och utvecklingsbehov — vanligtvis HR-chef, VD eller annan verksamhetsansvarig.',
               },
               {
-                icon: <FileText className="w-5 h-5 text-blue-600" />,
+                icon: <FileText className="w-5 h-5 text-[var(--marketplace-primary)]" />,
                 title: 'Hur går det till?',
                 text: 'Ni besvarar 24 frågor uppdelade i sex områden — från hur snabbt era arbetssätt förändras till hur väl ni har struktur för lärande i vardagen. Skalor, flerval och tre öppna frågor.',
               },
               {
-                icon: <Clock className="w-5 h-5 text-blue-600" />,
+                icon: <Clock className="w-5 h-5 text-[var(--marketplace-primary)]" />,
                 title: 'Hur lång tid tar det?',
                 text: 'Räkna med cirka 10–15 minuter.',
               },
               {
-                icon: <BarChart3 className="w-5 h-5 text-blue-600" />,
+                icon: <BarChart3 className="w-5 h-5 text-[var(--marketplace-primary)]" />,
                 title: 'Vad händer med era svar?',
                 text: 'Era svar analyseras med AI-stöd och sammanställs till en ledningsrapport med index, styrkor, risker och konkreta prioriteringar.',
               },
             ].map((item, i) => (
               <div key={i} className="bg-white rounded-xl border border-slate-200 p-5">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <div className="w-8 h-8 bg-[var(--marketplace-primary)]/10 rounded-lg flex items-center justify-center">
                     {item.icon}
                   </div>
                   <h3 className="font-semibold text-slate-900">{item.title}</h3>
@@ -391,7 +391,7 @@ export function KompetensindexPage() {
 
           {/* Varför göra analysen — banner */}
           <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-7 mb-10 flex flex-col md:flex-row items-start md:items-center gap-4">
-            <Target className="w-8 h-8 text-blue-400 flex-shrink-0" />
+            <Target className="w-8 h-8 text-[var(--marketplace-primary)] flex-shrink-0" />
             <div>
               <h3 className="font-bold text-white mb-1">Varför göra analysen?</h3>
               <p className="text-slate-300 text-sm leading-relaxed">
@@ -404,7 +404,7 @@ export function KompetensindexPage() {
           <div className="flex justify-center">
             <button
               onClick={() => setShowIntro(false)}
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-colors shadow-lg shadow-blue-200"
+              className="inline-flex items-center gap-2 bg-[var(--marketplace-primary)] hover:brightness-90 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-colors shadow-lg shadow-[var(--marketplace-primary)]/20"
             >
               Starta analysen
               <ArrowRight className="w-5 h-5" />
@@ -426,7 +426,7 @@ export function KompetensindexPage() {
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => setShowExitDialog(false)}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-medium text-sm transition-colors"
+                className="w-full bg-[var(--marketplace-primary)] hover:brightness-90 text-white py-2.5 rounded-lg font-medium text-sm transition-colors"
               >
                 Fortsätt analysen
               </button>
@@ -460,13 +460,13 @@ export function KompetensindexPage() {
                       i < step
                         ? 'bg-green-600 text-white'
                         : i === step
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-[var(--marketplace-primary)] text-white'
                         : 'bg-slate-200 text-slate-500'
                     }`}>
                       {i < step ? '✓' : i + 1}
                     </div>
                     <span className={`text-xs mt-1 ${
-                      i === step ? 'text-blue-600 font-semibold' : 'text-slate-400'
+                      i === step ? 'text-[var(--marketplace-primary)] font-semibold' : 'text-slate-400'
                     }`}>
                       {s.label}
                     </span>
@@ -497,7 +497,7 @@ export function KompetensindexPage() {
                   value={answers.contactName}
                   onChange={(e) => set('contactName', e.target.value)}
                   placeholder="Ange ditt namn"
-                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[var(--marketplace-primary)] focus:ring-2 focus:ring-[var(--marketplace-primary)]/20"
                 />
               </div>
               <div>
@@ -507,7 +507,7 @@ export function KompetensindexPage() {
                   value={answers.email}
                   onChange={(e) => set('email', e.target.value)}
                   placeholder="namn@foretag.se"
-                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[var(--marketplace-primary)] focus:ring-2 focus:ring-[var(--marketplace-primary)]/20"
                 />
               </div>
               <div>
@@ -517,7 +517,7 @@ export function KompetensindexPage() {
                   value={answers.companyName}
                   onChange={(e) => set('companyName', e.target.value)}
                   placeholder="Ange företagsnamn"
-                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[var(--marketplace-primary)] focus:ring-2 focus:ring-[var(--marketplace-primary)]/20"
                 />
               </div>
               <div ref={sniRef} className="relative">
@@ -530,7 +530,7 @@ export function KompetensindexPage() {
                   onChange={(e) => handleSniInput(e.target.value)}
                   onFocus={() => { if (sniQuery) { setSniSuggestions(searchSni(sniQuery)); setSniOpen(true); } }}
                   placeholder="Sök bransch eller SNI-kod, t.ex. &quot;IT&quot; eller &quot;J62&quot;"
-                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[var(--marketplace-primary)] focus:ring-2 focus:ring-[var(--marketplace-primary)]/20"
                   autoComplete="off"
                 />
                 {sniOpen && sniSuggestions.length > 0 && (
@@ -539,9 +539,9 @@ export function KompetensindexPage() {
                       <li
                         key={entry.code}
                         onMouseDown={() => selectSni(entry)}
-                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 cursor-pointer text-sm"
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--marketplace-primary)]/10 cursor-pointer text-sm"
                       >
-                        <span className="font-mono text-xs font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded shrink-0">{entry.code}</span>
+                        <span className="font-mono text-xs font-semibold text-[var(--marketplace-primary)] bg-[var(--marketplace-primary)]/10 px-1.5 py-0.5 rounded shrink-0">{entry.code}</span>
                         <span className="text-slate-700">{entry.label}</span>
                       </li>
                     ))}
@@ -556,7 +556,7 @@ export function KompetensindexPage() {
                 <select
                   value={answers.companySize}
                   onChange={(e) => set('companySize', e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[var(--marketplace-primary)] focus:ring-2 focus:ring-[var(--marketplace-primary)]/20"
                 >
                   <option value="" disabled>Välj storlek</option>
                   <option>1–9</option>
@@ -574,7 +574,7 @@ export function KompetensindexPage() {
                 <select
                   value={answers.userRole}
                   onChange={(e) => set('userRole', e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[var(--marketplace-primary)] focus:ring-2 focus:ring-[var(--marketplace-primary)]/20"
                 >
                   <option value="" disabled>Välj roll</option>
                   <option>VD / CEO</option>
@@ -616,7 +616,7 @@ export function KompetensindexPage() {
                 value={answers.af4}
                 onChange={(e) => set('af4', e.target.value)}
                 placeholder="Beskriv de viktigaste förändringsdrivkrafterna, t.ex. AI, digitalisering, regelverk, kundkrav…"
-                className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm min-h-[100px] resize-y focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm min-h-[100px] resize-y focus:outline-none focus:border-[var(--marketplace-primary)] focus:ring-2 focus:ring-[var(--marketplace-primary)]/20"
               />
               <HintBox field="af4" />
             </QuestionCard>
@@ -647,7 +647,7 @@ export function KompetensindexPage() {
                 value={answers.pf5}
                 onChange={(e) => set('pf5', e.target.value)}
                 placeholder="T.ex. offerter dröjer, rapporter fördröjs, tekniska ärenden eskaleras uppåt…"
-                className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm min-h-[100px] resize-y focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm min-h-[100px] resize-y focus:outline-none focus:border-[var(--marketplace-primary)] focus:ring-2 focus:ring-[var(--marketplace-primary)]/20"
               />
               <HintBox field="pf5" />
             </QuestionCard>
@@ -697,7 +697,7 @@ export function KompetensindexPage() {
                 value={answers.tr4}
                 onChange={(e) => set('tr4', e.target.value)}
                 placeholder="T.ex. AI och dataanalys, ledarskap i förändring, hållbarhetsrapportering…"
-                className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm min-h-[100px] resize-y focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm min-h-[100px] resize-y focus:outline-none focus:border-[var(--marketplace-primary)] focus:ring-2 focus:ring-[var(--marketplace-primary)]/20"
               />
               <HintBox field="tr4" />
             </QuestionCard>
@@ -774,7 +774,7 @@ export function KompetensindexPage() {
             <button
               onClick={() => { setStep((s) => s + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               disabled={!canProceed()}
-              className="px-8 py-3 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-8 py-3 bg-[var(--marketplace-primary)] text-white rounded-lg text-sm font-semibold hover:brightness-90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Nästa →
             </button>
@@ -782,7 +782,7 @@ export function KompetensindexPage() {
             <button
               onClick={handleAnalyze}
               disabled={!canProceed()}
-              className="px-8 py-3 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-8 py-3 bg-[var(--marketplace-secondary)] text-white rounded-lg text-sm font-semibold hover:brightness-90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Analysera →
             </button>

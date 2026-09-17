@@ -77,7 +77,7 @@ export function Root() {
                     to="/om-tjansten"
                     className={`text-sm transition-colors ${
                       location.pathname === '/om-tjansten'
-                        ? 'text-blue-600 font-medium'
+                        ? 'text-[var(--marketplace-primary)] font-medium'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -87,7 +87,7 @@ export function Root() {
                     to="/catalog"
                     className={`text-sm transition-colors ${
                       location.pathname === '/catalog'
-                        ? 'text-blue-600 font-medium'
+                        ? 'text-[var(--marketplace-primary)] font-medium'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -97,7 +97,7 @@ export function Root() {
                     to="/kompetensanalys"
                     className={`text-sm transition-colors ${
                       location.pathname === '/kompetensanalys'
-                        ? 'text-blue-600 font-medium'
+                        ? 'text-[var(--marketplace-primary)] font-medium'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -107,7 +107,7 @@ export function Root() {
                     to="/request"
                     className={`text-sm transition-colors ${
                       location.pathname === '/request'
-                        ? 'text-blue-600 font-medium'
+                        ? 'text-[var(--marketplace-primary)] font-medium'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -170,7 +170,7 @@ export function Root() {
                       onClick={() => setMobileMenuOpen(false)}
                       className={`px-3 py-2 rounded-lg text-sm transition-colors ${
                         location.pathname === '/catalog'
-                          ? 'bg-blue-50 text-blue-600 font-medium'
+                          ? 'bg-[var(--marketplace-primary)]/10 text-[var(--marketplace-primary)] font-medium'
                           : 'text-slate-600 hover:bg-slate-100'
                       }`}
                     >
@@ -181,7 +181,7 @@ export function Root() {
                       onClick={() => setMobileMenuOpen(false)}
                       className={`px-3 py-2 rounded-lg text-sm transition-colors ${
                         location.pathname === '/kompetensanalys'
-                          ? 'bg-blue-50 text-blue-600 font-medium'
+                          ? 'bg-[var(--marketplace-primary)]/10 text-[var(--marketplace-primary)] font-medium'
                           : 'text-slate-600 hover:bg-slate-100'
                       }`}
                     >
@@ -192,7 +192,7 @@ export function Root() {
                       onClick={() => setMobileMenuOpen(false)}
                       className={`px-3 py-2 rounded-lg text-sm transition-colors ${
                         location.pathname === '/request'
-                          ? 'bg-blue-50 text-blue-600 font-medium'
+                          ? 'bg-[var(--marketplace-primary)]/10 text-[var(--marketplace-primary)] font-medium'
                           : 'text-slate-600 hover:bg-slate-100'
                       }`}
                     >

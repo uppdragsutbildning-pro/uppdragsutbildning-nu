@@ -1,6 +1,13 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Plattformens standard brand-/CTA-färg (blue-600/green-600, se CLAUDE.md
+     UI-riktlinjer). Root.tsx skriver över dessa med en partners egen färg
+     inom en marknadsplatskontext (marketplace_branding.primary_color/
+     secondary_color) – delade sidor/komponenter ska referera hit istället
+     för att hårdkoda blue-600/green-600, så de temas automatiskt. */
+  --marketplace-primary: #2563eb;
+  --marketplace-secondary: #16a34a;
   --font-size: 16px;
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --background: #ffffff;

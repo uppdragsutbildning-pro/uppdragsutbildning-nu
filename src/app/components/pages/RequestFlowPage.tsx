@@ -123,9 +123,9 @@ export function RequestFlowPage() {
         {/* Progress Steps */}
         <div className="mb-12">
           <div className="flex items-center justify-center gap-4">
-            <div className={`flex items-center gap-2 ${step === 'describe' ? 'text-blue-600' : 'text-slate-400'}`}>
+            <div className={`flex items-center gap-2 ${step === 'describe' ? 'text-[var(--marketplace-primary)]' : 'text-slate-400'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                step === 'describe' ? 'bg-blue-600 text-white' : 
+                step === 'describe' ? 'bg-[var(--marketplace-primary)] text-white' : 
                 ['ai-analysis', 'form', 'confirmation'].includes(step) ? 'bg-green-600 text-white' : 
                 'bg-slate-200'
               }`}>
@@ -140,9 +140,9 @@ export function RequestFlowPage() {
             
             <div className="w-12 h-0.5 bg-slate-200"></div>
             
-            <div className={`flex items-center gap-2 ${step === 'ai-analysis' ? 'text-blue-600' : 'text-slate-400'}`}>
+            <div className={`flex items-center gap-2 ${step === 'ai-analysis' ? 'text-[var(--marketplace-primary)]' : 'text-slate-400'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                step === 'ai-analysis' ? 'bg-blue-600 text-white' : 
+                step === 'ai-analysis' ? 'bg-[var(--marketplace-primary)] text-white' : 
                 ['form', 'confirmation'].includes(step) ? 'bg-green-600 text-white' : 
                 'bg-slate-200'
               }`}>
@@ -157,9 +157,9 @@ export function RequestFlowPage() {
             
             <div className="w-12 h-0.5 bg-slate-200"></div>
             
-            <div className={`flex items-center gap-2 ${step === 'form' ? 'text-blue-600' : 'text-slate-400'}`}>
+            <div className={`flex items-center gap-2 ${step === 'form' ? 'text-[var(--marketplace-primary)]' : 'text-slate-400'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                step === 'form' ? 'bg-blue-600 text-white' : 
+                step === 'form' ? 'bg-[var(--marketplace-primary)] text-white' : 
                 step === 'confirmation' ? 'bg-green-600 text-white' : 
                 'bg-slate-200'
               }`}>
@@ -180,7 +180,7 @@ export function RequestFlowPage() {
           {step === 'describe' && (
             <div className="p-8 md:p-12">
               <div className="text-center mb-8">
-                <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full mb-4">
+                <div className="inline-flex items-center gap-2 bg-[var(--marketplace-primary)]/15 text-[var(--marketplace-primary)] px-4 py-2 rounded-full mb-4">
                   <Sparkles className="w-4 h-4" />
                   <span className="text-sm font-medium">AI-Driven Matchning</span>
                 </div>
@@ -206,7 +206,7 @@ export function RequestFlowPage() {
                       "Exempel: Vi behöver ledarskapsutbildning för 20 chefer med fokus på strategiskt tänkande och förändringsledning. Önskar starta under Q3 2026..."
                     }
                     rows={8}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--marketplace-primary)]/20 focus:border-[var(--marketplace-primary)] outline-none resize-none"
                     required
                   />
                   <p className="text-sm text-slate-500 mt-2">
@@ -216,7 +216,7 @@ export function RequestFlowPage() {
 
                 <button
                   type="submit"
-                  className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-lg font-medium transition-colors"
+                  className="w-full flex items-center justify-center gap-2 bg-[var(--marketplace-primary)] hover:brightness-90 text-white px-6 py-4 rounded-lg font-medium transition-colors"
                 >
                   <Sparkles className="w-5 h-5" />
                   Analysera med AI
@@ -232,7 +232,7 @@ export function RequestFlowPage() {
               <div className="text-center">
                 {isAnalyzing ? (
                   <>
-                    <Loader2 className="w-16 h-16 text-blue-600 animate-spin mx-auto mb-6" />
+                    <Loader2 className="w-16 h-16 text-[var(--marketplace-primary)] animate-spin mx-auto mb-6" />
                     <h2 className="text-2xl font-bold text-slate-900 mb-3">
                       Analyserar din förfrågan...
                     </h2>
@@ -250,9 +250,9 @@ export function RequestFlowPage() {
                       Vi har identifierat dina utbildningsbehov
                     </p>
 
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 mb-6 text-left">
+                    <div className="bg-gradient-to-br from-[var(--marketplace-primary)]/5 to-[var(--marketplace-primary)]/15 rounded-xl p-6 mb-6 text-left">
                       <div className="flex items-start gap-3 mb-4">
-                        <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" />
+                        <Sparkles className="w-5 h-5 text-[var(--marketplace-primary)] flex-shrink-0 mt-1" />
                         <div>
                           <h3 className="font-semibold text-slate-900 mb-2">AI-Sammanfattning</h3>
                           <p className="text-slate-700">{aiSummary}</p>
@@ -281,7 +281,7 @@ export function RequestFlowPage() {
 
                     <button
                       onClick={() => setStep('form')}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                      className="w-full bg-[var(--marketplace-primary)] hover:brightness-90 text-white font-semibold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-colors"
                     >
                       Fortsätt till förfrågan <ArrowRight className="w-4 h-4" />
                     </button>
@@ -314,7 +314,7 @@ export function RequestFlowPage() {
                       type="text"
                       value={formData.companyName}
                       onChange={(e) => updateFormData('companyName', e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--marketplace-primary)]/20 focus:border-[var(--marketplace-primary)] outline-none"
                       required
                     />
                   </div>
@@ -328,7 +328,7 @@ export function RequestFlowPage() {
                       type="text"
                       value={formData.contactName}
                       onChange={(e) => updateFormData('contactName', e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--marketplace-primary)]/20 focus:border-[var(--marketplace-primary)] outline-none"
                       required
                     />
                   </div>
@@ -342,7 +342,7 @@ export function RequestFlowPage() {
                       type="email"
                       value={formData.email}
                       onChange={(e) => updateFormData('email', e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--marketplace-primary)]/20 focus:border-[var(--marketplace-primary)] outline-none"
                       required
                     />
                   </div>
@@ -356,7 +356,7 @@ export function RequestFlowPage() {
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => updateFormData('phone', e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--marketplace-primary)]/20 focus:border-[var(--marketplace-primary)] outline-none"
                       required
                     />
                   </div>
@@ -371,7 +371,7 @@ export function RequestFlowPage() {
                       value={formData.budget}
                       onChange={(e) => updateFormData('budget', e.target.value)}
                       placeholder="t.ex. 500 000 - 1 000 000 SEK"
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--marketplace-primary)]/20 focus:border-[var(--marketplace-primary)] outline-none"
                     />
                   </div>
 
@@ -385,13 +385,13 @@ export function RequestFlowPage() {
                       value={formData.timeline}
                       onChange={(e) => updateFormData('timeline', e.target.value)}
                       placeholder="t.ex. Q3 2026"
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--marketplace-primary)]/20 focus:border-[var(--marketplace-primary)] outline-none"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="bg-blue-50 rounded-lg p-4">
+                <div className="bg-[var(--marketplace-primary)]/5 rounded-lg p-4">
                   <p className="text-sm text-slate-700">
                     <strong>Din sammanfattning:</strong> {description.substring(0, 200)}
                     {description.length > 200 ? '...' : ''}
@@ -400,7 +400,7 @@ export function RequestFlowPage() {
 
                 <button
                   type="submit"
-                  className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-lg font-medium transition-colors"
+                  className="w-full flex items-center justify-center gap-2 bg-[var(--marketplace-primary)] hover:brightness-90 text-white px-6 py-4 rounded-lg font-medium transition-colors"
                 >
                   Skicka Förfrågan
                   <ArrowRight className="w-5 h-5" />
@@ -442,7 +442,7 @@ export function RequestFlowPage() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button
                   onClick={() => navigate('/')}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  className="px-6 py-3 bg-[var(--marketplace-primary)] text-white rounded-lg hover:brightness-90 transition-colors font-medium"
                 >
                   Tillbaka till Start
                 </button>

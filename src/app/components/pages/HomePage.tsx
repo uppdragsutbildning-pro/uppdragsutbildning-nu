@@ -17,17 +17,17 @@ export function HomePage() {
   return (
     <div className="pb-16">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 text-white overflow-hidden">
+      <section className="relative bg-gradient-to-br from-[var(--marketplace-primary)] via-[var(--marketplace-primary)] to-[var(--marketplace-primary)]/80 text-white overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
             backgroundImage: 'url(https://images.unsplash.com/photo-1653566031486-dc4ead13a35d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1920)'
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/75 via-blue-700/80 to-blue-800/85" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[var(--marketplace-primary)]/75 via-[var(--marketplace-primary)]/80 to-[var(--marketplace-primary)]/85" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 bg-blue-500/30 backdrop-blur-sm px-4 py-2 rounded-full mb-6">
+            <div className="inline-flex items-center gap-2 bg-[var(--marketplace-primary)]/30 backdrop-blur-sm px-4 py-2 rounded-full mb-6">
               <Sparkles className="w-4 h-4" />
               <span className="text-sm">AI-driven marknadsplats för utbildning</span>
             </div>
@@ -36,7 +36,7 @@ export function HomePage() {
               Hitta rätt utbildning för din organisation
             </h1>
 
-            <p className="text-lg md:text-xl text-blue-100 mb-8">
+            <p className="text-lg md:text-xl text-white/80 mb-8">
               Koppla samman med ledande universitet och utbildningsleverantörer. Få personliga
               rekommendationer med hjälp av AI.
             </p>
@@ -247,19 +247,19 @@ export function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-1">200+</div>
+              <div className="text-3xl font-bold text-[var(--marketplace-primary)] mb-1">200+</div>
               <div className="text-sm text-slate-600">Utbildningsprogram</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-1">50+</div>
+              <div className="text-3xl font-bold text-[var(--marketplace-primary)] mb-1">50+</div>
               <div className="text-sm text-slate-600">Betrodda Leverantörer</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-1">1 000+</div>
+              <div className="text-3xl font-bold text-[var(--marketplace-primary)] mb-1">1 000+</div>
               <div className="text-sm text-slate-600">Nöjda Företag</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-1">95%</div>
+              <div className="text-3xl font-bold text-[var(--marketplace-primary)] mb-1">95%</div>
               <div className="text-sm text-slate-600">Nöjdhetsgrad</div>
             </div>
           </div>
@@ -309,11 +309,11 @@ export function HomePage() {
                 to={`/catalog?category=${category.id}`}
                 className="group bg-white border border-slate-200 rounded-xl p-6 hover:border-blue-300 hover:shadow-lg transition-all"
               >
-                <h3 className="font-semibold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">
+                <h3 className="font-semibold text-slate-900 mb-2 group-hover:text-[var(--marketplace-primary)] transition-colors">
                   {category.name}
                 </h3>
                 <p className="text-sm text-slate-600 mb-3">{category.description}</p>
-                <div className="flex items-center text-sm text-blue-600 font-medium">
+                <div className="flex items-center text-sm text-[var(--marketplace-primary)] font-medium">
                   Utforska <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                 </div>
               </Link>
@@ -336,7 +336,7 @@ export function HomePage() {
             </div>
             <Link 
               to="/catalog" 
-              className="hidden md:flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+              className="hidden md:flex items-center gap-2 text-[var(--marketplace-primary)] hover:brightness-90 font-medium"
             >
               Visa alla
               <ArrowRight className="w-4 h-4" />
@@ -358,7 +358,7 @@ export function HomePage() {
                     className="aspect-video relative overflow-hidden bg-cover bg-center"
                     style={{ backgroundImage: `url(${training.imageUrl})` }}
                   >
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-600/40 to-blue-800/40 group-hover:from-blue-600/20 group-hover:to-blue-800/20 transition-all"></div>
+                    <div className="absolute inset-0 bg-gradient-to-br from-[var(--marketplace-primary)]/40 to-[var(--marketplace-primary)]/60 group-hover:from-[var(--marketplace-primary)]/20 group-hover:to-[var(--marketplace-primary)]/30 transition-all"></div>
                     <div className="absolute top-4 left-4">
                       <span className="inline-block bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-slate-900">
                         {category?.name}
@@ -368,10 +368,10 @@ export function HomePage() {
                   
                   <div className="p-6">
                     <div className="flex items-start justify-between gap-3 mb-3">
-                      <h3 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
+                      <h3 className="font-semibold text-slate-900 group-hover:text-[var(--marketplace-primary)] transition-colors">
                         {training.title}
                       </h3>
-                      <TrendingUp className="w-4 h-4 text-blue-600 flex-shrink-0 mt-1" />
+                      <TrendingUp className="w-4 h-4 text-[var(--marketplace-primary)] flex-shrink-0 mt-1" />
                     </div>
                     
                     <p className="text-sm text-slate-600 mb-4 line-clamp-2">
@@ -413,7 +413,7 @@ export function HomePage() {
           <div className="text-center mt-8 md:hidden">
             <Link 
               to="/catalog" 
-              className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+              className="inline-flex items-center gap-2 text-[var(--marketplace-primary)] hover:brightness-90 font-medium"
             >
               Visa alla utbildningar
               <ArrowRight className="w-4 h-4" />
@@ -423,11 +423,11 @@ export function HomePage() {
       </section>
 
       {/* Kompetensanalys CTA */}
-      <section className="py-14 bg-blue-50 border-y border-blue-100">
+      <section className="py-14 bg-[var(--marketplace-primary)]/5 border-y border-[var(--marketplace-primary)]/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div>
-              <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full mb-3">
+              <span className="inline-block bg-[var(--marketplace-primary)]/15 text-[var(--marketplace-primary)] text-xs font-semibold px-3 py-1 rounded-full mb-3">
                 ✦ AI-driven analys
               </span>
               <h2 className="text-2xl font-bold text-slate-900 mb-2">
@@ -439,7 +439,7 @@ export function HomePage() {
             </div>
             <Link
               to="/kompetensanalys"
-              className="shrink-0 inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              className="shrink-0 inline-flex items-center gap-2 px-6 py-3 bg-[var(--marketplace-primary)] text-white rounded-lg font-semibold hover:brightness-90 transition-colors"
             >
               Starta Kompetensanalys
               <ArrowRight className="w-4 h-4" />
@@ -462,8 +462,8 @@ export function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search className="w-8 h-8 text-blue-600" />
+              <div className="w-16 h-16 bg-[var(--marketplace-primary)]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Search className="w-8 h-8 text-[var(--marketplace-primary)]" />
               </div>
               <h3 className="font-semibold text-slate-900 mb-2">1. Beskriv Ert Behov</h3>
               <p className="text-sm text-slate-600">
@@ -472,8 +472,8 @@ export function HomePage() {
             </div>
 
             <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-blue-600" />
+              <div className="w-16 h-16 bg-[var(--marketplace-primary)]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="w-8 h-8 text-[var(--marketplace-primary)]" />
               </div>
               <h3 className="font-semibold text-slate-900 mb-2">2. Jämför Leverantörer</h3>
               <p className="text-sm text-slate-600">
@@ -482,8 +482,8 @@ export function HomePage() {
             </div>
 
             <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Building className="w-8 h-8 text-blue-600" />
+              <div className="w-16 h-16 bg-[var(--marketplace-primary)]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Building className="w-8 h-8 text-[var(--marketplace-primary)]" />
               </div>
               <h3 className="font-semibold text-slate-900 mb-2">3. Efterfråga Offert</h3>
               <p className="text-sm text-slate-600">
@@ -495,25 +495,25 @@ export function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-16">
+      <section className="bg-gradient-to-r from-[var(--marketplace-primary)] to-[var(--marketplace-primary)]/90 text-white py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Redo att hitta din perfekta utbildning?
           </h2>
-          <p className="text-lg text-blue-100 mb-8">
+          <p className="text-lg text-white/80 mb-8">
             Låt vår AI hjälpa dig att upptäcka de bästa utbildningslösningarna för er organisation
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               to="/request"
-              className="inline-flex items-center justify-center gap-2 bg-white text-blue-600 px-8 py-3 rounded-lg font-medium hover:bg-blue-50 transition-colors"
+              className="inline-flex items-center justify-center gap-2 bg-white text-[var(--marketplace-primary)] px-8 py-3 rounded-lg font-medium hover:bg-[var(--marketplace-primary)]/10 transition-colors"
             >
               <Sparkles className="w-5 h-5" />
               Starta med AI-assistent
             </Link>
             <Link
               to="/catalog"
-              className="inline-flex items-center justify-center gap-2 bg-blue-500 text-white px-8 py-3 rounded-lg font-medium hover:bg-blue-400 transition-colors"
+              className="inline-flex items-center justify-center gap-2 bg-white/15 text-white px-8 py-3 rounded-lg font-medium hover:bg-white/25 transition-colors"
             >
               Bläddra Katalog
               <ArrowRight className="w-5 h-5" />

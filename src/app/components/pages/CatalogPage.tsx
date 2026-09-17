@@ -197,7 +197,7 @@ export function CatalogPage() {
                 {activeFiltersCount > 0 && (
                   <button
                     onClick={clearFilters}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    className="text-xs text-[var(--marketplace-primary)] hover:brightness-90 font-medium"
                   >
                     Rensa alla
                   </button>
@@ -214,7 +214,7 @@ export function CatalogPage() {
                         type="checkbox"
                         checked={selectedCategories.includes(category.id)}
                         onChange={() => toggleCategory(category.id)}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-slate-300 text-[var(--marketplace-primary)] focus:ring-[var(--marketplace-primary)]"
                       />
                       <span className="text-sm text-slate-700">{category.name}</span>
                     </label>
@@ -236,7 +236,7 @@ export function CatalogPage() {
                         type="checkbox"
                         checked={selectedFormats.includes(format.value)}
                         onChange={() => toggleFormat(format.value)}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-slate-300 text-[var(--marketplace-primary)] focus:ring-[var(--marketplace-primary)]"
                       />
                       <span className="text-sm text-slate-700">{format.label}</span>
                     </label>
@@ -254,7 +254,7 @@ export function CatalogPage() {
                         type="checkbox"
                         checked={selectedProviders.includes(provider.id)}
                         onChange={() => toggleProvider(provider.id)}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-slate-300 text-[var(--marketplace-primary)] focus:ring-[var(--marketplace-primary)]"
                       />
                       <span className="text-sm text-slate-700 line-clamp-1">{provider.name}</span>
                     </label>
@@ -275,7 +275,7 @@ export function CatalogPage() {
                 <Filter className="w-4 h-4" />
                 Filters
                 {activeFiltersCount > 0 && (
-                  <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
+                  <span className="bg-[var(--marketplace-primary)] text-white text-xs px-2 py-0.5 rounded-full">
                     {activeFiltersCount}
                   </span>
                 )}
@@ -288,7 +288,7 @@ export function CatalogPage() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as 'popular' | 'newest')}
-                  className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[var(--marketplace-primary)]"
                 >
                   <option value="popular">Mest Populära</option>
                   <option value="newest">Flest Förfrågningar</option>
@@ -320,7 +320,7 @@ export function CatalogPage() {
                             type="checkbox"
                             checked={selectedCategories.includes(category.id)}
                             onChange={() => toggleCategory(category.id)}
-                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            className="rounded border-slate-300 text-[var(--marketplace-primary)] focus:ring-[var(--marketplace-primary)]"
                           />
                           <span className="text-sm text-slate-700">{category.name}</span>
                         </label>
@@ -341,7 +341,7 @@ export function CatalogPage() {
                             type="checkbox"
                             checked={selectedFormats.includes(format.value)}
                             onChange={() => toggleFormat(format.value)}
-                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            className="rounded border-slate-300 text-[var(--marketplace-primary)] focus:ring-[var(--marketplace-primary)]"
                           />
                           <span className="text-sm text-slate-700">{format.label}</span>
                         </label>
@@ -358,7 +358,7 @@ export function CatalogPage() {
                             type="checkbox"
                             checked={selectedProviders.includes(provider.id)}
                             onChange={() => toggleProvider(provider.id)}
-                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            className="rounded border-slate-300 text-[var(--marketplace-primary)] focus:ring-[var(--marketplace-primary)]"
                           />
                           <span className="text-sm text-slate-700">{provider.name}</span>
                         </label>
@@ -369,7 +369,7 @@ export function CatalogPage() {
                   {activeFiltersCount > 0 && (
                     <button
                       onClick={clearFilters}
-                      className="w-full px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg font-medium text-sm transition-colors"
+                      className="w-full px-4 py-2 text-[var(--marketplace-primary)] hover:bg-[var(--marketplace-primary)]/10 rounded-lg font-medium text-sm transition-colors"
                     >
                       Rensa alla filter
                     </button>
@@ -396,7 +396,7 @@ export function CatalogPage() {
                         className="md:w-64 aspect-video md:aspect-auto relative bg-cover bg-center"
                         style={{ backgroundImage: `url(${backgroundImage})` }}
                       >
-                        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/40 to-blue-800/40 group-hover:from-blue-600/20 group-hover:to-blue-800/20 transition-all" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-[var(--marketplace-primary)]/40 to-[var(--marketplace-primary)]/60 group-hover:from-[var(--marketplace-primary)]/20 group-hover:to-[var(--marketplace-primary)]/30 transition-all" />
                         <div className="absolute top-3 left-3">
                           <span className="inline-block bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-slate-900">
                             {category?.name}
@@ -406,10 +406,10 @@ export function CatalogPage() {
 
                       <div className="flex-1 p-6">
                         <div className="flex items-start justify-between gap-4 mb-3">
-                          <h3 className="text-xl font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
+                          <h3 className="text-xl font-semibold text-slate-900 group-hover:text-[var(--marketplace-primary)] transition-colors">
                             {training.title}
                           </h3>
-                          <TrendingUp className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                          <TrendingUp className="w-5 h-5 text-[var(--marketplace-primary)] flex-shrink-0" />
                         </div>
 
                         <p className="text-slate-600 mb-4 line-clamp-2">
@@ -452,7 +452,7 @@ export function CatalogPage() {
                             <span>•</span>
                             <span>{training.leads} förfrågningar</span>
                           </div>
-                          <div className="flex items-center gap-2 text-blue-600 font-medium text-sm">
+                          <div className="flex items-center gap-2 text-[var(--marketplace-primary)] font-medium text-sm">
                             Visa detaljer
                             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                           </div>
@@ -487,7 +487,7 @@ export function CatalogPage() {
                     </p>
                     <button
                       onClick={clearFilters}
-                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      className="px-6 py-2 bg-[var(--marketplace-primary)] text-white rounded-lg hover:brightness-90 transition-colors font-medium"
                     >
                       Rensa filter
                     </button>

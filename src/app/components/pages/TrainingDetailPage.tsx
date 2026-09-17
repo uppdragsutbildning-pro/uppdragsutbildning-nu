@@ -116,7 +116,7 @@ export function TrainingDetailPage() {
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-12 h-12 border-4 border-[var(--marketplace-primary)] border-t-transparent rounded-full animate-spin mx-auto" />
       </div>
     );
   }
@@ -125,7 +125,7 @@ export function TrainingDetailPage() {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold text-slate-900 mb-4">Utbildning hittades inte</h1>
-        <Link to="/catalog" className="text-blue-600 hover:text-blue-700">Tillbaka till katalogen</Link>
+        <Link to="/catalog" className="text-[var(--marketplace-primary)] hover:brightness-90">Tillbaka till katalogen</Link>
       </div>
     );
   }
@@ -153,7 +153,7 @@ export function TrainingDetailPage() {
 
       {/* HERO */}
       <div className="relative w-full overflow-hidden" style={{ backgroundImage: `url(${training.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', minHeight: 380 }}>
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/88 via-blue-800/82 to-slate-900/90" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[var(--marketplace-primary)]/90 via-[var(--marketplace-primary)]/80 to-slate-900/90" />
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
           <Link to="/catalog" className="inline-flex items-center gap-2 text-blue-200 hover:text-white text-sm transition-colors">
             <ArrowLeft className="w-4 h-4" />
@@ -191,7 +191,7 @@ export function TrainingDetailPage() {
                   <GraduationCap className="w-5 h-5 text-white" />
                 </div>
               )}
-              <span className="text-blue-100 font-medium">{provider.name}</span>
+              <span className="text-white/80 font-medium">{provider.name}</span>
             </div>
             <div className="flex flex-wrap gap-3">
               {[
@@ -200,7 +200,7 @@ export function TrainingDetailPage() {
                 { icon: <BookOpen className="w-3.5 h-3.5" />, label: `${training.credits} hp` },
                 ...(training.courseCode ? [{ icon: <span className="font-mono text-xs">#</span>, label: training.courseCode }] : [])
               ].map((item, i) => (
-                <span key={i} className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-sm border border-white/20 px-3 py-1.5 rounded-lg text-sm text-blue-50">
+                <span key={i} className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-sm border border-white/20 px-3 py-1.5 rounded-lg text-sm text-white/90">
                   {item.icon}{item.label}
                 </span>
               ))}
@@ -219,7 +219,7 @@ export function TrainingDetailPage() {
             {/* Mobile CTA */}
             <div className="lg:hidden flex gap-3">
               {isCustom && (
-                <button onClick={goToRequest} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl font-medium text-sm transition-colors shadow-sm">
+                <button onClick={goToRequest} className="flex-1 flex items-center justify-center gap-2 bg-[var(--marketplace-primary)] hover:brightness-90 text-white px-4 py-3 rounded-xl font-medium text-sm transition-colors shadow-sm">
                   <Sparkles className="w-4 h-4" />Begär offert
                 </button>
               )}
@@ -238,7 +238,7 @@ export function TrainingDetailPage() {
                 </button>
                 <button onClick={() => setActiveTab('starts')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === 'starts' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
                   <CalendarDays className="w-4 h-4" />Utbildningsstarter
-                  <span className="bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded-full font-semibold">{training.scheduledStarts!.length}</span>
+                  <span className="bg-[var(--marketplace-primary)]/15 text-[var(--marketplace-primary)] text-xs px-1.5 py-0.5 rounded-full font-semibold">{training.scheduledStarts!.length}</span>
                 </button>
               </div>
             )}
@@ -249,7 +249,7 @@ export function TrainingDetailPage() {
                 <section className="bg-white rounded-xl border border-slate-200 p-6 md:p-8">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 pb-8 border-b border-slate-100">
                     {[
-                      { val: training.views.toString(), label: 'Visningar', icon: <TrendingUp className="w-5 h-5 text-blue-500" /> },
+                      { val: training.views.toString(), label: 'Visningar', icon: <TrendingUp className="w-5 h-5 text-[var(--marketplace-primary)]" /> },
                       { val: training.leads.toString(), label: 'Förfrågningar', icon: <Users className="w-5 h-5 text-emerald-500" /> },
                       { val: `${training.credits} hp`, label: 'Högskolepoäng', icon: <BookOpen className="w-5 h-5 text-violet-500" /> },
                       { val: hasStarts ? training.scheduledStarts!.length.toString() : '—', label: hasStarts ? 'Planerade starter' : 'Skräddarsydd', icon: <CalendarDays className="w-5 h-5 text-amber-500" /> }
@@ -315,7 +315,7 @@ export function TrainingDetailPage() {
                         <div key={i} className="border border-slate-200 rounded-xl overflow-hidden">
                           <button onClick={() => setOpenCurriculum(openCurriculum === i ? null : i)} className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-slate-50 transition-colors">
                             <div className="flex items-center gap-3">
-                              <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                              <span className="w-7 h-7 rounded-full bg-[var(--marketplace-primary)]/15 text-[var(--marketplace-primary)] text-xs font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
                               <span className="font-medium text-slate-900">{mod.title}</span>
                             </div>
                             <ChevronDown className={`w-5 h-5 text-slate-400 flex-shrink-0 transition-transform duration-200 ${openCurriculum === i ? 'rotate-180' : ''}`} />
@@ -325,7 +325,7 @@ export function TrainingDetailPage() {
                               <ul className="space-y-2">
                                 {mod.topics.map((t, j) => (
                                   <li key={j} className="flex items-center gap-2.5 text-sm text-slate-700">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />{t}
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--marketplace-primary)] flex-shrink-0" />{t}
                                   </li>
                                 ))}
                               </ul>
@@ -339,10 +339,10 @@ export function TrainingDetailPage() {
 
                 {/* Starts teaser */}
                 {hasStarts && (
-                  <section className="bg-gradient-to-br from-blue-50 to-slate-50 rounded-xl border border-blue-100 p-6 md:p-8">
+                  <section className="bg-gradient-to-br from-[var(--marketplace-primary)]/5 to-slate-50 rounded-xl border border-[var(--marketplace-primary)]/20 p-6 md:p-8">
                     <div className="flex items-center justify-between mb-5">
                       <h2 className="text-xl font-bold text-slate-900">Planerade utbildningsstarter</h2>
-                      <button onClick={() => setActiveTab('starts')} className="text-sm text-blue-600 hover:text-blue-700 font-medium">Visa alla →</button>
+                      <button onClick={() => setActiveTab('starts')} className="text-sm text-[var(--marketplace-primary)] hover:brightness-90 font-medium">Visa alla →</button>
                     </div>
                     <div className="space-y-3">
                       {training.scheduledStarts!.slice(0, 2).map(start => (
@@ -357,12 +357,12 @@ export function TrainingDetailPage() {
                   <section className="bg-white rounded-xl border border-slate-200 p-6 md:p-8">
                     <h2 className="text-xl font-bold text-slate-900 mb-5">Ansvarig lärare</h2>
                     <div className="flex items-start gap-4">
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center flex-shrink-0 text-white font-bold text-xl">
+                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[var(--marketplace-primary)] to-[var(--marketplace-primary)]/80 flex items-center justify-center flex-shrink-0 text-white font-bold text-xl">
                         {training.instructor.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}
                       </div>
                       <div>
                         <h3 className="font-semibold text-slate-900 mb-0.5">{training.instructor.name}</h3>
-                        <p className="text-sm text-blue-600 mb-3">{training.instructor.title}</p>
+                        <p className="text-sm text-[var(--marketplace-primary)] mb-3">{training.instructor.title}</p>
                         <p className="text-slate-600 text-sm leading-relaxed">{training.instructor.bio}</p>
                       </div>
                     </div>
@@ -378,13 +378,13 @@ export function TrainingDetailPage() {
                         <img src={providerLogos[provider.name]} alt={provider.name} className="w-full h-full object-contain" />
                       </div>
                     ) : (
-                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <div className="w-16 h-16 bg-gradient-to-br from-[var(--marketplace-primary)] to-[var(--marketplace-primary)]/90 rounded-xl flex items-center justify-center flex-shrink-0">
                         <GraduationCap className="w-8 h-8 text-white" />
                       </div>
                     )}
                     <div>
                       <h3 className="font-semibold text-slate-900 mb-1">{provider.name}</h3>
-                      <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100">
+                      <span className="inline-block px-2 py-1 bg-[var(--marketplace-primary)]/10 text-[var(--marketplace-primary)] text-xs rounded-full border border-[var(--marketplace-primary)]/20">
                         {providerTypeLabel[provider.type]}
                       </span>
                     </div>
@@ -433,7 +433,7 @@ export function TrainingDetailPage() {
             <div className="sticky top-24 space-y-4">
               {isCustom && (
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                  <div className="bg-gradient-to-r from-violet-600 to-blue-600 px-5 py-4">
+                  <div className="bg-gradient-to-r from-[var(--marketplace-secondary)] to-[var(--marketplace-primary)] px-5 py-4">
                     <div className="flex items-center gap-2 mb-1">
                       <Briefcase className="w-4 h-4 text-violet-200" />
                       <span className="text-violet-100 text-sm font-medium">Skräddarsydd utbildning</span>
@@ -442,7 +442,7 @@ export function TrainingDetailPage() {
                   </div>
                   <div className="p-5">
                     <p className="text-sm text-slate-600 mb-4 leading-relaxed">{provider.name} kan skräddarsy utbildningen utifrån er verksamhets unika behov, bransch och mål.</p>
-                    <button onClick={goToRequest} className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium text-sm transition-colors mb-2">
+                    <button onClick={goToRequest} className="w-full flex items-center justify-center gap-2 bg-[var(--marketplace-primary)] hover:brightness-90 text-white px-4 py-3 rounded-lg font-medium text-sm transition-colors mb-2">
                       <Sparkles className="w-4 h-4" />Begär offert
                     </button>
                     <Link to="/request" className="block w-full text-center px-4 py-2.5 border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium text-sm">
@@ -454,10 +454,10 @@ export function TrainingDetailPage() {
                         <p className="font-medium text-slate-900 text-sm mb-0.5">{training.contactPerson.name}</p>
                         <p className="text-xs text-slate-500 mb-3">{training.contactPerson.title}</p>
                         <div className="space-y-1.5">
-                          <a href={`mailto:${training.contactPerson.email}`} className="flex items-center gap-2 text-xs text-slate-600 hover:text-blue-600 transition-colors">
+                          <a href={`mailto:${training.contactPerson.email}`} className="flex items-center gap-2 text-xs text-slate-600 hover:text-[var(--marketplace-primary)] transition-colors">
                             <Mail className="w-3.5 h-3.5 flex-shrink-0" />{training.contactPerson.email}
                           </a>
-                          <a href={`tel:${training.contactPerson.phone}`} className="flex items-center gap-2 text-xs text-slate-600 hover:text-blue-600 transition-colors">
+                          <a href={`tel:${training.contactPerson.phone}`} className="flex items-center gap-2 text-xs text-slate-600 hover:text-[var(--marketplace-primary)] transition-colors">
                             <Phone className="w-3.5 h-3.5 flex-shrink-0" />{training.contactPerson.phone}
                           </a>
                         </div>
@@ -534,7 +534,7 @@ export function TrainingDetailPage() {
                     </div>
                   )}
                   <div className="flex justify-between items-center"><dt className="text-slate-500">Längd</dt><dd className="font-medium text-slate-900">{training.duration}</dd></div>
-                  <div className="flex justify-between items-center"><dt className="text-slate-500">Högskolepoäng</dt><dd className="font-medium text-slate-900 flex items-center gap-1"><BookOpen className="w-3.5 h-3.5 text-blue-500" />{training.credits} hp</dd></div>
+                  <div className="flex justify-between items-center"><dt className="text-slate-500">Högskolepoäng</dt><dd className="font-medium text-slate-900 flex items-center gap-1"><BookOpen className="w-3.5 h-3.5 text-[var(--marketplace-primary)]" />{training.credits} hp</dd></div>
                   <div className="flex justify-between items-center"><dt className="text-slate-500">Format</dt><dd className="font-medium text-slate-900">{formatLabel[training.format]}</dd></div>
                   <div className="flex justify-between items-center"><dt className="text-slate-500">Kategori</dt><dd className="font-medium text-slate-900">{category.name}</dd></div>
                   <div className="flex justify-between items-center">
@@ -559,7 +559,7 @@ export function TrainingDetailPage() {
       {/* MOBILE STICKY BAR */}
       <div className="fixed bottom-0 left-0 right-0 lg:hidden bg-white border-t border-slate-200 px-4 py-3 flex gap-3 z-40 shadow-lg">
         {isCustom && (
-          <button onClick={goToRequest} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium text-sm transition-colors">
+          <button onClick={goToRequest} className="flex-1 flex items-center justify-center gap-2 bg-[var(--marketplace-primary)] hover:brightness-90 text-white py-3 rounded-xl font-medium text-sm transition-colors">
             <Sparkles className="w-4 h-4" />Begär offert
           </button>
         )}
