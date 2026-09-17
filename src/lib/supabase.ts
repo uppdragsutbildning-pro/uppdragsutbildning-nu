@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://iswctazjdtirrzswqkor.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlzd2N0YXpqZHRpcnJ6c3dxa29yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMDA4NTcsImV4cCI6MjA5NTg3Njg1N30.gkRkttHD6skjModVTUvCA_vFPec0OjoGNHHOfLQxqMQ';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY saknas i miljövariablerna.');
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

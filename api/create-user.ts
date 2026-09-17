@@ -7,9 +7,12 @@ export default async function handler(req: Request) {
     return new Response("Method not allowed", { status: 405 });
   }
 
-  const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://iswctazjdtirrzswqkor.supabase.co";
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+  if (!supabaseUrl) {
+    return new Response(JSON.stringify({ error: "VITE_SUPABASE_URL saknas" }), { status: 500 });
+  }
   if (!serviceRoleKey) {
     return new Response(JSON.stringify({ error: "Service role key saknas" }), { status: 500 });
   }
