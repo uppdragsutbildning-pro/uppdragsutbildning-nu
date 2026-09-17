@@ -27,6 +27,11 @@ export function CatalogPage() {
   const { marketplace, loading: marketplaceLoading } = useMarketplace();
   const [scopedTrainingIds, setScopedTrainingIds] = useState<string[] | null>(null);
   const [scopeLoading, setScopeLoading] = useState(true);
+  // null = ingen begränsning (öppen katalog/marknadsplats). Annars id:n för
+  // kategorier/leverantörer som faktiskt förekommer i marknadsplatsens
+  // kuraterade urval, så filtren inte visar val som ändå ger 0 träffar.
+  const [scopedCategoryIds, setScopedCategoryIds] = useState<Set<string> | null>(null);
+  const [scopedProviderIds, setScopedProviderIds] = useState<Set<string> | null>(null);
 
   // Filter states
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
@@ -58,7 +63,25 @@ export function CatalogPage() {
       setScopeLoading(true);
       try {
         const ids = await getMarketplaceTrainingIds(marketplace);
-        if (active) setScopedTrainingIds(ids);
+        if (!active) return;
+        setScopedTrainingIds(ids);
+
+        if (ids === null) {
+          setScopedCategoryIds(null);
+          setScopedProviderIds(null);
+        } else if (ids.length === 0) {
+          setScopedCategoryIds(new Set());
+          setScopedProviderIds(new Set());
+        } else {
+          const { data } = await supabase
+            .from('trainings')
+            .select('category_id, provider_id')
+            .in('id', ids)
+            .eq('is_active', true);
+          if (!active) return;
+          setScopedCategoryIds(new Set((data ?? []).map(t => t.category_id)));
+          setScopedProviderIds(new Set((data ?? []).map(t => t.provider_id)));
+        }
       } finally {
         if (active) setScopeLoading(false);
       }
@@ -136,6 +159,13 @@ export function CatalogPage() {
 
   const activeFiltersCount = selectedCategories.length + selectedFormats.length + selectedProviders.length;
 
+  const visibleCategories = scopedCategoryIds
+    ? categories.filter(c => scopedCategoryIds.has(c.id))
+    : categories;
+  const visibleProviders = scopedProviderIds
+    ? providers.filter(p => scopedProviderIds.has(p.id))
+    : providers;
+
   return (
     <div className="bg-slate-50 min-h-screen">
       {/* Header */}
@@ -178,7 +208,7 @@ export function CatalogPage() {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-slate-900 mb-3">Kategori</h3>
                 <div className="space-y-2">
-                  {categories.map(category => (
+                  {visibleCategories.map(category => (
                     <label key={category.id} className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
@@ -218,7 +248,7 @@ export function CatalogPage() {
               <div>
                 <h3 className="text-sm font-medium text-slate-900 mb-3">Leverantör</h3>
                 <div className="space-y-2">
-                  {providers.slice(0, 6).map(provider => (
+                  {visibleProviders.slice(0, 6).map(provider => (
                     <label key={provider.id} className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
@@ -284,7 +314,7 @@ export function CatalogPage() {
                   <div>
                     <h3 className="text-sm font-medium text-slate-900 mb-3">Kategori</h3>
                     <div className="space-y-2">
-                      {categories.map(category => (
+                      {visibleCategories.map(category => (
                         <label key={category.id} className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="checkbox"
@@ -322,7 +352,7 @@ export function CatalogPage() {
                   <div>
                     <h3 className="text-sm font-medium text-slate-900 mb-3">Leverantör</h3>
                     <div className="space-y-2">
-                      {providers.slice(0, 6).map(provider => (
+                      {visibleProviders.slice(0, 6).map(provider => (
                         <label key={provider.id} className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="checkbox"
