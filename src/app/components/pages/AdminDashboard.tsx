@@ -276,6 +276,14 @@ export function AdminDashboard() {
 
   async function handleCreateProvider(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!newProvider.contact_email.trim()) {
+      toast.error('Kontakt E-post krävs', {
+        description: 'Utan en kontakt-e-post får leverantören inga notifieringar om offertförfrågningar eller anmälningar.'
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -286,7 +294,7 @@ export function AdminDashboard() {
           type: newProvider.type,
           description: newProvider.description,
           website_url: newProvider.website_url || null,
-          contact_email: newProvider.contact_email || null,
+          contact_email: newProvider.contact_email.trim(),
           contact_phone: newProvider.contact_phone || null,
           is_active: true
         });
@@ -869,7 +877,11 @@ export function AdminDashboard() {
                         onChange={(e) => setNewProvider({ ...newProvider, contact_email: e.target.value })}
                         className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="info@exempel.se"
+                        required
                       />
+                      <p className="mt-1 text-xs text-slate-500">
+                        Krävs för att leverantören ska få e-postnotifieringar om offertförfrågningar och anmälningar.
+                      </p>
                     </div>
 
                     <div>

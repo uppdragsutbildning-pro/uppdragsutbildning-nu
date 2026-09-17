@@ -280,7 +280,7 @@ export type Database = {
           id: string
           message_type: string
           provider_message_id: string | null
-          recipient_email: string
+          recipient_email: string | null
           related_id: string | null
           related_table: string | null
           status: string
@@ -291,7 +291,7 @@ export type Database = {
           id?: string
           message_type: string
           provider_message_id?: string | null
-          recipient_email: string
+          recipient_email?: string | null
           related_id?: string | null
           related_table?: string | null
           status: string
@@ -302,7 +302,7 @@ export type Database = {
           id?: string
           message_type?: string
           provider_message_id?: string | null
-          recipient_email?: string
+          recipient_email?: string | null
           related_id?: string | null
           related_table?: string | null
           status?: string

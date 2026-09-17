@@ -1,7 +1,7 @@
 import { supabaseAdmin } from './supabaseAdmin.js';
 
 interface SendEmailParams {
-  to: string;
+  to: string | null;
   subject: string;
   html: string;
   messageType: string;
@@ -20,7 +20,9 @@ export async function sendEmail({ to, subject, html, messageType, relatedTable, 
   let errorMessage: string | undefined;
   let providerMessageId: string | undefined;
 
-  if (!apiKey) {
+  if (!to) {
+    errorMessage = 'Mottagarens e-postadress saknas (t.ex. leverantörens contact_email är inte ifylld)';
+  } else if (!apiKey) {
     errorMessage = 'BREVO_API_KEY saknas';
   } else {
     try {
@@ -51,7 +53,7 @@ export async function sendEmail({ to, subject, html, messageType, relatedTable, 
 
   await supabaseAdmin.from('email_log').insert({
     message_type: messageType,
-    recipient_email: to,
+    recipient_email: to ?? null,
     related_table: relatedTable ?? null,
     related_id: relatedId ?? null,
     status,

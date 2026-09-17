@@ -40,14 +40,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (table === 'custom_requests' && operation === 'INSERT') {
       if (record.training_id) {
         const { email } = await getProviderContactEmail(record.training_id);
-        if (email) {
-          const content = rfpReceived({
-            companyName: record.company,
-            courseTopic: record.course_topic,
-            linkUrl: APP_URL ? `${APP_URL}/provider/requests` : undefined,
-          });
-          await sendEmail({ to: email, ...content, messageType: 'rfp_received', relatedTable: 'custom_requests', relatedId: record.id });
-        }
+        const content = rfpReceived({
+          companyName: record.company,
+          courseTopic: record.course_topic,
+          linkUrl: APP_URL ? `${APP_URL}/provider/requests` : undefined,
+        });
+        await sendEmail({ to: email, ...content, messageType: 'rfp_received', relatedTable: 'custom_requests', relatedId: record.id });
       }
     } else if (table === 'custom_requests' && operation === 'UPDATE') {
       const statusChanged = old_record?.status !== record.status;
@@ -57,14 +55,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } else if (statusChanged && record.status === 'accepted') {
         if (record.training_id) {
           const { email } = await getProviderContactEmail(record.training_id);
-          if (email) {
-            const content = bookingConfirmed({
-              companyName: record.company,
-              courseTopic: record.course_topic,
-              linkUrl: APP_URL ? `${APP_URL}/provider/requests` : undefined,
-            });
-            await sendEmail({ to: email, ...content, messageType: 'booking_confirmed', relatedTable: 'custom_requests', relatedId: record.id });
-          }
+          const content = bookingConfirmed({
+            companyName: record.company,
+            courseTopic: record.course_topic,
+            linkUrl: APP_URL ? `${APP_URL}/provider/requests` : undefined,
+          });
+          await sendEmail({ to: email, ...content, messageType: 'booking_confirmed', relatedTable: 'custom_requests', relatedId: record.id });
         }
         if (ADMIN_EMAIL) {
           const content = bookingConfirmed({
@@ -81,14 +77,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else if (table === 'applications' && operation === 'INSERT') {
       if (record.training_id) {
         const { email, title } = await getProviderContactEmail(record.training_id);
-        if (email) {
-          const content = applicationReceived({
-            courseTitle: title ?? 'kursen',
-            studentName: record.student_name,
-            linkUrl: APP_URL ? `${APP_URL}/provider/dashboard` : undefined,
-          });
-          await sendEmail({ to: email, ...content, messageType: 'application_received', relatedTable: 'applications', relatedId: record.id });
-        }
+        const content = applicationReceived({
+          courseTitle: title ?? 'kursen',
+          studentName: record.student_name,
+          linkUrl: APP_URL ? `${APP_URL}/provider/dashboard` : undefined,
+        });
+        await sendEmail({ to: email, ...content, messageType: 'application_received', relatedTable: 'applications', relatedId: record.id });
       }
     } else if (table === 'applications' && operation === 'UPDATE') {
       const statusChanged = old_record?.status !== record.status;
