@@ -30,6 +30,7 @@ export interface Category {
 
 export interface Training {
   id: string;
+  slug: string;
   title: string;
   description: string;
   course_code?: string;

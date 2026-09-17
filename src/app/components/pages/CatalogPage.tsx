@@ -358,7 +358,7 @@ export function CatalogPage() {
                 return (
                   <Link
                     key={training.id}
-                    to={`/training/${training.id}`}
+                    to={`/kurs/${training.slug}`}
                     className="group block bg-white rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all overflow-hidden"
                   >
                     <div className="md:flex">

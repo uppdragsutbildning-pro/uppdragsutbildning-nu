@@ -39,6 +39,7 @@ export interface AdaptedCourseStart {
 
 export interface AdaptedTraining {
   id: string;
+  slug: string;
   title: string;
   description: string;
   courseCode?: string;
@@ -107,6 +108,7 @@ interface RawFaqRow {
 
 interface RawTraining {
   id: string;
+  slug: string;
   title: string;
   description: string;
   course_code?: string | null;
@@ -207,6 +209,7 @@ export function adaptTraining(row: RawTraining): AdaptedTraining {
 
   return {
     id: row.id,
+    slug: row.slug,
     title: row.title,
     description: row.description,
     courseCode: row.course_code ?? undefined,

@@ -18,7 +18,7 @@ import { getMarketplaceTrainingIds } from '../../../lib/marketplaces';
 const formatLabel: Record<string, string> = { online: 'Online', onsite: 'På plats', hybrid: 'Hybrid' };
 
 export function TrainingDetailPage() {
-  const { id } = useParams();
+  const { slug, id: legacyId } = useParams();
   const navigate = useNavigate();
   const [training, setTraining] = useState<AdaptedTraining | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,12 +31,15 @@ export function TrainingDetailPage() {
     let active = true;
     async function load() {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('trainings')
         .select('*, providers(*), categories(*), scheduled_starts(*), curriculum_modules(*), training_faq(*)')
-        .eq('id', id)
-        .eq('is_active', true)
-        .single();
+        .eq('is_active', true);
+      // /training/{uuid} är den gamla kanoniska URL:en (redan delad, indexerad,
+      // i skickade e-postmejl) och ska fortsätta fungera som ett alias, men
+      // /kurs/{slug} (nedan) är den nya kanoniska formen (se canonical-effekten).
+      query = slug ? query.eq('slug', slug) : query.eq('id', legacyId);
+      const { data, error } = await query.single();
       if (!active) return;
       if (error || !data) {
         setTraining(null);
@@ -45,9 +48,9 @@ export function TrainingDetailPage() {
       }
       setLoading(false);
     }
-    if (id) load();
+    if (slug || legacyId) load();
     return () => { active = false; };
-  }, [id]);
+  }, [slug, legacyId]);
 
   // Deep linking (Paket H, docs/specs/partnermarknadsplatser.md avsnitt 11c):
   // en delad marknadsplats-länk kan bli inaktuell om kursen tas bort ur
@@ -56,13 +59,14 @@ export function TrainingDetailPage() {
   // attribuera en RFP till en marknadsplats kursen inte längre tillhör.
   useEffect(() => {
     let active = true;
-    if (!marketplace || !id) {
+    const trainingId = training?.id;
+    if (!marketplace || !trainingId) {
       setInMarketplaceScope(null);
       return;
     }
     getMarketplaceTrainingIds(marketplace)
       .then((ids) => {
-        if (active) setInMarketplaceScope(ids === null || ids.includes(id));
+        if (active) setInMarketplaceScope(ids === null || ids.includes(trainingId));
       })
       .catch(() => {
         if (active) setInMarketplaceScope(null);
@@ -70,23 +74,24 @@ export function TrainingDetailPage() {
     return () => {
       active = false;
     };
-  }, [marketplace, id]);
+  }, [marketplace, training?.id]);
 
   useEffect(() => {
     if (!training) return;
     const siteName = marketplace ? marketplace.name : 'Uppdragsutbildning.nu';
     document.title = `${training.title} | ${siteName}`;
 
-    // Kanonisk URL pekar alltid på huvuddomänen, aldrig en marknadsplats-
-    // subdomän, så sökmotorer inte indexerar samma kurs flera gånger
+    // Kanonisk URL pekar alltid på /kurs/{slug} på huvuddomänen, aldrig en
+    // marknadsplats-subdomän eller den äldre /training/{uuid}-formen, så
+    // sökmotorer konsoliderar mot en enda URL per kurs
     // (docs/specs/partnermarknadsplatser.md avsnitt 11). I dev/preview
     // (localhost, *.vercel.app) finns ingen egentlig apex att falla tillbaka
     // till, så där pekar den kanoniska länken på sig själv.
     const PRODUCTION_APEX = 'uppdragsutbildning.nu';
-    const { protocol, hostname, port, pathname } = window.location;
+    const { protocol, hostname, port } = window.location;
     const canonicalHost =
       hostname === PRODUCTION_APEX || hostname.endsWith(`.${PRODUCTION_APEX}`) ? PRODUCTION_APEX : hostname;
-    const canonicalUrl = `${protocol}//${canonicalHost}${port ? `:${port}` : ''}${pathname}`;
+    const canonicalUrl = `${protocol}//${canonicalHost}${port ? `:${port}` : ''}/kurs/${training.slug}`;
 
     let link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
     if (!link) {
@@ -138,7 +143,8 @@ export function TrainingDetailPage() {
   };
 
   const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
+    const canonicalUrl = `${window.location.origin}/kurs/${training.slug}`;
+    navigator.clipboard.writeText(canonicalUrl);
     toast.success('Länk kopierad', { description: 'Utbildningslänken är kopierad till urklipp.' });
   };
 

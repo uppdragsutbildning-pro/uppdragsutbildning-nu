@@ -165,9 +165,10 @@ export function revalidateRow(row: ParsedCourseRow): ParsedCourseRow {
   return { ...row, _errors: errors };
 }
 
-export function toTrainingInsertPayload(row: ParsedCourseRow, providerId: string) {
+export function toTrainingInsertPayload(row: ParsedCourseRow, providerId: string, slug: string) {
   return {
     title: row.title,
+    slug,
     description: row.description,
     course_code: row.courseCode || null,
     provider_id: providerId,

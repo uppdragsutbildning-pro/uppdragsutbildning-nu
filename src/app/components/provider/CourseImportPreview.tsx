@@ -9,6 +9,7 @@ import {
   revalidateRow,
   toTrainingInsertPayload,
 } from '../../../lib/courseImport';
+import { generateUniqueTrainingSlug } from '../../../lib/slug';
 
 interface CourseImportPreviewProps {
   rows: ParsedCourseRow[];
@@ -51,7 +52,10 @@ export function CourseImportPreview({ rows, categories, onRowsChange, onDone }: 
     const outcomes: { title: string; success: boolean; error?: string }[] = [];
     for (const row of rows) {
       if (!row._include || row._errors.length > 0) continue;
-      const { error } = await supabase.from('trainings').insert(toTrainingInsertPayload(row, profile.provider_id));
+      // Genereras en rad i taget (inte parallellt) så att varje slug-koll ser
+      // de rader som redan hunnit sparas tidigare i samma import.
+      const slug = await generateUniqueTrainingSlug(row.title);
+      const { error } = await supabase.from('trainings').insert(toTrainingInsertPayload(row, profile.provider_id, slug));
       outcomes.push({ title: row.title, success: !error, error: error?.message });
     }
     setResults(outcomes);

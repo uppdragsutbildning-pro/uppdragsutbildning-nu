@@ -686,6 +686,7 @@ export type Database = {
           leads: number
           learning_outcomes: string[] | null
           provider_id: string
+          slug: string
           target_audience: string
           title: string
           training_type: string
@@ -717,6 +718,7 @@ export type Database = {
           leads?: number
           learning_outcomes?: string[] | null
           provider_id: string
+          slug: string
           target_audience?: string
           title: string
           training_type: string
@@ -748,6 +750,7 @@ export type Database = {
           leads?: number
           learning_outcomes?: string[] | null
           provider_id?: string
+          slug?: string
           target_audience?: string
           title?: string
           training_type?: string

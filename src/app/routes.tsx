@@ -29,6 +29,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: HomePage },
       { path: "catalog", Component: CatalogPage },
+      { path: "kurs/:slug", Component: TrainingDetailPage },
       { path: "training/:id", Component: TrainingDetailPage },
       { path: "kompetensanalys", Component: KompetensindexPage },
       { path: "om-tjansten", Component: OmTjansten },

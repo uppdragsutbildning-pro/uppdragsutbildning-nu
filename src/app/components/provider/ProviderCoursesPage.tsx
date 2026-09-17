@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useProviderContext } from '../../../contexts/ProviderContext';
 import { supabase, Training } from '../../../lib/supabase';
+import { generateUniqueTrainingSlug } from '../../../lib/slug';
 import { usePaginatedQuery, getPaginationRange } from '../../../hooks/usePaginatedQuery';
 import {
   Pagination,
@@ -59,10 +60,13 @@ export function ProviderCoursesPage() {
   });
 
   async function handleDuplicate(course: Training) {
-    const { id, created_at, updated_at, views, leads, ...rest } = course as any;
+    const { id, slug, created_at, updated_at, views, leads, ...rest } = course as any;
+    const title = `${course.title} (kopia)`;
+    const newSlug = await generateUniqueTrainingSlug(title);
     const { error } = await supabase.from('trainings').insert({
       ...rest,
-      title: `${course.title} (kopia)`,
+      title,
+      slug: newSlug,
       is_active: false,
       featured: false,
       views: 0,
@@ -262,7 +266,7 @@ export function ProviderCoursesPage() {
                     Redigera
                   </Link>
                   <Link
-                    to={`/training/${course.id}`}
+                    to={`/kurs/${course.slug}`}
                     className="flex-1 md:flex-none flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                   >
                     <Eye className="w-4 h-4" />

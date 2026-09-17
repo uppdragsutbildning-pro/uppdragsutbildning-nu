@@ -7,6 +7,7 @@ import {
 import { toast } from 'sonner';
 import { supabase, Category } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
+import { generateUniqueTrainingSlug } from '../../../lib/slug';
 import { Switch } from '../ui/switch';
 
 interface CurriculumModule {
@@ -192,7 +193,11 @@ export function ProviderCourseFormPage() {
         const { error } = await supabase.from('trainings').update(trainingPayload).eq('id', id);
         if (error) throw error;
       } else {
-        const { data, error } = await supabase.from('trainings').insert(trainingPayload).select('id').single();
+        // Slugen genereras en gång vid skapande och ändras aldrig senare, så
+        // en redan delad/indexerad /kurs/{slug}-länk inte går sönder om
+        // titeln redigeras.
+        const slug = await generateUniqueTrainingSlug(trainingPayload.title);
+        const { data, error } = await supabase.from('trainings').insert({ ...trainingPayload, slug }).select('id').single();
         if (error) throw error;
         trainingId = data.id;
       }
