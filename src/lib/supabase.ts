@@ -15,6 +15,7 @@ export interface Provider {
   website_url?: string;
   contact_email?: string;
   contact_phone?: string;
+  terms_text?: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

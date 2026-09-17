@@ -9,6 +9,7 @@ import { AdminDashboard } from "./components/pages/AdminDashboard";
 import { NotFound } from "./components/pages/NotFound";
 import { KompetensindexPage } from "./components/pages/KompetensindexPage";
 import { OmTjansten } from "./components/pages/OmTjansten";
+import { ProviderTermsPage } from "./components/pages/ProviderTermsPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { ProviderLayout } from "./components/provider/ProviderLayout";
 import { ProviderDashboard } from "./components/provider/ProviderDashboard";
@@ -18,6 +19,7 @@ import { ProviderCourseFormPage } from "./components/provider/ProviderCourseForm
 import { ProviderApplicationsPage } from "./components/provider/ProviderApplicationsPage";
 import { ProviderRequestsPage } from "./components/provider/ProviderRequestsPage";
 import { ProviderHistoryPage } from "./components/provider/ProviderHistoryPage";
+import { ProviderTermsSettingsPage } from "./components/provider/ProviderTermsSettingsPage";
 import { MarketplaceFormPage } from "./components/admin/MarketplaceFormPage";
 import { MarketplaceBrandingPage } from "./components/admin/MarketplaceBrandingPage";
 import { MarketplaceCurationPage } from "./components/admin/MarketplaceCurationPage";
@@ -33,6 +35,7 @@ export const router = createBrowserRouter([
       { path: "training/:id", Component: TrainingDetailPage },
       { path: "kompetensanalys", Component: KompetensindexPage },
       { path: "om-tjansten", Component: OmTjansten },
+      { path: "leverantor/:id/villkor", Component: ProviderTermsPage },
       { path: "request", Component: RequestFlowPage },
       { path: "request/:trainingId", Component: RequestFlowPage },
       { path: "login", Component: LoginPage },
@@ -95,6 +98,7 @@ export const router = createBrowserRouter([
       { path: "applications", Component: ProviderApplicationsPage },
       { path: "requests", Component: ProviderRequestsPage },
       { path: "history", Component: ProviderHistoryPage },
+      { path: "villkor", Component: ProviderTermsSettingsPage },
     ],
   },
 ]);

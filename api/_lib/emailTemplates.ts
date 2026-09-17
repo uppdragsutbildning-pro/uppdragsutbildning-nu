@@ -121,8 +121,8 @@ export function applicationReceived(params: { courseTitle: string; studentName: 
   };
 }
 
-export function applicationConfirmed(params: { courseTitle: string; linkUrl?: string }): EmailContent {
-  const { courseTitle, linkUrl } = params;
+export function applicationConfirmed(params: { courseTitle: string; linkUrl?: string; termsUrl?: string }): EmailContent {
+  const { courseTitle, linkUrl, termsUrl } = params;
   return {
     subject: `Din anmälan är bekräftad: ${courseTitle}`,
     html: wrapEmail('Din anmälan är bekräftad', `
@@ -131,6 +131,7 @@ export function applicationConfirmed(params: { courseTitle: string; linkUrl?: st
         Din anmälan till <strong>${courseTitle}</strong> är nu bekräftad. Vi hörs inför kursstart.
       </p>
       ${ctaButton(linkUrl, 'Se kursen')}
+      ${termsUrl ? `<p style="color:#64748b;font-size:14px;line-height:1.6;margin-top:16px;"><a href="${termsUrl}" style="color:#2563eb;">Läs leverantörens villkor</a></p>` : ''}
     `),
   };
 }

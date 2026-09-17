@@ -13,15 +13,15 @@ import {
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
 const APP_URL = process.env.APP_URL;
 
-async function getProviderContactEmail(trainingId: string): Promise<{ email: string | null; title: string | null; slug: string | null }> {
+async function getProviderContactEmail(trainingId: string): Promise<{ email: string | null; title: string | null; slug: string | null; providerId: string | null }> {
   const { data } = await supabaseAdmin
     .from('trainings')
-    .select('title, slug, providers(contact_email)')
+    .select('title, slug, providers(id, contact_email)')
     .eq('id', trainingId)
     .single();
-  const providers = data?.providers as { contact_email?: string } | { contact_email?: string }[] | null;
-  const email = Array.isArray(providers) ? providers[0]?.contact_email : providers?.contact_email;
-  return { email: email ?? null, title: data?.title ?? null, slug: data?.slug ?? null };
+  const providers = data?.providers as { id?: string; contact_email?: string } | { id?: string; contact_email?: string }[] | null;
+  const provider = Array.isArray(providers) ? providers[0] : providers;
+  return { email: provider?.contact_email ?? null, title: data?.title ?? null, slug: data?.slug ?? null, providerId: provider?.id ?? null };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -87,10 +87,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else if (table === 'applications' && operation === 'UPDATE') {
       const statusChanged = old_record?.status !== record.status;
       if (statusChanged && record.status === 'confirmed') {
-        const { title, slug } = record.training_id ? await getProviderContactEmail(record.training_id) : { title: null, slug: null };
+        const { title, slug, providerId } = record.training_id
+          ? await getProviderContactEmail(record.training_id)
+          : { title: null, slug: null, providerId: null };
         const content = applicationConfirmed({
           courseTitle: title ?? 'kursen',
           linkUrl: APP_URL && slug ? `${APP_URL}/kurs/${slug}` : undefined,
+          termsUrl: APP_URL && providerId ? `${APP_URL}/leverantor/${providerId}/villkor` : undefined,
         });
         await sendEmail({ to: record.student_email, ...content, messageType: 'application_confirmed', relatedTable: 'applications', relatedId: record.id });
       }

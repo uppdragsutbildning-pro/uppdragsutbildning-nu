@@ -537,6 +537,7 @@ export type Database = {
           is_active: boolean
           logo_url: string | null
           name: string
+          terms_text: string | null
           type: string
           updated_at: string
           website_url: string | null
@@ -550,6 +551,7 @@ export type Database = {
           is_active?: boolean
           logo_url?: string | null
           name: string
+          terms_text?: string | null
           type: string
           updated_at?: string
           website_url?: string | null
@@ -563,6 +565,7 @@ export type Database = {
           is_active?: boolean
           logo_url?: string | null
           name?: string
+          terms_text?: string | null
           type?: string
           updated_at?: string
           website_url?: string | null
@@ -786,6 +789,10 @@ export type Database = {
       get_user_provider_id: { Args: never; Returns: string }
       is_admin: { Args: never; Returns: boolean }
       provider_curated_marketplace_ids: { Args: never; Returns: string[] }
+      update_provider_terms: {
+        Args: { new_terms_text: string; target_provider_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
