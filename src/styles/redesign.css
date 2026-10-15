@@ -1,0 +1,51 @@
+/* Redesign-tokens (Figma Make, brand-portal v1.0.0). Medvetet scopade till
+   .ub-theme i stället för :root – --accent/--border m.fl. krockar annars med
+   shadcn-tokens i theme.css, och övriga sidor är inte omdesignade än.
+   Mörkt läge ingår inte: resten av sajten stöder det inte. */
+.ub-theme {
+  --bg:           #F7F5F1;
+  --bg-raised:    #FFFFFF;
+  --fg:           #1C1917;
+  --fg-muted:     #78716C;
+  --fg-subtle:    #A8A29E;
+  --border:       #E7E3DC;
+  --border-light: #F0EDE8;
+  --accent:       #2655C4;
+  --accent-dim:   #EEF2FC;
+  --accent-hover: #1E44A8;
+  --chip-bg:      #EDEAE4;
+  --chip-fg:      #44403C;
+  --chip-hover:   #E2DED7;
+  --focus-ring:   #2655C4;
+
+  background: var(--bg);
+  color: var(--fg);
+}
+
+/* Partnermarknadsplats: --accent sätts inline från branding.primary_color,
+   hover-/dim-varianterna härleds så vitmärkningen följer med. */
+.ub-theme[data-brand='custom'] {
+  --accent-hover: color-mix(in srgb, var(--accent) 85%, #000);
+  --accent-dim:   color-mix(in srgb, var(--accent) 10%, var(--bg-raised));
+  --focus-ring:   var(--accent);
+}
+
+.ub-theme :focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.ub-theme ::selection {
+  background: var(--accent-dim);
+  color: var(--fg);
+}
+
+.ub-uni-logo {
+  filter: grayscale(1);
+  opacity: 0.65;
+  transition: filter 0.2s, opacity 0.2s;
+}
+.ub-uni-logo:hover {
+  filter: none;
+  opacity: 1;
+}

@@ -70,7 +70,7 @@ export function Root() {
             )}
 
             {/* Desktop Navigation */}
-            <nav className="hidden sm:flex items-center gap-6">
+            <nav className="hidden sm:flex items-center gap-4 lg:gap-6 whitespace-nowrap">
               {!isDashboard && (
                 <>
                   <Link
