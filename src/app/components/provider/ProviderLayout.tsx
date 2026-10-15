@@ -105,7 +105,7 @@ export function ProviderLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="ub-theme min-h-screen bg-slate-50">
       <ScrollToTop />
       {/* Top bar */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30">

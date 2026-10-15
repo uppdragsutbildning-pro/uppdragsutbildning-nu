@@ -35,13 +35,18 @@ export function Root() {
 
   const brandingStyle = branding?.primary_color
     ? ({
+        '--accent': branding.primary_color,
         '--marketplace-primary': branding.primary_color,
         '--marketplace-secondary': branding.secondary_color ?? branding.primary_color,
       } as CSSProperties)
     : undefined;
 
   return (
-    <div className="min-h-screen bg-slate-50" style={brandingStyle}>
+    <div
+      className="ub-theme min-h-screen bg-slate-50"
+      data-brand={branding?.primary_color ? 'custom' : undefined}
+      style={brandingStyle}
+    >
       <ScrollToTop />
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
@@ -70,7 +75,7 @@ export function Root() {
             )}
 
             {/* Desktop Navigation */}
-            <nav className="hidden sm:flex items-center gap-4 lg:gap-6 whitespace-nowrap">
+            <nav className="hidden lg:flex items-center gap-4 xl:gap-6 whitespace-nowrap">
               {!isDashboard && (
                 <>
                   <Link
@@ -146,7 +151,7 @@ export function Root() {
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="sm:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+              className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -154,7 +159,7 @@ export function Root() {
 
           {/* Mobile Navigation */}
           {mobileMenuOpen && (
-            <div className="sm:hidden py-4 border-t border-slate-200">
+            <div className="lg:hidden py-4 border-t border-slate-200">
               <nav className="flex flex-col gap-2">
                 {!isDashboard && (
                   <>
