@@ -10,6 +10,7 @@ import { NotFound } from "./components/pages/NotFound";
 import { KompetensindexPage } from "./components/pages/KompetensindexPage";
 import { OmTjansten } from "./components/pages/OmTjansten";
 import { ProviderTermsPage } from "./components/pages/ProviderTermsPage";
+import { AccountPage } from "./components/account/AccountPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { ProviderLayout } from "./components/provider/ProviderLayout";
 import { ProviderDashboard } from "./components/provider/ProviderDashboard";
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
       { path: "kompetensanalys", Component: KompetensindexPage },
       { path: "om-tjansten", Component: OmTjansten },
       { path: "leverantor/:id/villkor", Component: ProviderTermsPage },
+      { path: "konto", Component: AccountPage },
       { path: "request", Component: RequestFlowPage },
       { path: "request/:trainingId", Component: RequestFlowPage },
       { path: "login", Component: LoginPage },

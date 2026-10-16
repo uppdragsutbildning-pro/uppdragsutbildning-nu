@@ -75,7 +75,7 @@ export function Root() {
             )}
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-4 xl:gap-6 whitespace-nowrap">
+            <nav className="hidden xl:flex items-center gap-6 whitespace-nowrap">
               {!isDashboard && (
                 <>
                   <Link
@@ -118,6 +118,18 @@ export function Root() {
                   >
                     Efterfråga Utbildning
                   </Link>
+                  {!showBranding && (
+                    <Link
+                      to="/konto"
+                      className={`text-sm transition-colors ${
+                        location.pathname === '/konto'
+                          ? 'text-[var(--marketplace-primary)] font-medium'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Mitt konto
+                    </Link>
+                  )}
                 </>
               )}
               {!showBranding && (
@@ -151,7 +163,7 @@ export function Root() {
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+              className="xl:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -159,7 +171,7 @@ export function Root() {
 
           {/* Mobile Navigation */}
           {mobileMenuOpen && (
-            <div className="lg:hidden py-4 border-t border-slate-200">
+            <div className="xl:hidden py-4 border-t border-slate-200">
               <nav className="flex flex-col gap-2">
                 {!isDashboard && (
                   <>
@@ -203,6 +215,15 @@ export function Root() {
                     >
                       Efterfråga Utbildning
                     </Link>
+                    {!showBranding && (
+                      <Link
+                        to="/konto"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition-colors"
+                      >
+                        Mitt konto
+                      </Link>
+                    )}
                   </>
                 )}
                 {!showBranding && (
