@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router';
-import { ArrowRight, BarChart3, Search, SlidersHorizontal } from 'lucide-react';
+import { ArrowRight, BarChart3, Search } from 'lucide-react';
 import { useRef, useState, type CSSProperties } from 'react';
 import { universityPartners } from '../../data/providerLogos';
 import { useMarketplace } from '../../../lib/marketplaceContext';
@@ -18,15 +18,6 @@ const STEPS = [
   'Beskriv vad er organisation behöver utveckla — med egna ord eller via ett av våra förslag.',
   'Få konkreta förslag och offerter från lärosäten som matchar ert behov och er storlek.',
   'Välj, signera digitalt och kom igång — vi finns med längs hela vägen.',
-];
-
-const ALT_PATHS = [
-  {
-    to: '/request',
-    icon: SlidersHorizontal,
-    label: 'Skräddarsytt förslag',
-    sub: 'Beskriv behovet, vi matchar er med lärosäten',
-  },
 ];
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
@@ -150,24 +141,11 @@ export function HomePage() {
             <div className="flex items-center gap-3 mt-1 mb-3.5">
               <div className="flex-1 h-px bg-[var(--border-light)]" />
               <span className="text-[11px] font-medium text-[var(--fg-subtle)] whitespace-nowrap">
-                eller välj startpunkt
+                eller kartlägg behovet strategiskt
               </span>
               <div className="flex-1 h-px bg-[var(--border-light)]" />
             </div>
             <div className="flex flex-col gap-2.5">
-              {ALT_PATHS.map(({ to, icon: Icon, label, sub }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  className="flex items-start gap-3 px-4 py-3.5 rounded-xl text-left bg-[var(--bg-raised)] border-[1.5px] border-[var(--border-light)] hover:border-[var(--border)] transition-colors"
-                >
-                  <Icon className="w-[18px] h-[18px] mt-0.5 shrink-0 text-[var(--fg-muted)]" aria-hidden="true" />
-                  <span>
-                    <span className="block text-[13px] font-semibold text-[var(--fg)] mb-0.5">{label}</span>
-                    <span className="block text-[11px] leading-[1.4] text-[var(--fg-subtle)]">{sub}</span>
-                  </span>
-                </Link>
-              ))}
               <Button
                 type="button"
                 variant="outline"
