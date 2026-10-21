@@ -1,8 +1,9 @@
-import { Link, useNavigate } from 'react-router';
-import { ArrowRight, BarChart3, Search, SlidersHorizontal } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router';
+import { ArrowRight, BarChart3, Search } from 'lucide-react';
 import { useRef, useState, type CSSProperties } from 'react';
 import { universityPartners } from '../../data/providerLogos';
 import { useMarketplace } from '../../../lib/marketplaceContext';
+import { Button } from '../ui/button';
 
 const NEED_CHIPS = [
   'Ledarskap i förändring',
@@ -19,21 +20,6 @@ const STEPS = [
   'Välj, signera digitalt och kom igång — vi finns med längs hela vägen.',
 ];
 
-const ALT_PATHS = [
-  {
-    to: '/request',
-    icon: SlidersHorizontal,
-    label: 'Skräddarsytt förslag',
-    sub: 'Beskriv behovet, vi matchar er med lärosäten',
-  },
-  {
-    to: '/kompetensanalys',
-    icon: BarChart3,
-    label: 'Strategisk kompetensindex®',
-    sub: 'Mät ert kompetensbehov på 4 dimensioner',
-  },
-];
-
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
     <p className="text-[11px] font-medium tracking-[0.12em] uppercase text-[var(--fg-subtle)] mb-3">
@@ -47,6 +33,7 @@ export function HomePage() {
   const [activeChip, setActiveChip] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { marketplace, branding } = useMarketplace();
 
   // Partnermarknadsplats: primärfärgen kommer från marknadsplatsens branding
@@ -70,6 +57,14 @@ export function HomePage() {
       setQuery(chip);
       inputRef.current?.focus();
     }
+  }
+
+  function openCompetensindex() {
+    const via = new URLSearchParams(location.search).get('via');
+    navigate({
+      pathname: '/kompetensanalys',
+      search: via ? `?via=${encodeURIComponent(via)}` : '',
+    });
   }
 
   return (
@@ -146,24 +141,38 @@ export function HomePage() {
             <div className="flex items-center gap-3 mt-1 mb-3.5">
               <div className="flex-1 h-px bg-[var(--border-light)]" />
               <span className="text-[11px] font-medium text-[var(--fg-subtle)] whitespace-nowrap">
-                eller välj startpunkt
+                eller kartlägg behovet strategiskt
               </span>
               <div className="flex-1 h-px bg-[var(--border-light)]" />
             </div>
-            <div className="flex flex-col min-[520px]:flex-row gap-2.5">
-              {ALT_PATHS.map(({ to, icon: Icon, label, sub }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  className="flex-1 flex items-start gap-3 px-4 py-3.5 rounded-xl text-left bg-[var(--bg-raised)] border-[1.5px] border-[var(--border-light)] hover:border-[var(--border)] transition-colors"
-                >
-                  <Icon className="w-[18px] h-[18px] mt-0.5 shrink-0 text-[var(--fg-muted)]" aria-hidden="true" />
-                  <span>
-                    <span className="block text-[13px] font-semibold text-[var(--fg)] mb-0.5">{label}</span>
-                    <span className="block text-[11px] leading-[1.4] text-[var(--fg-subtle)]">{sub}</span>
+            <div className="flex flex-col gap-2.5">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={openCompetensindex}
+                className="group h-auto w-full justify-start whitespace-normal rounded-xl border-[var(--accent)] bg-[var(--accent-dim)] p-4 text-left hover:border-[var(--accent)] hover:bg-[var(--accent-dim)]"
+              >
+                <span className="flex w-full flex-col items-start gap-3 sm:flex-row sm:items-center">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--accent)] text-white">
+                    <BarChart3 className="size-[18px]" aria-hidden="true" />
                   </span>
-                </Link>
-              ))}
+                  <span className="min-w-0 flex-1">
+                    <span className="mb-0.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--accent)]">
+                      För HR och ledning
+                    </span>
+                    <span className="mb-0.5 block text-[13px] font-semibold text-[var(--fg)]">
+                      Strategisk kompetensindex®
+                    </span>
+                    <span className="block text-[11px] leading-[1.4] text-[var(--fg-muted)]">
+                      Få en strukturerad bild av organisationens kompetenstryck i fyra dimensioner.
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2 text-[13px] font-semibold text-[var(--accent)]">
+                    Starta Kompetensindex
+                    <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                  </span>
+                </span>
+              </Button>
             </div>
           </div>
 

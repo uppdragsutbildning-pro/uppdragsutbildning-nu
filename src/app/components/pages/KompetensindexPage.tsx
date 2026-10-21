@@ -7,7 +7,7 @@ import { MultiSelectChips } from '../kompetensindex/MultiSelectChips';
 import { OccupationPicker } from '../kompetensindex/OccupationPicker';
 import { QuestionCard } from '../kompetensindex/QuestionCard';
 import { ResultsView } from '../kompetensindex/ResultsView';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '../../../lib/supabaseClient';
 import { fetchOccupationDetails, type OccupationDetails, type OccupationName, type OccupationSkill } from '../../../lib/jobtechTaxonomy';
 
 const STEPS = [

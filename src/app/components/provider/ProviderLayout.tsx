@@ -15,7 +15,8 @@ function ScrollToTop() {
   return null;
 }
 import { useAuth } from '../../../contexts/AuthContext';
-import { supabase, Provider } from '../../../lib/supabase';
+import type { Provider } from '../../../lib/supabase';
+import { supabase } from '../../../lib/supabaseClient';
 import { ProviderProvider } from '../../../contexts/ProviderContext';
 
 const navItems = [

@@ -5,7 +5,8 @@ import {
   AlertCircle, BookOpen, Users, Calendar, Mail, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase, Category } from '../../../lib/supabase';
+import type { Category } from '../../../lib/supabase';
+import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import { generateUniqueTrainingSlug } from '../../../lib/slug';
 import { Switch } from '../ui/switch';

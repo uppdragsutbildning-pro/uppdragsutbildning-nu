@@ -8,7 +8,8 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useProviderContext } from '../../../contexts/ProviderContext';
-import { supabase, Training } from '../../../lib/supabase';
+import type { Training } from '../../../lib/supabase';
+import { supabase } from '../../../lib/supabaseClient';
 import { generateUniqueTrainingSlug } from '../../../lib/slug';
 import { usePaginatedQuery, getPaginationRange } from '../../../hooks/usePaginatedQuery';
 import {
