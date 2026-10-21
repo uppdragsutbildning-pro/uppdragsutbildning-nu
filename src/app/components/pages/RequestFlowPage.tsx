@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router';
 import { Sparkles, Send, CheckCircle, ArrowRight, Loader2, User, Building, Mail, Phone, Calendar, DollarSign } from 'lucide-react';
 import { getTrainingById } from '../../data/mockData';
@@ -24,7 +24,11 @@ export function RequestFlowPage() {
   const [step, setStep] = useState<Step>('describe');
   const [description, setDescription] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  
+  // Skydd mot dubbel inskickning: ref-låset stoppar ett andra anrop direkt
+  // (state hinner inte uppdateras), isSubmitting inaktiverar knappen.
+  const submitLockRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // AI Analysis results
   const [aiSummary, setAiSummary] = useState('');
   const [recommendedCategories, setRecommendedCategories] = useState<string[]>([]);
@@ -58,9 +62,7 @@ export function RequestFlowPage() {
     setIsAnalyzing(false);
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const submitRequest = async () => {
     // Resolve category names → IDs, then check if any active training matches
     let hasMatch = false;
     try {
@@ -111,6 +113,19 @@ export function RequestFlowPage() {
 
     setStep('confirmation');
     toast.success('Förfrågan skickad!');
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
+    setIsSubmitting(true);
+    try {
+      await submitRequest();
+    } finally {
+      submitLockRef.current = false;
+      setIsSubmitting(false);
+    }
   };
 
   const updateFormData = (field: string, value: string) => {
@@ -400,10 +415,20 @@ export function RequestFlowPage() {
 
                 <button
                   type="submit"
-                  className="w-full flex items-center justify-center gap-2 bg-[var(--marketplace-primary)] hover:brightness-90 text-white px-6 py-4 rounded-lg font-medium transition-colors"
+                  disabled={isSubmitting}
+                  className="w-full flex items-center justify-center gap-2 bg-[var(--marketplace-primary)] hover:brightness-90 text-white px-6 py-4 rounded-lg font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Skicka Förfrågan
-                  <ArrowRight className="w-5 h-5" />
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Skickar…
+                    </>
+                  ) : (
+                    <>
+                      Skicka Förfrågan
+                      <ArrowRight className="w-5 h-5" />
+                    </>
+                  )}
                 </button>
               </form>
             </div>
