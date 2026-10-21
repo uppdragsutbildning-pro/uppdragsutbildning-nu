@@ -5,7 +5,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProviderContext } from '../../../contexts/ProviderContext';
-import { supabase, Application as DBApplication, Training } from '../../../lib/supabase';
+import type { Application as DBApplication, Training } from '../../../lib/supabase';
+import { supabase } from '../../../lib/supabaseClient';
 
 type ApplicationWithTraining = DBApplication & { training?: Training };
 

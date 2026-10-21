@@ -3,7 +3,8 @@ import { Check, X, Eye, TrendingUp, Users, Building, GraduationCap, Mail, Sparkl
 import { trainings, leads, providers, categories, getTrainingById, getProviderById, getCategoryById } from '../../data/mockData';
 import { toast } from 'sonner';
 import { exportLeadsToCSV, exportTrainingsToCSV } from '../../utils/exportUtils';
-import { supabase, Profile, Provider } from '../../../lib/supabase';
+import type { CustomRequest, Profile, Provider } from '../../../lib/supabase';
+import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import { MarketplacesTab } from '../admin/MarketplacesTab';
 import { CpiRecordDrawer } from '../admin/CpiRecordDrawer';
@@ -54,9 +55,9 @@ export function AdminDashboard() {
   const [cpiPage, setCpiPage] = useState(1);
   const [cpiDetailRecord, setCpiDetailRecord] = useState<CpiRecord | null>(null);
   const CPI_PAGE_SIZE = 20;
-  const [customRequests, setCustomRequests] = useState<import('../../../lib/supabase').CustomRequest[]>([]);
+  const [customRequests, setCustomRequests] = useState<CustomRequest[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
-  const [leadsFilter, setLeadsFilter] = useState<'all' | 'unmatched'>('all');
+  const [leadsFilter, setLeadsFilter] = useState<'all' | 'general'>('all');
 
   // Form state for creating new provider
   const [newProvider, setNewProvider] = useState({
@@ -113,7 +114,7 @@ export function AdminDashboard() {
       .select('*')
       .order('has_provider_match', { ascending: true })
       .order('submitted_at', { ascending: false });
-    if (!error && data) setCustomRequests(data as import('../../../lib/supabase').CustomRequest[]);
+    if (!error && data) setCustomRequests(data as CustomRequest[]);
     setRequestsLoading(false);
   }
 
@@ -693,10 +694,10 @@ export function AdminDashboard() {
                   Alla
                 </button>
                 <button
-                  onClick={() => setLeadsFilter('unmatched')}
-                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${leadsFilter === 'unmatched' ? 'bg-red-600 text-white' : 'border border-slate-200 text-slate-700 hover:bg-slate-50'}`}
+                  onClick={() => setLeadsFilter('general')}
+                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${leadsFilter === 'general' ? 'bg-red-600 text-white' : 'border border-slate-200 text-slate-700 hover:bg-slate-50'}`}
                 >
-                  Ej matchade
+                  Allmänna
                 </button>
               </div>
             </div>
@@ -708,16 +709,16 @@ export function AdminDashboard() {
             ) : (
               <div className="space-y-4">
                 {customRequests
-                  .filter(req => leadsFilter === 'unmatched' ? req.has_provider_match === false : true)
+                  .filter(req => leadsFilter === 'general' ? !req.training_id : true)
                   .map(req => (
                   <div key={req.id} className="bg-white rounded-xl border border-slate-200 p-6">
                     <div className="flex items-start justify-between gap-4 mb-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2 flex-wrap">
                           <h3 className="font-semibold text-slate-900">{req.company}</h3>
-                          {req.has_provider_match === false && (
+                          {!req.training_id && (
                             <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700 font-medium">
-                              Ej matchad
+                              Allmän förfrågan
                             </span>
                           )}
                           <span className={`px-2 py-1 text-xs rounded-full ${
@@ -772,7 +773,7 @@ export function AdminDashboard() {
                     </div>
                   </div>
                 ))}
-                {customRequests.filter(req => leadsFilter === 'unmatched' ? req.has_provider_match === false : true).length === 0 && (
+                {customRequests.filter(req => leadsFilter === 'general' ? !req.training_id : true).length === 0 && (
                   <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
                     <Mail className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                     <p className="text-slate-500">Inga förfrågningar hittades</p>

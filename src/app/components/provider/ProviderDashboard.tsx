@@ -6,7 +6,8 @@ import { Link } from 'react-router';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useProviderContext } from '../../../contexts/ProviderContext';
-import { supabase, Training, Application, CustomRequest } from '../../../lib/supabase';
+import type { Training, Application, CustomRequest } from '../../../lib/supabase';
+import { supabase } from '../../../lib/supabaseClient';
 
 export function ProviderDashboard() {
   const { profile } = useAuth();
