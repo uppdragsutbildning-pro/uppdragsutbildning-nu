@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabase';
 import { markRequestSeen, readSeen, unreadRequestIds } from '../../../hooks/useTrainingRequestUpdates';
 import { NOT_SELECTED_REASONS, formatSek, quoteStatusLabel } from '../../../lib/invoiceStatus';
+import { policySummary } from '../training/BookingDialog';
+import { BillingDetailsForm, fetchBillingDetails, isBillingComplete } from './BillingDetailsForm';
 
 type RequestStatus = 'submitted' | 'in_review' | 'assigned' | 'offers_received' | 'closed' | 'cancelled' | 'no_match';
 
@@ -22,6 +24,7 @@ interface TrainingRequest {
   ssyk_skills: { id: string; title: string }[];
   status: RequestStatus;
   submitted_at: string;
+  buyer_org_id: string | null;
 }
 
 interface RequestEvent {
@@ -52,12 +55,6 @@ interface OfferRow {
   offer_valid_until: string | null;
   offer_location: string | null;
   offer_terms: string | null;
-}
-
-interface CancellationPolicy {
-  free_until_days_before_start?: number;
-  late_fee_percent?: number;
-  text?: string;
 }
 
 interface Detail {
@@ -126,30 +123,20 @@ function formatDate(d: string | null) {
   return d ? new Date(d).toLocaleDateString('sv-SE') : null;
 }
 
-function policySummary(policy: CancellationPolicy | null): string {
-  if (!policy || (policy.free_until_days_before_start === undefined && !policy.text)) {
-    return 'Lärosätet har inte registrerat några avbokningsvillkor. Avbokning sker efter begäran till oss.';
-  }
-  const parts: string[] = [];
-  if (policy.free_until_days_before_start !== undefined) {
-    parts.push(`Fri avbokning till ${policy.free_until_days_before_start} dagar före start.`);
-    if (policy.late_fee_percent !== undefined) parts.push(`Därefter avgift på ${policy.late_fee_percent} % av priset.`);
-  }
-  if (policy.text) parts.push(policy.text);
-  return parts.join(' ');
-}
-
 function OfferCard({
   offer,
+  orgId,
   canAccept,
   onAccepted,
 }: {
   offer: OfferRow;
+  orgId: string | null;
   canAccept: boolean;
   onAccepted: () => void;
 }) {
   const [accepting, setAccepting] = useState(false);
-  const [policy, setPolicy] = useState<CancellationPolicy | null>(null);
+  const [billingOk, setBillingOk] = useState<boolean | null>(null);
+  const [policy, setPolicy] = useState<{ free_until_days_before_start?: number; late_fee_percent?: number; text?: string } | null>(null);
   const [reasonCode, setReasonCode] = useState('');
   const [reasonText, setReasonText] = useState('');
   const [reference, setReference] = useState('');
@@ -165,14 +152,19 @@ function OfferCard({
     offer.offer_total_ex_vat !== null &&
     !expired;
 
+  function setBilling(d: Parameters<typeof isBillingComplete>[0]) {
+    setBillingOk(isBillingComplete(d));
+  }
+
   async function openAccept() {
     setAccepting(true);
+    if (orgId) fetchBillingDetails(orgId).then(d => setBilling(d));
     const { data } = await supabase
       .from('providers')
       .select('cancellation_policy')
       .eq('id', offer.provider_id)
       .maybeSingle();
-    setPolicy((data?.cancellation_policy as CancellationPolicy | null) ?? null);
+    setPolicy((data?.cancellation_policy as typeof policy) ?? null);
   }
 
   async function accept() {
@@ -272,6 +264,16 @@ function OfferCard({
               />
             )}
           </div>
+          {billingOk === false && orgId && (
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] p-3 space-y-3">
+              <p className="text-sm text-[var(--fg)]">Fakturauppgifter saknas. Fyll i dem så att vi kan skapa fakturaunderlaget.</p>
+              <BillingDetailsForm
+                orgId={orgId}
+                canEdit
+                onSaved={d => setBilling(d)}
+              />
+            </div>
+          )}
           <div className="rounded-lg bg-[var(--bg-raised)] p-3">
             <p className="text-xs font-medium text-[var(--fg)] mb-1">Avbokningsvillkor</p>
             <p className="text-sm text-[var(--fg-muted)]">{policySummary(policy)}</p>
@@ -281,7 +283,7 @@ function OfferCard({
             Jag har läst avbokningsvillkoren och accepterar dem.
           </label>
           <div className="flex gap-2">
-            <button type="button" onClick={accept} disabled={busy || !confirmed} className={primaryButton}>
+            <button type="button" onClick={accept} disabled={busy || !confirmed || billingOk !== true} className={primaryButton}>
               {busy ? 'Accepterar…' : 'Bekräfta och acceptera'}
             </button>
             <button
@@ -514,6 +516,7 @@ export function TrainingRequestsView() {
                         <OfferCard
                           key={o.quote_id}
                           offer={o}
+                          orgId={r.buyer_org_id}
                           canAccept={r.status === 'offers_received'}
                           onAccepted={async () => {
                             await load();

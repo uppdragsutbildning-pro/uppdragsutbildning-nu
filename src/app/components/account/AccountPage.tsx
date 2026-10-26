@@ -6,9 +6,11 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { supabase } from '../../../lib/supabase';
 import { useTrainingRequestUpdates } from '../../../hooks/useTrainingRequestUpdates';
 import { TrainingRequestsView } from './TrainingRequestsView';
+import { BookingsView } from './BookingsView';
 
 interface Membership {
   display_name: string;
+  access_role: string;
   organizations: { id: string; name: string; organization_number: string | null };
 }
 
@@ -221,10 +223,15 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = searchParams.get('tab') === 'efterfragningar' ? 'training' : 'rfp';
+  const tabParam = searchParams.get('tab');
+  const tab: 'rfp' | 'training' | 'bookings' =
+    tabParam === 'efterfragningar' ? 'training' : tabParam === 'bokningar' ? 'bookings' : 'rfp';
   const { unreadCount } = useTrainingRequestUpdates();
-  const selectTab = (next: 'rfp' | 'training') =>
-    setSearchParams(next === 'training' ? { tab: 'efterfragningar' } : {}, { replace: true });
+  const selectTab = (next: 'rfp' | 'training' | 'bookings') =>
+    setSearchParams(
+      next === 'training' ? { tab: 'efterfragningar' } : next === 'bookings' ? { tab: 'bokningar' } : {},
+      { replace: true }
+    );
 
   useEffect(() => {
     let active = true;
@@ -275,6 +282,7 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
           {([
             ['rfp', 'Förfrågningar'],
             ['training', 'Mina efterfrågningar'],
+            ['bookings', 'Bokningar'],
           ] as const).map(([key, label]) => (
             <button
               key={key}
@@ -305,6 +313,13 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
       </div>
 
       {tab === 'training' && <TrainingRequestsView />}
+
+      {tab === 'bookings' && (
+        <BookingsView
+          orgId={membership.organizations.id}
+          canEditBilling={['owner', 'admin'].includes(membership.access_role)}
+        />
+      )}
 
       {tab === 'rfp' && (
         <>
@@ -428,7 +443,7 @@ export function AccountPage() {
     setMembershipLoading(true);
     const { data, error } = await supabase
       .from('organization_members')
-      .select('display_name, organizations(id, name, organization_number)')
+      .select('display_name, access_role, organizations(id, name, organization_number)')
       .eq('user_id', user.id)
       .maybeSingle();
     if (error) toast.error('Kunde inte hämta ditt konto', { description: error.message });

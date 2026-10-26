@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useParams, useNavigate } from 'react-router';
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router';
 import {
   ArrowLeft, GraduationCap, Clock, MapPin, BookOpen, Sparkles,
   CheckCircle, ChevronDown, Share2, Users, Phone, Mail,
@@ -10,6 +10,7 @@ import { adaptTraining, providerTypeLabel, type AdaptedTraining } from '../../..
 import { providerLogos } from '../../data/providerLogos';
 import { StatusBadge } from '../training/StatusBadge';
 import { CourseStartCard } from '../training/CourseStartCard';
+import { BookingDialog } from '../training/BookingDialog';
 import { AccordionItem } from '../training/AccordionItem';
 import { toast } from 'sonner';
 import { useMarketplace } from '../../../lib/marketplaceContext';
@@ -25,6 +26,8 @@ export function TrainingDetailPage() {
   const [openCurriculum, setOpenCurriculum] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'starts'>('overview');
   const { marketplace } = useMarketplace();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [bookingStartId, setBookingStartId] = useState<string | null>(null);
   const [inMarketplaceScope, setInMarketplaceScope] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -138,9 +141,21 @@ export function TrainingDetailPage() {
   const hasStarts = isScheduled && training.scheduledStarts && training.scheduledStarts.length > 0;
   const nextStart = hasStarts ? training.scheduledStarts!.find(s => s.status !== 'full') : null;
 
-  const handleApply = (startId: string) => {
-    toast.success('Ansökan påbörjad', { description: `Du dirigeras till anmälningsformuläret.` });
-  };
+  const handleApply = (startId: string) => setBookingStartId(startId);
+
+  // Tillbaka från inloggningslänken (?book=<kursstart>): öppna bokningen igen.
+  const bookParam = searchParams.get('book');
+  useEffect(() => {
+    if (bookParam && training?.scheduledStarts?.some(s => s.id === bookParam)) {
+      setBookingStartId(bookParam);
+      const next = new URLSearchParams(searchParams);
+      next.delete('book');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookParam, training]);
+
+  const bookingStart = training?.scheduledStarts?.find(s => s.id === bookingStartId) ?? null;
 
   const handleShare = () => {
     const canonicalUrl = `${window.location.origin}/kurs/${training.slug}`;
@@ -555,6 +570,18 @@ export function TrainingDetailPage() {
           </div>
         </div>
       </div>
+
+      {bookingStart && (
+        <BookingDialog
+          open
+          onOpenChange={(o) => { if (!o) setBookingStartId(null); }}
+          start={bookingStart}
+          trainingTitle={training.title}
+          providerId={training.providerId}
+          providerName={provider.name}
+          marketplaceId={marketplace && inMarketplaceScope !== false ? marketplace.id : null}
+        />
+      )}
 
       {/* MOBILE STICKY BAR */}
       <div className="fixed bottom-0 left-0 right-0 lg:hidden bg-white border-t border-slate-200 px-4 py-3 flex gap-3 z-40 shadow-lg">
