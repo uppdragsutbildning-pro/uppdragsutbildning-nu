@@ -1,11 +1,10 @@
 import { Link } from 'react-router';
 import { ArrowRight, Search } from 'lucide-react';
+import type { RequestSource } from '../../../lib/trainingRequestDraft';
 
 // Antal träffar (inklusive) under vilket en sökning räknas som "svag". Sökningen
 // har ingen relevanspoäng (ilike + views/leads), så antalet träffar är den enda signalen.
 export const WEAK_RESULTS_THRESHOLD = 3;
-
-export type RequestSource = 'search_no_results' | 'search_weak_results' | 'direct';
 
 // Katalogens format-värden → efterfrågeformulärets delivery_format.
 const FORMAT_TO_DELIVERY: Record<string, string> = {
