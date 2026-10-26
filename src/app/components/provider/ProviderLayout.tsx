@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import {
   LayoutDashboard, BookOpen, Users, MessageSquare,
-  History, LogOut, Menu, X, Globe, FileText
+  History, LogOut, Menu, X, Globe, FileText, Sparkles
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -18,12 +18,14 @@ import { useAuth } from '../../../contexts/AuthContext';
 import type { Provider } from '../../../lib/supabase';
 import { supabase } from '../../../lib/supabaseClient';
 import { ProviderProvider } from '../../../contexts/ProviderContext';
+import { ASSIGNMENTS_CHANGED_EVENT } from './ProviderTrainingRequestsPage';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Översikt', path: '/provider/dashboard' },
   { icon: BookOpen, label: 'Mina kurser', path: '/provider/courses' },
   { icon: Globe, label: 'Var visas mina kurser', path: '/provider/marketplaces' },
   { icon: Users, label: 'Kursanmälningar', path: '/provider/applications' },
+  { icon: Sparkles, label: 'Efterfrågningar', path: '/provider/efterfragningar' },
   { icon: MessageSquare, label: 'Förfrågningar', path: '/provider/requests' },
   { icon: History, label: 'Historik', path: '/provider/history' },
   { icon: FileText, label: 'Villkor', path: '/provider/villkor' },
@@ -37,6 +39,7 @@ export function ProviderLayout() {
   const [provider, setProvider] = useState<Provider | null>(null);
   const [allProviders, setAllProviders] = useState<Provider[]>([]);
   const [selectedProviderId, setSelectedProviderId] = useState<string>('');
+  const [newAssignments, setNewAssignments] = useState(0);
 
   const isAdmin = profile?.role === 'admin';
 
@@ -54,6 +57,31 @@ export function ProviderLayout() {
     if (selectedProviderId) {
       loadProvider(selectedProviderId);
     }
+  }, [selectedProviderId]);
+
+  // Antal nya (olästa) efterfrågningar för märket i menyn.
+  useEffect(() => {
+    if (!selectedProviderId) {
+      setNewAssignments(0);
+      return;
+    }
+    let active = true;
+    const refresh = async () => {
+      const { count } = await supabase
+        .from('training_request_assignments')
+        .select('id', { count: 'exact', head: true })
+        .eq('provider_id', selectedProviderId)
+        .eq('status', 'assigned');
+      if (active) setNewAssignments(count ?? 0);
+    };
+    refresh();
+    window.addEventListener(ASSIGNMENTS_CHANGED_EVENT, refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      active = false;
+      window.removeEventListener(ASSIGNMENTS_CHANGED_EVENT, refresh);
+      window.removeEventListener('focus', refresh);
+    };
   }, [selectedProviderId]);
 
   async function loadAllProviders() {
@@ -194,6 +222,11 @@ export function ProviderLayout() {
                 >
                   <Icon className="w-5 h-5" />
                   {item.label}
+                  {item.path === '/provider/efterfragningar' && newAssignments > 0 && (
+                    <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-green-600 text-white text-xs font-medium">
+                      {newAssignments}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -222,6 +255,11 @@ export function ProviderLayout() {
                     >
                       <Icon className="w-5 h-5" />
                       {item.label}
+                      {item.path === '/provider/efterfragningar' && newAssignments > 0 && (
+                        <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-green-600 text-white text-xs font-medium">
+                          {newAssignments}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}

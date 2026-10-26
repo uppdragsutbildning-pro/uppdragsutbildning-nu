@@ -20,6 +20,7 @@ import { ProviderMarketplacesPage } from "./components/provider/ProviderMarketpl
 import { ProviderCourseFormPage } from "./components/provider/ProviderCourseFormPage";
 import { ProviderApplicationsPage } from "./components/provider/ProviderApplicationsPage";
 import { ProviderRequestsPage } from "./components/provider/ProviderRequestsPage";
+import { ProviderTrainingRequestsPage } from "./components/provider/ProviderTrainingRequestsPage";
 import { ProviderHistoryPage } from "./components/provider/ProviderHistoryPage";
 import { ProviderTermsSettingsPage } from "./components/provider/ProviderTermsSettingsPage";
 import { MarketplaceFormPage } from "./components/admin/MarketplaceFormPage";
@@ -100,6 +101,7 @@ export const router = createBrowserRouter([
       { path: "courses/:id/edit", Component: ProviderCourseFormPage },
       { path: "marketplaces", Component: ProviderMarketplacesPage },
       { path: "applications", Component: ProviderApplicationsPage },
+      { path: "efterfragningar", Component: ProviderTrainingRequestsPage },
       { path: "requests", Component: ProviderRequestsPage },
       { path: "history", Component: ProviderHistoryPage },
       { path: "villkor", Component: ProviderTermsSettingsPage },
