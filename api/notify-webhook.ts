@@ -13,6 +13,12 @@ import {
   trainingRequestAssignedProvider,
   trainingRequestNoMatch,
   trainingRequestClosed,
+  bookingConfirmedBuyer,
+  bookingConfirmedProvider,
+  quoteNotSelected,
+  requestClosedForProvider,
+  payoutMade,
+  cancellationRequestedAdmin,
 } from './_lib/emailTemplates.js';
 
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
@@ -32,6 +38,7 @@ async function getProviderContactEmail(trainingId: string): Promise<{ email: str
 interface TrainingRequestEvent {
   id: string;
   request_id: string;
+  assignment_id: string | null;
   event_type: string;
   visible_to_buyer: boolean;
   payload: Record<string, unknown> | null;
@@ -93,12 +100,115 @@ async function handleTrainingRequestEvent(ev: TrainingRequestEvent) {
     for (const to of recipients.length > 0 ? recipients : [null]) {
       await sendEmail({ to, ...content, messageType: 'training_request_assigned_provider', ...mail });
     }
+  } else if (ev.event_type === 'not_selected' || (ev.event_type === 'withdrawn' && payload.reason === 'quote_accepted')) {
+    // Köparen har valt en annan offert. Lärosäten får aldrig veta vem som vann eller till vilket pris.
+    if (!ev.assignment_id) return;
+    const { data: asg } = await supabaseAdmin.from('training_request_assignments').select('provider_id').eq('id', ev.assignment_id).single();
+    if (!asg?.provider_id) return;
+    const content =
+      ev.event_type === 'not_selected'
+        ? quoteNotSelected({
+            title: req.title,
+            reasonLabel: typeof payload.reason_code === 'string' ? NOT_SELECTED_LABEL[payload.reason_code] ?? null : null,
+            reasonText: typeof payload.reason_text === 'string' ? payload.reason_text : null,
+            linkUrl: APP_URL ? `${APP_URL}/provider/requests` : undefined,
+          })
+        : requestClosedForProvider({ title: req.title, linkUrl: APP_URL ? `${APP_URL}/provider/efterfragningar` : undefined });
+    const messageType = ev.event_type === 'not_selected' ? 'quote_not_selected' : 'training_request_closed_provider';
+    const recipients = await getProviderRecipients(asg.provider_id);
+    for (const to of recipients.length > 0 ? recipients : [null]) {
+      await sendEmail({ to, ...content, messageType, ...mail });
+    }
   } else if (ev.event_type === 'no_match') {
     const content = trainingRequestNoMatch({ title: req.title, message, linkUrl: accountLink });
     await sendEmail({ to: await getBuyerEmail(req.buyer_user_id), ...content, messageType: 'training_request_no_match', ...mail });
   } else if (ev.event_type === 'closed') {
     const content = trainingRequestClosed({ title: req.title, message, linkUrl: accountLink });
     await sendEmail({ to: await getBuyerEmail(req.buyer_user_id), ...content, messageType: 'training_request_closed', ...mail });
+  }
+}
+
+const NOT_SELECTED_LABEL: Record<string, string> = {
+  price: 'Pris',
+  timing: 'Leveranstid',
+  content: 'Innehåll',
+  experience: 'Tidigare erfarenhet',
+  other: 'Annat',
+};
+
+function one<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+}
+
+// Bokning bekräftad (öppen kursstart eller accepterad offert): köparen och lärosätet får ett mejl var.
+async function handleBooking(record: Record<string, any>) {
+  const [{ data: provider }, { data: org }] = await Promise.all([
+    supabaseAdmin.from('providers').select('name').eq('id', record.provider_id).single(),
+    supabaseAdmin.from('organizations').select('name').eq('id', record.buyer_org_id).single(),
+  ]);
+  const startDate = new Date(record.start_date).toLocaleDateString('sv-SE');
+  const mail = { relatedTable: 'bookings', relatedId: record.id as string };
+
+  const buyerContent = bookingConfirmedBuyer({
+    title: record.title,
+    providerName: provider?.name ?? 'lärosätet',
+    startDate,
+    participants: Number(record.participants),
+    totalExVat: Number(record.total_ex_vat),
+    linkUrl: APP_URL ? `${APP_URL}/konto?tab=bokningar` : undefined,
+  });
+  await sendEmail({ to: await getBuyerEmail(record.buyer_user_id), ...buyerContent, messageType: 'booking_confirmed_buyer', ...mail });
+
+  const providerContent = bookingConfirmedProvider({
+    title: record.title,
+    buyerName: org?.name ?? 'En köpare',
+    startDate,
+    participants: Number(record.participants),
+    linkUrl: APP_URL ? `${APP_URL}/provider/fakturering` : undefined,
+  });
+  const recipients = await getProviderRecipients(record.provider_id);
+  for (const to of recipients.length > 0 ? recipients : [null]) {
+    await sendEmail({ to, ...providerContent, messageType: 'booking_confirmed_provider', ...mail });
+  }
+}
+
+// Händelser på fakturaunderlag: utbetalning gjord (lärosätet) och begäran om avbokning (admin).
+async function handleInvoiceBasisEvent(record: Record<string, any>) {
+  const { data: basis } = await supabaseAdmin
+    .from('invoice_bases')
+    .select('id, payout_amount, paid_out_at, bookings(title, provider_id, providers(name), organizations(name))')
+    .eq('id', record.basis_id)
+    .single();
+  if (!basis) return;
+  const booking = one<any>(basis.bookings);
+  if (!booking) return;
+  const providerName = one<any>(booking.providers)?.name ?? 'Okänt lärosäte';
+  const buyerName = one<any>(booking.organizations)?.name ?? 'Okänd köpare';
+  const mail = { relatedTable: 'invoice_bases', relatedId: basis.id as string };
+
+  if (record.event_type === 'paid_out') {
+    const content = payoutMade({
+      title: booking.title,
+      buyerName,
+      amount: Number(basis.payout_amount),
+      paidOutDate: new Date(basis.paid_out_at ?? record.created_at).toLocaleDateString('sv-SE'),
+      linkUrl: APP_URL ? `${APP_URL}/provider/fakturering` : undefined,
+    });
+    const recipients = await getProviderRecipients(booking.provider_id);
+    for (const to of recipients.length > 0 ? recipients : [null]) {
+      await sendEmail({ to, ...content, messageType: 'payout_made', ...mail });
+    }
+  } else if (record.event_type === 'cancellation_requested') {
+    if (!ADMIN_EMAIL) return;
+    const payload = (record.payload ?? {}) as Record<string, unknown>;
+    const content = cancellationRequestedAdmin({
+      title: booking.title,
+      buyerName,
+      providerName,
+      message: typeof payload.message === 'string' ? payload.message : null,
+      linkUrl: APP_URL ? `${APP_URL}/admin?tab=fakturering` : undefined,
+    });
+    await sendEmail({ to: ADMIN_EMAIL, ...content, messageType: 'cancellation_requested', ...mail });
   }
 }
 
@@ -135,7 +245,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
         await sendEmail({ to: record.contact_email, ...content, messageType: 'rfp_responded', relatedTable: 'custom_requests', relatedId: record.id });
       } else if (statusChanged && record.status === 'accepted') {
-        if (record.training_id) {
+        // Offertrader från efterfrågningar saknar training_id: lärosätet får sitt mejl från bokningen (handleBooking).
+        if (record.training_id && !record.training_request_assignment_id) {
           const { email } = await getProviderContactEmail(record.training_id);
           const content = bookingConfirmed({
             companyName: record.company,
@@ -158,6 +269,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     } else if (table === 'training_request_events' && operation === 'INSERT') {
       await handleTrainingRequestEvent(record);
+    } else if (table === 'bookings' && operation === 'INSERT') {
+      await handleBooking(record);
+    } else if (table === 'invoice_basis_events' && operation === 'INSERT') {
+      await handleInvoiceBasisEvent(record);
     } else if (table === 'applications' && operation === 'INSERT') {
       if (record.training_id) {
         const { email, title } = await getProviderContactEmail(record.training_id);
