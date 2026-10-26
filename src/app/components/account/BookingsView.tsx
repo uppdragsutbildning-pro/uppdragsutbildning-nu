@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { ChevronDown } from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabase';
 import { formatSek } from '../../../lib/invoiceStatus';
 import { BillingDetailsForm } from './BillingDetailsForm';
@@ -22,6 +23,7 @@ interface BookingRow {
   status: 'confirmed' | 'cancelled' | 'completed';
   confirmed_at: string;
   cancellation_policy: { free_until_days_before_start?: number; late_fee_percent?: number; text?: string } | null;
+  cancellation_requested_at: string | null;
 }
 
 const BOOKING_STATUS: Record<BookingRow['status'], { label: string; className: string }> = {
@@ -40,23 +42,119 @@ function Row({ label, value }: { label: string; value: string | number | null | 
   );
 }
 
-export function BookingsView({ orgId, canEditBilling }: { orgId: string; canEditBilling: boolean }) {
+// Visar bara om fri avbokning verkar öppen. Databasen avgör (buyer_cancel_booking).
+function freeCancellationOpen(b: BookingRow): boolean {
+  const p = b.cancellation_policy;
+  if (!p || p.free_until_days_before_start === undefined || p.late_fee_percent === undefined) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.round((new Date(b.start_date + 'T00:00:00').getTime() - today.getTime()) / 86400000);
+  return days >= p.free_until_days_before_start;
+}
+
+function CancelPanel({ booking, onDone }: { booking: BookingRow; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const free = freeCancellationOpen(booking);
+
+  async function submit() {
+    setBusy(true);
+    const { error } = free
+      ? await supabase.rpc('buyer_cancel_booking', { p_booking_id: booking.booking_id, p_reason: text.trim() || null })
+      : await supabase.rpc('buyer_request_cancellation', { p_booking_id: booking.booking_id, p_message: text.trim() || null });
+    setBusy(false);
+    if (error) {
+      toast.error(free ? 'Kunde inte avboka' : 'Kunde inte skicka begäran', { description: error.message });
+      return;
+    }
+    toast.success(free ? 'Bokningen är avbokad' : 'Begäran om avbokning är skickad', {
+      description: free ? 'Platserna frigörs och inget underlag skickas.' : 'Vi hör av oss när vi har tittat på den.',
+    });
+    onDone();
+  }
+
+  if (booking.cancellation_requested_at) {
+    return (
+      <p className="text-sm text-[var(--fg-muted)]">
+        Avbokning begärd {new Date(booking.cancellation_requested_at).toLocaleDateString('sv-SE')}. Vi återkommer.
+      </p>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="px-4 py-2.5 rounded-[10px] text-sm font-medium text-red-700 border border-red-200 bg-white hover:bg-red-50 transition-colors"
+      >
+        {free ? 'Avboka' : 'Begär avbokning'}
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-3 rounded-xl border border-[var(--border)] bg-white p-4">
+      <p className="text-sm text-[var(--fg)]">
+        {free
+          ? 'Avbokningen är kostnadsfri enligt lärosätets villkor. Platserna frigörs direkt.'
+          : 'Den fria avbokningstiden har gått ut, eller så finns ingen registrerad policy. Vi tar emot en begäran och återkommer. En avgift kan bli aktuell enligt lärosätets villkor.'}
+      </p>
+      <textarea
+        rows={3}
+        value={text}
+        onChange={e => setText(e.target.value)}
+        maxLength={free ? 1000 : 2000}
+        placeholder={free ? 'Anledning (valfri)' : 'Berätta kort varför ni vill avboka (valfritt)'}
+        className="w-full px-3.5 py-2.5 rounded-[10px] border border-[var(--border)] bg-[var(--bg-raised)] text-[15px] outline-none focus:border-[var(--accent)] resize-none"
+      />
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={submit}
+          disabled={busy}
+          className="px-4 py-2.5 rounded-[10px] text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors"
+        >
+          {busy ? 'Skickar…' : free ? 'Bekräfta avbokning' : 'Skicka begäran'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          disabled={busy}
+          className="px-4 py-2.5 rounded-[10px] text-sm font-medium border border-[var(--border)] bg-white hover:bg-[var(--bg-raised)]"
+        >
+          Ångra
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function BookingsView({
+  orgId,
+  canEditBilling,
+  canBook,
+}: {
+  orgId: string;
+  canEditBilling: boolean;
+  canBook: boolean;
+}) {
   const [rows, setRows] = useState<BookingRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showBilling, setShowBilling] = useState(false);
 
-  useEffect(() => {
-    let active = true;
+  const load = useCallback(() => {
     supabase.rpc('buyer_list_bookings').then(({ data, error: rpcError }) => {
-      if (!active) return;
       if (rpcError) setError(rpcError.message);
       else setRows((data ?? []) as BookingRow[]);
     });
-    return () => {
-      active = false;
-    };
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
     <div className="space-y-5">
@@ -133,6 +231,7 @@ export function BookingsView({ orgId, canEditBilling }: { orgId: string; canEdit
                     <p className="text-[11px] font-medium tracking-[0.1em] uppercase text-[var(--fg-subtle)] mb-1">Avbokningsvillkor</p>
                     <p className="text-sm text-[var(--fg-muted)]">{policySummary(b.cancellation_policy)}</p>
                   </div>
+                  {canBook && b.status === 'confirmed' && <CancelPanel booking={b} onDone={load} />}
                 </div>
               )}
             </li>

@@ -28,6 +28,7 @@ export function TrainingDetailPage() {
   const { marketplace } = useMarketplace();
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookingStartId, setBookingStartId] = useState<string | null>(null);
+  const [cancellationPolicy, setCancellationPolicy] = useState<{ free_until_days_before_start?: number; late_fee_percent?: number; text?: string } | null>(null);
   const [inMarketplaceScope, setInMarketplaceScope] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -110,6 +111,34 @@ export function TrainingDetailPage() {
     };
   }, [training, marketplace]);
 
+  // Lärosätets egna avbokningsregler (visas i Villkor och i bokningsdialogen).
+  const providerIdForPolicy = training?.providerId;
+  useEffect(() => {
+    if (!providerIdForPolicy) return;
+    let active = true;
+    supabase
+      .from('providers')
+      .select('cancellation_policy')
+      .eq('id', providerIdForPolicy)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (active) setCancellationPolicy((data?.cancellation_policy as typeof cancellationPolicy) ?? null);
+      });
+    return () => { active = false; };
+  }, [providerIdForPolicy]);
+
+  // Tillbaka från inloggningslänken (?book=<kursstart>): öppna bokningen igen.
+  const bookParam = searchParams.get('book');
+  useEffect(() => {
+    if (bookParam && training?.scheduledStarts?.some(s => s.id === bookParam)) {
+      setBookingStartId(bookParam);
+      const next = new URLSearchParams(searchParams);
+      next.delete('book');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookParam, training]);
+
   function goToRequest() {
     if (!training) return;
     const forceNoMarketplace = !!marketplace && inMarketplaceScope === false;
@@ -142,18 +171,6 @@ export function TrainingDetailPage() {
   const nextStart = hasStarts ? training.scheduledStarts!.find(s => s.status !== 'full') : null;
 
   const handleApply = (startId: string) => setBookingStartId(startId);
-
-  // Tillbaka från inloggningslänken (?book=<kursstart>): öppna bokningen igen.
-  const bookParam = searchParams.get('book');
-  useEffect(() => {
-    if (bookParam && training?.scheduledStarts?.some(s => s.id === bookParam)) {
-      setBookingStartId(bookParam);
-      const next = new URLSearchParams(searchParams);
-      next.delete('book');
-      setSearchParams(next, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookParam, training]);
 
   const bookingStart = training?.scheduledStarts?.find(s => s.id === bookingStartId) ?? null;
 
@@ -361,7 +378,7 @@ export function TrainingDetailPage() {
                     </div>
                     <div className="space-y-3">
                       {training.scheduledStarts!.slice(0, 2).map(start => (
-                        <CourseStartCard key={start.id} start={start} onApply={handleApply} />
+                        <CourseStartCard key={start.id} start={start} onApply={handleApply} cancellationPolicy={cancellationPolicy} />
                       ))}
                     </div>
                   </section>
@@ -436,7 +453,7 @@ export function TrainingDetailPage() {
                 </div>
                 <div className="space-y-4">
                   {training.scheduledStarts!.map(start => (
-                    <CourseStartCard key={start.id} start={start} onApply={handleApply} />
+                    <CourseStartCard key={start.id} start={start} onApply={handleApply} cancellationPolicy={cancellationPolicy} />
                   ))}
                 </div>
               </section>

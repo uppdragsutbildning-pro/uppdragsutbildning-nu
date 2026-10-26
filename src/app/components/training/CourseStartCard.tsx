@@ -5,6 +5,7 @@ import type { AdaptedCourseStart as CourseStart } from '../../../lib/marketplace
 import { StatusBadge } from './StatusBadge';
 import { SeatIndicator } from './SeatIndicator';
 import { DeadlineAlert } from './DeadlineAlert';
+import { policySummary } from './BookingDialog';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import {
 interface CourseStartCardProps {
   start: CourseStart;
   onApply?: (startId: string) => void;
+  cancellationPolicy?: { free_until_days_before_start?: number; late_fee_percent?: number; text?: string } | null;
 }
 
 const formatLabel: Record<string, string> = {
@@ -25,7 +27,7 @@ const formatLabel: Record<string, string> = {
   hybrid: 'Hybrid'
 };
 
-export function CourseStartCard({ start, onApply }: CourseStartCardProps) {
+export function CourseStartCard({ start, onApply, cancellationPolicy = null }: CourseStartCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const startDate = new Date(start.startDate).toLocaleDateString('sv-SE', {
@@ -132,9 +134,8 @@ export function CourseStartCard({ start, onApply }: CourseStartCardProps) {
                 <DialogDescription>Gäller för kursstarten {startDate}</DialogDescription>
               </DialogHeader>
               <div className="space-y-3 text-sm text-slate-700">
-                <p>Anmälan är bindande när den har bekräftats av utbildningsleverantören.</p>
-                <p>Avbokning ska ske skriftligt till leverantören senast <strong>{deadlineDate}</strong> (sista ansökningsdag). Vid avbokning efter detta datum kan avgift utgå enligt leverantörens villkor.</p>
-                <p>Ombokning till en annan kursstart kan erbjudas i mån av tillgänglig plats.</p>
+                <p>Anmälan är bindande när den har bekräftats. Fakturan skickas från Uppdragsutbildning, inte från lärosätet.</p>
+                <p><strong>Avbokning:</strong> {policySummary(cancellationPolicy)}</p>
                 <p>Om kursen ställs in på grund av för få deltagare sker full återbetalning.</p>
               </div>
             </DialogContent>

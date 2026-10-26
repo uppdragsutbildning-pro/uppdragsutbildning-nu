@@ -318,6 +318,7 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
         <BookingsView
           orgId={membership.organizations.id}
           canEditBilling={['owner', 'admin'].includes(membership.access_role)}
+          canBook={['owner', 'admin', 'buyer'].includes(membership.access_role)}
         />
       )}
 
