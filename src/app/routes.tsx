@@ -4,6 +4,7 @@ import { HomePage } from "./components/pages/HomePage";
 import { CatalogPage } from "./components/pages/CatalogPage";
 import { TrainingDetailPage } from "./components/pages/TrainingDetailPage";
 import { RequestFlowPage } from "./components/pages/RequestFlowPage";
+import { RequestCustomTrainingPage } from "./components/pages/RequestCustomTrainingPage";
 import { LoginPage } from "./components/pages/LoginPage";
 import { AdminDashboard } from "./components/pages/AdminDashboard";
 import { NotFound } from "./components/pages/NotFound";
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
       { path: "om-tjansten", Component: OmTjansten },
       { path: "leverantor/:id/villkor", Component: ProviderTermsPage },
       { path: "konto", Component: AccountPage },
+      { path: "efterfraga", Component: RequestCustomTrainingPage },
       { path: "request", Component: RequestFlowPage },
       { path: "request/:trainingId", Component: RequestFlowPage },
       { path: "login", Component: LoginPage },
