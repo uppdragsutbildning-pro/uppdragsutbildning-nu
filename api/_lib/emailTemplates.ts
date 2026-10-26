@@ -3,6 +3,15 @@ interface EmailContent {
   html: string;
 }
 
+// Mallarna för anpassade efterfrågningar innehåller fritext från köpare/admin: escapa alltid.
+function esc(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function ctaButton(linkUrl: string | undefined, label: string): string {
   if (!linkUrl) return '';
   return `
@@ -51,8 +60,8 @@ export function rfpReceived(params: { companyName: string; courseTopic: string; 
   };
 }
 
-export function rfpResponded(params: { courseTopic: string }): EmailContent {
-  const { courseTopic } = params;
+export function rfpResponded(params: { courseTopic: string; linkUrl?: string }): EmailContent {
+  const { courseTopic, linkUrl } = params;
   return {
     subject: `Leverantören har svarat på din förfrågan`,
     html: wrapEmail('Leverantören har svarat', `
@@ -60,6 +69,7 @@ export function rfpResponded(params: { courseTopic: string }): EmailContent {
       <p style="color:#334155;line-height:1.6;">
         Din förfrågan gällande <strong>${courseTopic}</strong> har fått ett svar. Logga in för att läsa det.
       </p>
+      ${ctaButton(linkUrl, 'Se svaret i Mitt konto')}
     `),
   };
 }
@@ -132,6 +142,98 @@ export function applicationConfirmed(params: { courseTitle: string; linkUrl?: st
       </p>
       ${ctaButton(linkUrl, 'Se kursen')}
       ${termsUrl ? `<p style="color:#64748b;font-size:14px;line-height:1.6;margin-top:16px;"><a href="${termsUrl}" style="color:#2563eb;">Läs leverantörens villkor</a></p>` : ''}
+    `),
+  };
+}
+
+// ── Anpassade utbildningsefterfrågningar ─────────────────────────────────
+
+export function trainingRequestSubmitted(params: { title: string; organizationName?: string | null; linkUrl?: string }): EmailContent {
+  const { title, organizationName, linkUrl } = params;
+  return {
+    subject: `Ny efterfrågan: ${title}`,
+    html: wrapEmail('En ny efterfrågan på anpassad utbildning har kommit in', `
+      <h1 style="font-size:20px;color:#0f172a;">Ny efterfrågan</h1>
+      <p style="color:#334155;line-height:1.6;">
+        ${organizationName ? `${esc(organizationName)} har` : 'En köpare har'} efterfrågat en anpassad utbildning:
+        <strong>${esc(title)}</strong>. Granska den och välj lärosäten.
+      </p>
+      ${ctaButton(linkUrl, 'Öppna i Adminpanelen')}
+    `),
+  };
+}
+
+export function trainingRequestAssignedBuyer(params: { title: string; count: number; linkUrl?: string }): EmailContent {
+  const { title, count, linkUrl } = params;
+  return {
+    subject: `Din efterfrågan har skickats till ${count} ${count === 1 ? 'lärosäte' : 'lärosäten'}`,
+    html: wrapEmail('Din efterfrågan är på väg till lärosäten', `
+      <h1 style="font-size:20px;color:#0f172a;">Din efterfrågan har skickats vidare</h1>
+      <p style="color:#334155;line-height:1.6;">
+        Din efterfrågan <strong>${esc(title)}</strong> har skickats till ${count} ${count === 1 ? 'lärosäte' : 'lärosäten'}.
+        Du får ett mejl när en offert kommer in, och du kan följa förloppet i Mitt konto.
+      </p>
+      ${ctaButton(linkUrl, 'Följ din efterfrågan')}
+    `),
+  };
+}
+
+export function trainingRequestAssignedProvider(params: { title: string; organizationName?: string | null; deadline: string; linkUrl?: string }): EmailContent {
+  const { title, organizationName, deadline, linkUrl } = params;
+  return {
+    subject: `Ny anpassad efterfrågan: ${title}`,
+    html: wrapEmail('Ni har fått en anpassad efterfrågan att svara på', `
+      <h1 style="font-size:20px;color:#0f172a;">Ny anpassad efterfrågan</h1>
+      <p style="color:#334155;line-height:1.6;">
+        ${organizationName ? `${esc(organizationName)} söker` : 'En köpare söker'} en anpassad utbildning:
+        <strong>${esc(title)}</strong>. Svara senast <strong>${esc(deadline)}</strong>, antingen med en offert eller genom att avböja.
+      </p>
+      ${ctaButton(linkUrl, 'Öppna Efterfrågningar')}
+    `),
+  };
+}
+
+export function trainingRequestNoMatch(params: { title: string; message?: string | null; linkUrl?: string }): EmailContent {
+  const { title, message, linkUrl } = params;
+  return {
+    subject: `Vi hittade inget lärosäte för din efterfrågan`,
+    html: wrapEmail('Vi kunde tyvärr inte matcha din efterfrågan', `
+      <h1 style="font-size:20px;color:#0f172a;">Vi hittade ingen matchning just nu</h1>
+      <p style="color:#334155;line-height:1.6;">
+        Tyvärr har vi inte hittat ett lärosäte som kan leverera <strong>${esc(title)}</strong> just nu.
+      </p>
+      ${message ? `<p style="color:#334155;line-height:1.6;background-color:#f1f5f9;border-radius:8px;padding:12px 16px;">${esc(message)}</p>` : ''}
+      ${ctaButton(linkUrl, 'Se din efterfrågan')}
+    `),
+  };
+}
+
+export function trainingRequestClosed(params: { title: string; message?: string | null; linkUrl?: string }): EmailContent {
+  const { title, message, linkUrl } = params;
+  return {
+    subject: `Din efterfrågan är avslutad`,
+    html: wrapEmail('Din efterfrågan har avslutats', `
+      <h1 style="font-size:20px;color:#0f172a;">Din efterfrågan är avslutad</h1>
+      <p style="color:#334155;line-height:1.6;">
+        Efterfrågan <strong>${esc(title)}</strong> har avslutats.
+      </p>
+      ${message ? `<p style="color:#334155;line-height:1.6;background-color:#f1f5f9;border-radius:8px;padding:12px 16px;">${esc(message)}</p>` : ''}
+      ${ctaButton(linkUrl, 'Se din efterfrågan')}
+    `),
+  };
+}
+
+export function trainingAssignmentOverdue(params: { title: string; providerName: string; deadline: string; linkUrl?: string }): EmailContent {
+  const { title, providerName, deadline, linkUrl } = params;
+  return {
+    subject: `Obesvarad efterfrågan hos ${providerName}`,
+    html: wrapEmail('Ett lärosäte har inte svarat i tid', `
+      <h1 style="font-size:20px;color:#0f172a;">Deadline passerad utan svar</h1>
+      <p style="color:#334155;line-height:1.6;">
+        <strong>${esc(providerName)}</strong> har inte svarat på efterfrågan <strong>${esc(title)}</strong>
+        (deadline ${esc(deadline)}). Följ upp eller tilldela fler lärosäten.
+      </p>
+      ${ctaButton(linkUrl, 'Öppna i Adminpanelen')}
     `),
   };
 }
