@@ -110,13 +110,22 @@ export interface CustomRequest {
   timeline: string;
   participants_count: string;
   ai_score: 'high' | 'medium' | 'low';
-  status: 'new' | 'responded' | 'negotiating' | 'accepted' | 'declined';
+  status: 'new' | 'responded' | 'negotiating' | 'accepted' | 'declined' | 'not_selected';
   response?: string;
   recommended_categories?: string[];
   has_provider_match?: boolean;
   marketplace_id?: string | null;
   provider_id?: string | null;
   training_request_assignment_id?: string | null;
+  offer_total_ex_vat?: number | null;
+  offer_participants?: number | null;
+  offer_start_date?: string | null;
+  offer_end_date?: string | null;
+  offer_valid_until?: string | null;
+  offer_location?: string | null;
+  offer_terms?: string | null;
+  not_selected_reason_code?: string | null;
+  not_selected_reason_text?: string | null;
   submitted_at: string;
   updated_at: string;
 }

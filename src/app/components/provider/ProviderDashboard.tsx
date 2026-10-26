@@ -213,7 +213,8 @@ export function ProviderDashboard() {
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">
                         {req.status === 'responded' ? 'Besvarad' :
                          req.status === 'negotiating' ? 'Förhandling' :
-                         req.status === 'accepted' ? 'Accepterad' : 'Nekad'}
+                         req.status === 'accepted' ? 'Accepterad' :
+                         req.status === 'not_selected' ? 'Ej vald' : 'Nekad'}
                       </span>
                     )}
                   </div>

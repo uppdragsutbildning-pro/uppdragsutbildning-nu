@@ -754,7 +754,8 @@ export function AdminDashboard() {
                             {req.status === 'new' ? 'Ny' :
                              req.status === 'responded' ? 'Besvarad' :
                              req.status === 'negotiating' ? 'Förhandling' :
-                             req.status === 'accepted' ? 'Accepterad' : 'Avböjd'}
+                             req.status === 'accepted' ? 'Accepterad' :
+                             req.status === 'not_selected' ? 'Ej vald' : 'Avböjd'}
                           </span>
                         </div>
 

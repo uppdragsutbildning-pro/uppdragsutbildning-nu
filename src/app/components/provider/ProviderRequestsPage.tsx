@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProviderContext } from '../../../contexts/ProviderContext';
+import { NOT_SELECTED_REASONS, formatSek } from '../../../lib/invoiceStatus';
 import type { CustomRequest } from '../../../lib/supabase';
 import { supabase } from '../../../lib/supabaseClient';
 
@@ -14,9 +15,13 @@ export function ProviderRequestsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const openId = searchParams.get('open');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'new' | 'responded' | 'negotiating' | 'accepted' | 'declined'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'new' | 'responded' | 'negotiating' | 'accepted' | 'declined' | 'not_selected'>('all');
   const [selectedRequest, setSelectedRequest] = useState<CustomRequest | null>(null);
   const [responseText, setResponseText] = useState('');
+  const [offerForm, setOfferForm] = useState({
+    total: '', participants: '', startDate: '', endDate: '', validUntil: '', location: '', terms: '',
+  });
+  const [submitting, setSubmitting] = useState(false);
   const [requests, setRequests] = useState<CustomRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [marketplaceNames, setMarketplaceNames] = useState<Record<string, string>>({});
@@ -124,6 +129,52 @@ export function ProviderRequestsPage() {
     }
   }
 
+  function openRequest(req: CustomRequest) {
+    setSelectedRequest(req);
+    setResponseText(req.response || '');
+    setOfferForm({
+      total: req.offer_total_ex_vat != null ? String(req.offer_total_ex_vat) : '',
+      participants: req.offer_participants != null ? String(req.offer_participants) : '',
+      startDate: req.offer_start_date ?? '',
+      endDate: req.offer_end_date ?? '',
+      validUntil: req.offer_valid_until ?? '',
+      location: req.offer_location ?? '',
+      terms: req.offer_terms ?? '',
+    });
+  }
+
+  // Offertrader från efterfrågningar lämnas via provider_submit_offer (strukturerade fält).
+  // Direkta statusändringar är spärrade i databasen, och bara köparen kan acceptera.
+  async function handleSubmitOffer() {
+    if (!selectedRequest?.training_request_assignment_id) return;
+    setSubmitting(true);
+    const { error } = await supabase.rpc('provider_submit_offer', {
+      p_assignment_id: selectedRequest.training_request_assignment_id,
+      p_total_ex_vat: Number(offerForm.total.replace(',', '.')),
+      p_participants: Number(offerForm.participants),
+      p_start_date: offerForm.startDate || null,
+      p_end_date: offerForm.endDate || null,
+      p_valid_until: offerForm.validUntil || null,
+      p_location: offerForm.location || null,
+      p_terms: offerForm.terms || null,
+      p_message: responseText || null,
+    });
+    setSubmitting(false);
+    if (error) {
+      toast.error('Kunde inte skicka offerten', { description: error.message });
+      return;
+    }
+    toast.success('Offert skickad', { description: 'Köparen kan nu se och acceptera offerten.' });
+    setSelectedRequest(null);
+    await loadRequests();
+  }
+
+  const offerFormValid =
+    Number(offerForm.total.replace(',', '.')) > 0 &&
+    Number(offerForm.participants) > 0 &&
+    !!offerForm.startDate &&
+    !!offerForm.validUntil;
+
   async function handleStatusChange(id: string, newStatus: CustomRequest['status']) {
     try {
       const { error } = await supabase
@@ -149,6 +200,7 @@ export function ProviderRequestsPage() {
       negotiating: 'Förhandling',
       accepted: 'Accepterad',
       declined: 'Avböjd',
+      not_selected: 'Ej vald',
     };
     return labels[status];
   };
@@ -160,6 +212,7 @@ export function ProviderRequestsPage() {
       negotiating: 'bg-violet-50 text-violet-700 border-violet-200',
       accepted: 'bg-emerald-50 text-emerald-700 border-emerald-200',
       declined: 'bg-red-50 text-red-700 border-red-200',
+      not_selected: 'bg-slate-50 text-slate-600 border-slate-200',
     };
     return colors[status];
   };
@@ -182,13 +235,14 @@ export function ProviderRequestsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid sm:grid-cols-5 gap-4">
+      <div className="grid sm:grid-cols-6 gap-4">
         {[
           { label: 'Nya', value: requests.filter(r => r.status === 'new').length, color: 'blue' },
           { label: 'Besvarade', value: requests.filter(r => r.status === 'responded').length, color: 'amber' },
           { label: 'Förhandling', value: requests.filter(r => r.status === 'negotiating').length, color: 'violet' },
           { label: 'Accepterade', value: requests.filter(r => r.status === 'accepted').length, color: 'emerald' },
           { label: 'Avböjda', value: requests.filter(r => r.status === 'declined').length, color: 'red' },
+          { label: 'Ej valda', value: requests.filter(r => r.status === 'not_selected').length, color: 'slate' },
         ].map((stat, i) => (
           <div key={i} className="bg-white border border-slate-200 rounded-xl p-5">
             <div className="text-3xl font-bold text-slate-900 mb-1">{stat.value}</div>
@@ -221,6 +275,7 @@ export function ProviderRequestsPage() {
             <option value="negotiating">Förhandling</option>
             <option value="accepted">Accepterade</option>
             <option value="declined">Avböjda</option>
+            <option value="not_selected">Ej valda</option>
           </select>
         </div>
       </div>
@@ -293,10 +348,7 @@ export function ProviderRequestsPage() {
 
                 <div className="flex gap-2 ml-4">
                   <button
-                    onClick={() => {
-                      setSelectedRequest(req);
-                      setResponseText(req.response || '');
-                    }}
+                    onClick={() => openRequest(req)}
                     className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                     title="Visa detaljer"
                   >
@@ -304,10 +356,7 @@ export function ProviderRequestsPage() {
                   </button>
                   {req.status === 'new' && (
                     <button
-                      onClick={() => {
-                        setSelectedRequest(req);
-                        setResponseText('');
-                      }}
+                      onClick={() => openRequest(req)}
                       className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                       title="Svara"
                     >
@@ -316,6 +365,24 @@ export function ProviderRequestsPage() {
                   )}
                 </div>
               </div>
+
+              {req.offer_total_ex_vat != null && (
+                <div className="mt-4 pt-4 border-t border-slate-100 text-sm text-slate-700">
+                  Offert: <span className="font-semibold">{formatSek(req.offer_total_ex_vat)}</span> exkl. moms
+                  {req.offer_participants ? ` · ${req.offer_participants} deltagare` : ''}
+                  {req.offer_start_date ? ` · start ${new Date(req.offer_start_date).toLocaleDateString('sv-SE')}` : ''}
+                </div>
+              )}
+
+              {req.status === 'not_selected' && (
+                <div className="mt-4 pt-4 border-t border-slate-100 text-sm text-slate-600">
+                  Köparen har valt en annan offert och tackat nej.
+                  {req.not_selected_reason_code && (
+                    <> Anledning: {NOT_SELECTED_REASONS.find(r => r.code === req.not_selected_reason_code)?.label ?? req.not_selected_reason_code}
+                    {req.not_selected_reason_text ? ` – ${req.not_selected_reason_text}` : ''}.</>
+                  )}
+                </div>
+              )}
 
               {req.response && (
                 <div className="mt-4 pt-4 border-t border-slate-100">
@@ -434,15 +501,122 @@ export function ProviderRequestsPage() {
               </div>
 
               {/* Previous response */}
-              {selectedRequest.response && (
+              {selectedRequest.response && !(selectedRequest.training_request_assignment_id && ['new', 'responded', 'negotiating'].includes(selectedRequest.status)) && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h3 className="font-semibold text-slate-900 mb-2">Tidigare svar</h3>
                   <p className="text-slate-700 text-sm leading-relaxed">{selectedRequest.response}</p>
                 </div>
               )}
 
-              {/* Response textarea */}
-              {selectedRequest.status === 'new' && (
+              {selectedRequest.status === 'not_selected' && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+                  <h3 className="font-semibold text-slate-900 mb-1">Ej vald</h3>
+                  Köparen har valt en annan offert och tackat nej.
+                  {selectedRequest.not_selected_reason_code && (
+                    <p className="mt-1">
+                      Anledning: {NOT_SELECTED_REASONS.find(r => r.code === selectedRequest.not_selected_reason_code)?.label ?? selectedRequest.not_selected_reason_code}
+                      {selectedRequest.not_selected_reason_text ? ` – ${selectedRequest.not_selected_reason_text}` : ''}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {selectedRequest.status === 'accepted' && selectedRequest.training_request_assignment_id && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-sm text-emerald-800">
+                  Köparen har accepterat offerten. Fakturering hanteras av plattformen.
+                </div>
+              )}
+
+              {/* Strukturerad offert (efterfrågningar) */}
+              {selectedRequest.training_request_assignment_id &&
+                ['new', 'responded', 'negotiating'].includes(selectedRequest.status) && (
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-slate-900">
+                      {selectedRequest.status === 'new' ? 'Din offert' : 'Din offert (du kan revidera den tills köparen svarar)'}
+                    </h3>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <label className="text-sm text-slate-700">
+                        Totalpris exkl. moms (SEK) *
+                        <input
+                          inputMode="decimal"
+                          value={offerForm.total}
+                          onChange={(e) => setOfferForm({ ...offerForm, total: e.target.value })}
+                          className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </label>
+                      <label className="text-sm text-slate-700">
+                        Antal deltagare *
+                        <input
+                          type="number"
+                          min={1}
+                          value={offerForm.participants}
+                          onChange={(e) => setOfferForm({ ...offerForm, participants: e.target.value })}
+                          className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </label>
+                      <label className="text-sm text-slate-700">
+                        Startdatum *
+                        <input
+                          type="date"
+                          value={offerForm.startDate}
+                          onChange={(e) => setOfferForm({ ...offerForm, startDate: e.target.value })}
+                          className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </label>
+                      <label className="text-sm text-slate-700">
+                        Slutdatum
+                        <input
+                          type="date"
+                          value={offerForm.endDate}
+                          onChange={(e) => setOfferForm({ ...offerForm, endDate: e.target.value })}
+                          className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </label>
+                      <label className="text-sm text-slate-700">
+                        Offerten gäller till *
+                        <input
+                          type="date"
+                          value={offerForm.validUntil}
+                          onChange={(e) => setOfferForm({ ...offerForm, validUntil: e.target.value })}
+                          className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </label>
+                      <label className="text-sm text-slate-700">
+                        Plats
+                        <input
+                          value={offerForm.location}
+                          onChange={(e) => setOfferForm({ ...offerForm, location: e.target.value })}
+                          className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </label>
+                    </div>
+                    <label className="block text-sm text-slate-700">
+                      Villkor och förutsättningar
+                      <textarea
+                        rows={3}
+                        value={offerForm.terms}
+                        onChange={(e) => setOfferForm({ ...offerForm, terms: e.target.value })}
+                        className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      />
+                    </label>
+                    <label className="block text-sm text-slate-700">
+                      Meddelande till köparen
+                      <textarea
+                        rows={4}
+                        value={responseText}
+                        onChange={(e) => setResponseText(e.target.value)}
+                        className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        placeholder="Beskriv upplägg och innehåll..."
+                      />
+                    </label>
+                    <p className="text-xs text-slate-500">
+                      Priser anges exklusive moms. Det är köparen som accepterar offerten, inte ni.
+                    </p>
+                  </div>
+                )}
+
+              {/* Svar på gamla förfrågningar utan koppling till en efterfrågan */}
+              {!selectedRequest.training_request_assignment_id && selectedRequest.status === 'new' && (
                 <div>
                   <label className="block text-sm font-medium text-slate-900 mb-2">Ditt svar</label>
                   <textarea
@@ -457,7 +631,26 @@ export function ProviderRequestsPage() {
 
               {/* Actions */}
               <div className="flex gap-3 pt-4 border-t border-slate-200">
-                {selectedRequest.status === 'new' && (
+                {selectedRequest.training_request_assignment_id &&
+                  ['new', 'responded', 'negotiating'].includes(selectedRequest.status) && (
+                    <>
+                      <button
+                        onClick={handleSubmitOffer}
+                        disabled={!offerFormValid || submitting}
+                        className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg font-medium transition-colors"
+                      >
+                        <Send className="w-5 h-5" />
+                        {submitting ? 'Skickar…' : selectedRequest.status === 'new' ? 'Skicka offert' : 'Uppdatera offert'}
+                      </button>
+                      <button
+                        onClick={() => setSelectedRequest(null)}
+                        className="px-4 py-2.5 border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium"
+                      >
+                        Stäng
+                      </button>
+                    </>
+                  )}
+                {!selectedRequest.training_request_assignment_id && selectedRequest.status === 'new' && (
                   <>
                     <button
                       onClick={handleSendResponse}
@@ -478,7 +671,10 @@ export function ProviderRequestsPage() {
                     </button>
                   </>
                 )}
-                {selectedRequest.status !== 'new' && (
+                {(selectedRequest.status === 'accepted' ||
+                  selectedRequest.status === 'declined' ||
+                  selectedRequest.status === 'not_selected' ||
+                  (!selectedRequest.training_request_assignment_id && selectedRequest.status !== 'new')) && (
                   <button
                     onClick={() => setSelectedRequest(null)}
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium"

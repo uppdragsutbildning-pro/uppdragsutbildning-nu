@@ -78,6 +78,14 @@ export function quoteStatusLabel(status: string): string {
   return QUOTE_STATUS_LABEL[status] ?? status;
 }
 
+// Belopp visas likadant överallt (SEK, svenskt format). Beräkningen görs i databasen.
+const SEK = new Intl.NumberFormat('sv-SE', { style: 'currency', currency: 'SEK', maximumFractionDigits: 2 });
+
+export function formatSek(amount: number | string | null | undefined): string {
+  if (amount === null || amount === undefined || amount === '') return '–';
+  return SEK.format(Number(amount));
+}
+
 // Anledningar när köparen väljer bort en offert (custom_requests.not_selected_reason_code).
 export const NOT_SELECTED_REASONS = [
   { code: 'price', label: 'Pris' },

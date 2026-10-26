@@ -16,7 +16,7 @@ interface AccountRequest {
   id: string;
   course_topic: string;
   description: string;
-  status: 'new' | 'responded' | 'negotiating' | 'accepted' | 'declined';
+  status: 'new' | 'responded' | 'negotiating' | 'accepted' | 'declined' | 'not_selected';
   budget: string | null;
   timeline: string;
   participants_count: string;
@@ -31,6 +31,7 @@ const STATUS: Record<AccountRequest['status'], { label: string; className: strin
   negotiating: { label: 'Dialog pågår', className: 'bg-amber-100 text-amber-700' },
   accepted: { label: 'Accepterad', className: 'bg-green-100 text-green-700' },
   declined: { label: 'Avböjd', className: 'bg-red-100 text-red-700' },
+  not_selected: { label: 'Ej vald', className: 'bg-slate-100 text-slate-600' },
 };
 
 const inputClass =
