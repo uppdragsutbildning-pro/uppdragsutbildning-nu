@@ -237,3 +237,42 @@ export function trainingAssignmentOverdue(params: { title: string; providerName:
     `),
   };
 }
+
+// Samlat mejl till admin när fakturaunderlag har blivit klara (kursstart). Ett mejl per körning.
+export interface ReadyBasisItem {
+  number: string;
+  title: string;
+  providerName: string;
+  buyerName: string;
+  startDate: string;
+  totalExVat: string;
+}
+
+export function invoiceBasesReady(params: { items: ReadyBasisItem[]; more: number; linkUrl?: string }): EmailContent {
+  const { items, more, linkUrl } = params;
+  const total = items.length + more;
+  const rows = items
+    .map(
+      i => `
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #e2e8f0;color:#334155;font-size:14px;">
+          <strong>${esc(i.number)}</strong> · ${esc(i.title)}<br/>
+          <span style="color:#64748b;font-size:13px;">${esc(i.buyerName)} · ${esc(i.providerName)} · start ${esc(i.startDate)} · ${esc(i.totalExVat)} exkl. moms</span>
+        </td>
+      </tr>`
+    )
+    .join('');
+  return {
+    subject: total === 1 ? '1 fakturaunderlag är klart för fakturering' : `${total} fakturaunderlag är klara för fakturering`,
+    html: wrapEmail('Kurser har startat och underlag kan faktureras', `
+      <h1 style="font-size:20px;color:#0f172a;">Klara för fakturering</h1>
+      <p style="color:#334155;line-height:1.6;">
+        ${total === 1 ? 'Ett fakturaunderlag har' : `${total} fakturaunderlag har`} blivit klart eftersom kursen har startat.
+        Granska, justera vid behov och skapa fakturan i Fortnox.
+      </p>
+      <table role="presentation" width="100%" style="margin:16px 0;">${rows}</table>
+      ${more > 0 ? `<p style="color:#64748b;font-size:13px;">…och ${more} till. Se alla i Adminpanelen.</p>` : ''}
+      ${ctaButton(linkUrl, 'Öppna Fakturering')}
+    `),
+  };
+}

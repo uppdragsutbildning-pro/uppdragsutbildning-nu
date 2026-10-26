@@ -1,11 +1,70 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from './_lib/supabaseAdmin.js';
 import { sendEmail } from './_lib/sendEmail.js';
-import { rfpEscalated, trainingAssignmentOverdue } from './_lib/emailTemplates.js';
+import { rfpEscalated, trainingAssignmentOverdue, invoiceBasesReady, type ReadyBasisItem } from './_lib/emailTemplates.js';
 
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
 const APP_URL = process.env.APP_URL;
 const BATCH_SIZE = 25;
+const READY_MAIL_MAX_ROWS = 50;
+
+function one<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+}
+
+const sek = new Intl.NumberFormat('sv-SE', { style: 'currency', currency: 'SEK', maximumFractionDigits: 2 });
+
+// Fakturaunderlag: flytta de vars kurs har startat till "klar" och mejla admin ETT samlat mejl.
+// Flaggan ready_notify_pending rensas först när mejlet har gått iväg, så ett misslyckat mejl
+// försöks igen nästa körning, och en körning till samma dag skickar inget extra.
+async function processInvoiceBasesReady(): Promise<{ moved: number; notified: number }> {
+  const { data: moved, error: moveError } = await supabaseAdmin.rpc('billing_mark_ready_due');
+  if (moveError) throw moveError;
+
+  const { data: pending, error: pendingError } = await supabaseAdmin
+    .from('invoice_bases')
+    .select('id, number, total_ex_vat, bookings(title, start_date, providers(name), organizations(name))')
+    .eq('ready_notify_pending', true)
+    .order('created_at', { ascending: true })
+    .limit(READY_MAIL_MAX_ROWS + 1);
+  if (pendingError) throw pendingError;
+
+  const rows = pending ?? [];
+  if (rows.length === 0) return { moved: (moved ?? []).length, notified: 0 };
+
+  const shown = rows.slice(0, READY_MAIL_MAX_ROWS);
+  const items: ReadyBasisItem[] = shown.map(r => {
+    const b = one(r.bookings as any);
+    return {
+      number: r.number as string,
+      title: b?.title ?? 'Utbildning',
+      providerName: one(b?.providers)?.name ?? 'Okänt lärosäte',
+      buyerName: one(b?.organizations)?.name ?? 'Okänd köpare',
+      startDate: b?.start_date ? new Date(b.start_date).toLocaleDateString('sv-SE') : '–',
+      totalExVat: sek.format(Number(r.total_ex_vat)),
+    };
+  });
+
+  // Fler än visas? Nästa körning tar resten (flaggan ligger kvar), och mejlet säger hur många.
+  let more = 0;
+  if (rows.length > shown.length) {
+    const { count } = await supabaseAdmin
+      .from('invoice_bases')
+      .select('id', { count: 'exact', head: true })
+      .eq('ready_notify_pending', true);
+    more = Math.max((count ?? rows.length) - shown.length, 0);
+  }
+  const content = invoiceBasesReady({ items, more, linkUrl: APP_URL ? `${APP_URL}/admin` : undefined });
+  const result = await sendEmail({ to: ADMIN_EMAIL ?? null, ...content, messageType: 'invoice_bases_ready' });
+  if (!result.success) return { moved: (moved ?? []).length, notified: 0 };
+
+  const { error: clearError } = await supabaseAdmin
+    .from('invoice_bases')
+    .update({ ready_notify_pending: false })
+    .in('id', shown.map(r => r.id));
+  if (clearError) throw clearError;
+  return { moved: (moved ?? []).length, notified: shown.length };
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const authHeader = req.headers.authorization;
@@ -81,5 +140,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('check-overdue-requests training assignments error:', err);
   }
 
-  return res.status(200).json({ escalated, assignmentsEscalated });
+  // Fakturaunderlag som blivit klara vid kursstart.
+  let invoiceBases = { moved: 0, notified: 0 };
+  try {
+    invoiceBases = await processInvoiceBasesReady();
+  } catch (err) {
+    console.error('check-overdue-requests invoice bases error:', err);
+  }
+
+  return res.status(200).json({ escalated, assignmentsEscalated, invoiceBases });
 }

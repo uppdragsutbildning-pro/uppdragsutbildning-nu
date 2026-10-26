@@ -1324,6 +1324,7 @@ export type Database = {
           fortnox_invoice_no: string | null
           credit_note_no: string | null
           payout_reference: string | null
+          ready_notify_pending: boolean
           created_at: string
           updated_at: string
         }
@@ -1350,6 +1351,7 @@ export type Database = {
           fortnox_invoice_no?: string | null
           credit_note_no?: string | null
           payout_reference?: string | null
+          ready_notify_pending?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -1376,6 +1378,7 @@ export type Database = {
           fortnox_invoice_no?: string | null
           credit_note_no?: string | null
           payout_reference?: string | null
+          ready_notify_pending?: boolean
           created_at?: string
           updated_at?: string
         }
