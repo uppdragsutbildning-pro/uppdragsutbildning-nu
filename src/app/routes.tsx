@@ -26,6 +26,8 @@ import { ProviderTermsSettingsPage } from "./components/provider/ProviderTermsSe
 import { MarketplaceFormPage } from "./components/admin/MarketplaceFormPage";
 import { MarketplaceBrandingPage } from "./components/admin/MarketplaceBrandingPage";
 import { MarketplaceCurationPage } from "./components/admin/MarketplaceCurationPage";
+import { InvoiceDraftPrintPage } from "./components/admin/InvoiceDraftPrintPage";
+import { SettlementPage } from "./components/admin/SettlementPage";
 
 export const router = createBrowserRouter([
   {
@@ -49,6 +51,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requireRole="admin">
             <AdminDashboard />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: "admin/fakturering/avrakning",
+        element: (
+          <ProtectedRoute requireRole="admin">
+            <SettlementPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: "admin/fakturering/:id/utkast",
+        element: (
+          <ProtectedRoute requireRole="admin">
+            <InvoiceDraftPrintPage />
           </ProtectedRoute>
         )
       },

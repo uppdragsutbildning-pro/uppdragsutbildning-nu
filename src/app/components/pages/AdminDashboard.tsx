@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import { Check, X, Eye, TrendingUp, Users, Building, GraduationCap, Mail, Sparkles, Download, UserPlus, Shield, UserCog, Search, Trash2 } from 'lucide-react';
 import { trainings, leads, providers, categories, getTrainingById, getProviderById, getCategoryById } from '../../data/mockData';
 import { toast } from 'sonner';
@@ -41,7 +42,8 @@ export interface CpiRecord {
 
 export function AdminDashboard() {
   const { signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<Tab>(searchParams.get('tab') === 'fakturering' ? 'fakturering' : 'overview');
   const openTrainingRequests = useOpenTrainingRequestsCount();
   const billingAttention = useBillingAttentionCount();
   const [users, setUsers] = useState<(Profile & { provider_name?: string })[]>([]);

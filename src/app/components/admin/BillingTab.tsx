@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { AlertTriangle, Search, X } from 'lucide-react';
+import { Link } from 'react-router';
+import { AlertTriangle, Download, FileText, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabaseClient';
 import {
@@ -11,6 +12,7 @@ import {
   type InvoiceStatus,
 } from '../../../lib/invoiceStatus';
 import { BillingSettingsPanel } from './BillingSettingsPanel';
+import { buildBillingCsv, downloadCsv, fetchDrafts } from '../../../lib/invoiceDocuments';
 
 // Adminens Fakturering (Fas 1): inkorg över fakturaunderlag, detalj, justering med anledning,
 // markeringar för hela livscykeln och hantering av begäran om avbokning. Alla ändringar går via
@@ -148,6 +150,8 @@ export function BillingTab() {
   const [filter, setFilter] = useState<'all' | 'requests' | InvoiceStatus>('all');
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async () => {
     const { data, error: loadError } = await supabase
@@ -190,6 +194,41 @@ export function BillingTab() {
   }, [rows, filter, search]);
 
   const selected = rows?.find(r => r.id === selectedId) ?? null;
+
+  const allChecked = filtered.length > 0 && filtered.every(r => checked.has(r.id));
+  const toggleAll = () => setChecked(allChecked ? new Set() : new Set(filtered.map(r => r.id)));
+  const toggleOne = (id: string) =>
+    setChecked(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  // Underlagslistan hämtas på nytt från databasen (aktuella belopp), laddas ner som CSV och de som
+  // var klara för fakturering markeras som exporterade (loggas, ändrar inte status).
+  async function exportCsv() {
+    const ids = [...checked];
+    if (ids.length === 0) return;
+    setExporting(true);
+    try {
+      const drafts = await fetchDrafts(ids);
+      downloadCsv(buildBillingCsv(drafts), 'fakturaunderlag');
+      const readyIds = (rows ?? []).filter(r => checked.has(r.id) && r.status === 'ready').map(r => r.id);
+      if (readyIds.length > 0) {
+        const { data: n, error: markError } = await supabase.rpc('admin_mark_exported', { p_basis_ids: readyIds });
+        if (markError) throw markError;
+        toast.success(`${drafts.length} underlag exporterade`, { description: `${n ?? 0} markerades som exporterade.` });
+      } else {
+        toast.success(`${drafts.length} underlag exporterade`, { description: 'Inga av dem var klara för fakturering, så inget markerades.' });
+      }
+      await load();
+    } catch (e) {
+      toast.error('Kunde inte exportera', { description: e instanceof Error ? e.message : undefined });
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -248,6 +287,20 @@ export function BillingTab() {
             />
           </div>
 
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={exportCsv}
+              disabled={checked.size === 0 || exporting}
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 rounded-lg"
+            >
+              <Download className="w-4 h-4" /> {exporting ? 'Exporterar…' : `Exportera CSV (${checked.size})`}
+            </button>
+            <Link to="/admin/fakturering/avrakning" className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-lg">
+              <FileText className="w-4 h-4" /> Avräkning till lärosäte
+            </Link>
+            <span className="text-xs text-slate-500">CSV är en underlagslista för att skapa fakturorna i Fortnox.</span>
+          </div>
+
           {error && <p className="text-sm text-red-700">Kunde inte hämta fakturaunderlag: {error}</p>}
           {!error && rows === null && <p className="text-sm text-slate-500">Laddar…</p>}
 
@@ -262,6 +315,9 @@ export function BillingTab() {
               <table className="w-full text-sm">
                 <thead className="text-left text-xs text-slate-500 border-b border-slate-200">
                   <tr>
+                    <th className="px-4 py-3 w-8" onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" checked={allChecked} onChange={toggleAll} aria-label="Välj alla" />
+                    </th>
                     <th className="px-4 py-3 font-medium">Underlag</th>
                     <th className="px-4 py-3 font-medium">Köpare</th>
                     <th className="px-4 py-3 font-medium">Lärosäte</th>
@@ -278,6 +334,9 @@ export function BillingTab() {
                       onClick={() => setSelectedId(r.id)}
                       className="border-b border-slate-100 last:border-0 hover:bg-slate-50 cursor-pointer"
                     >
+                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" checked={checked.has(r.id)} onChange={() => toggleOne(r.id)} aria-label={`Välj ${r.number}`} />
+                      </td>
                       <td className="px-4 py-3 font-medium text-slate-900 whitespace-nowrap">{r.number}</td>
                       <td className="px-4 py-3 text-slate-700">{r.bookings?.organizations?.name ?? '–'}</td>
                       <td className="px-4 py-3 text-slate-700">{r.bookings?.providers?.name ?? '–'}</td>
@@ -435,9 +494,14 @@ function BasisDetail({ basis, onClose, onChanged }: { basis: Basis; onClose: () 
             </span>
             {basis.adjusted && <span className="ml-2 text-xs text-slate-500">Justerad</span>}
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <Link to={`/admin/fakturering/${basis.id}/utkast`} className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-slate-200 hover:bg-slate-50 rounded-lg">
+              <FileText className="w-4 h-4" /> Visa utkast
+            </Link>
+            <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <div className="p-6 space-y-6">
