@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import { Check, X, Eye, TrendingUp, Users, Building, GraduationCap, Mail, Sparkles, Download, UserPlus, Shield, UserCog, Search, Trash2 } from 'lucide-react';
 import { trainings, leads, providers, categories, getTrainingById, getProviderById, getCategoryById } from '../../data/mockData';
 import { toast } from 'sonner';
@@ -8,6 +9,7 @@ import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import { MarketplacesTab } from '../admin/MarketplacesTab';
 import { TrainingRequestsTab, useOpenTrainingRequestsCount } from '../admin/TrainingRequestsTab';
+import { BillingTab, useBillingAttentionCount } from '../admin/BillingTab';
 import { CpiRecordDrawer } from '../admin/CpiRecordDrawer';
 import { getPaginationRange } from '../../../hooks/usePaginatedQuery';
 import {
@@ -20,7 +22,7 @@ import {
   PaginationEllipsis,
 } from '../ui/pagination';
 
-type Tab = 'overview' | 'trainings' | 'leads' | 'efterfragningar' | 'providers' | 'marketplaces' | 'users' | 'kompetensindex';
+type Tab = 'overview' | 'trainings' | 'leads' | 'efterfragningar' | 'fakturering' | 'providers' | 'marketplaces' | 'users' | 'kompetensindex';
 
 export interface CpiRecord {
   id: string;
@@ -40,8 +42,10 @@ export interface CpiRecord {
 
 export function AdminDashboard() {
   const { signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<Tab>(searchParams.get('tab') === 'fakturering' ? 'fakturering' : 'overview');
   const openTrainingRequests = useOpenTrainingRequestsCount();
+  const billingAttention = useBillingAttentionCount();
   const [users, setUsers] = useState<(Profile & { provider_name?: string })[]>([]);
   const [supabaseProviders, setSupabaseProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(false);
@@ -443,6 +447,21 @@ export function AdminDashboard() {
               )}
             </button>
             <button
+              onClick={() => setActiveTab('fakturering')}
+              className={`pb-3 border-b-2 transition-colors ${
+                activeTab === 'fakturering'
+                  ? 'border-blue-600 text-blue-600 font-medium'
+                  : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Fakturering
+              {billingAttention > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-green-600 text-white text-xs font-medium">
+                  {billingAttention}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => setActiveTab('providers')}
               className={`pb-3 border-b-2 transition-colors ${
                 activeTab === 'providers'
@@ -754,7 +773,8 @@ export function AdminDashboard() {
                             {req.status === 'new' ? 'Ny' :
                              req.status === 'responded' ? 'Besvarad' :
                              req.status === 'negotiating' ? 'Förhandling' :
-                             req.status === 'accepted' ? 'Accepterad' : 'Avböjd'}
+                             req.status === 'accepted' ? 'Accepterad' :
+                             req.status === 'not_selected' ? 'Ej vald' : 'Avböjd'}
                           </span>
                         </div>
 
@@ -1037,6 +1057,8 @@ export function AdminDashboard() {
 
         {/* Marketplaces Tab */}
         {activeTab === 'efterfragningar' && <TrainingRequestsTab />}
+
+        {activeTab === 'fakturering' && <BillingTab />}
 
         {activeTab === 'marketplaces' && <MarketplacesTab />}
 

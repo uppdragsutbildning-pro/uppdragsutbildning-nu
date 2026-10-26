@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowRight, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabase';
 import { markRequestSeen, readSeen, unreadRequestIds } from '../../../hooks/useTrainingRequestUpdates';
+import { NOT_SELECTED_REASONS, formatSek, quoteStatusLabel } from '../../../lib/invoiceStatus';
+import { policySummary } from '../training/BookingDialog';
+import { BillingDetailsForm, fetchBillingDetails, isBillingComplete } from './BillingDetailsForm';
 
 type RequestStatus = 'submitted' | 'in_review' | 'assigned' | 'offers_received' | 'closed' | 'cancelled' | 'no_match';
 
@@ -21,6 +24,7 @@ interface TrainingRequest {
   ssyk_skills: { id: string; title: string }[];
   status: RequestStatus;
   submitted_at: string;
+  buyer_org_id: string | null;
 }
 
 interface RequestEvent {
@@ -44,6 +48,13 @@ interface OfferRow {
   status: string;
   response: string | null;
   responded_at: string;
+  offer_total_ex_vat: number | null;
+  offer_participants: number | null;
+  offer_start_date: string | null;
+  offer_end_date: string | null;
+  offer_valid_until: string | null;
+  offer_location: string | null;
+  offer_terms: string | null;
 }
 
 interface Detail {
@@ -68,13 +79,6 @@ const FORMAT_LABEL: Record<string, string> = {
   flexible: 'Flexibelt',
 };
 
-const OFFER_STATUS: Record<string, string> = {
-  responded: 'Besvarad',
-  negotiating: 'Dialog pågår',
-  accepted: 'Accepterad',
-  declined: 'Avböjd',
-};
-
 const CANCELLABLE: RequestStatus[] = ['submitted', 'in_review', 'assigned'];
 
 const primaryButton =
@@ -93,6 +97,8 @@ function describeEvent(e: RequestEvent): string {
     }
     case 'quoted':
       return 'En offert har kommit in';
+    case 'quote_accepted':
+      return 'Du accepterade en offert';
     case 'status_changed':
       if (p.to === 'in_review') return 'Granskas av oss';
       if (p.to === 'offers_received') return 'Offerter har kommit in';
@@ -111,6 +117,188 @@ function describeEvent(e: RequestEvent): string {
 function eventMessage(e: RequestEvent): string | null {
   const m = e.payload?.message;
   return typeof m === 'string' && m.trim() ? m : null;
+}
+
+function formatDate(d: string | null) {
+  return d ? new Date(d).toLocaleDateString('sv-SE') : null;
+}
+
+function OfferCard({
+  offer,
+  orgId,
+  canAccept,
+  onAccepted,
+}: {
+  offer: OfferRow;
+  orgId: string | null;
+  canAccept: boolean;
+  onAccepted: () => void;
+}) {
+  const [accepting, setAccepting] = useState(false);
+  const [billingOk, setBillingOk] = useState<boolean | null>(null);
+  const [policy, setPolicy] = useState<{ free_until_days_before_start?: number; late_fee_percent?: number; text?: string } | null>(null);
+  const [reasonCode, setReasonCode] = useState('');
+  const [reasonText, setReasonText] = useState('');
+  const [reference, setReference] = useState('');
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  // Samma id för samma accept-försök, så att ett dubbelklick ger en bokning.
+  const clientBookingId = useRef<string>(crypto.randomUUID());
+
+  const expired = offer.offer_valid_until !== null && new Date(offer.offer_valid_until + 'T23:59:59') < new Date();
+  const acceptable =
+    canAccept &&
+    ['responded', 'negotiating'].includes(offer.status) &&
+    offer.offer_total_ex_vat !== null &&
+    !expired;
+
+  function setBilling(d: Parameters<typeof isBillingComplete>[0]) {
+    setBillingOk(isBillingComplete(d));
+  }
+
+  async function openAccept() {
+    setAccepting(true);
+    if (orgId) fetchBillingDetails(orgId).then(d => setBilling(d));
+    const { data } = await supabase
+      .from('providers')
+      .select('cancellation_policy')
+      .eq('id', offer.provider_id)
+      .maybeSingle();
+    setPolicy((data?.cancellation_policy as typeof policy) ?? null);
+  }
+
+  async function accept() {
+    setBusy(true);
+    const { error: rpcError } = await supabase.rpc('buyer_accept_quote', {
+      p_quote_id: offer.quote_id,
+      p_client_booking_id: clientBookingId.current,
+      p_reason_code: reasonCode || null,
+      p_reason_text: reasonText.trim() || null,
+      p_reference: reference.trim() || null,
+      p_cancellation_accepted: confirmed,
+    });
+    setBusy(false);
+    if (rpcError) {
+      toast.error('Kunde inte acceptera offerten', { description: rpcError.message });
+      return;
+    }
+    toast.success('Offerten är accepterad', { description: 'Ett fakturaunderlag har skapats. Fakturan kommer från oss.' });
+    onAccepted();
+  }
+
+  return (
+    <li className="rounded-xl bg-[var(--accent-dim)] p-4">
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <p className="text-sm font-semibold text-[var(--fg)]">{offer.provider_name}</p>
+        <span className="text-xs text-[var(--fg-muted)]">{quoteStatusLabel(offer.status)}</span>
+      </div>
+
+      {offer.offer_total_ex_vat !== null && (
+        <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3 my-3">
+          <DetailRow label="Pris exkl. moms" value={formatSek(offer.offer_total_ex_vat)} />
+          <DetailRow label="Deltagare" value={offer.offer_participants} />
+          <DetailRow label="Start" value={formatDate(offer.offer_start_date)} />
+          <DetailRow label="Slut" value={formatDate(offer.offer_end_date)} />
+          <DetailRow label="Ort" value={offer.offer_location} />
+          <DetailRow label="Offerten gäller till" value={formatDate(offer.offer_valid_until)} />
+        </dl>
+      )}
+      {offer.offer_terms && (
+        <p className="text-sm text-[var(--fg-muted)] leading-relaxed whitespace-pre-line mb-2">{offer.offer_terms}</p>
+      )}
+      {offer.response && <p className="text-sm text-[var(--fg)] leading-relaxed whitespace-pre-line">{offer.response}</p>}
+      <p className="text-xs text-[var(--fg-subtle)] mt-2">
+        {new Date(offer.responded_at).toLocaleDateString('sv-SE')}
+        {expired && ' · Offerten har gått ut'}
+      </p>
+
+      {acceptable && !accepting && (
+        <button type="button" onClick={openAccept} className={`${primaryButton} mt-3`}>
+          Acceptera offert
+        </button>
+      )}
+
+      {accepting && (
+        <div className="mt-4 space-y-4 bg-white rounded-xl border border-[var(--border)] p-4">
+          <p className="text-sm text-[var(--fg)]">
+            Du accepterar {offer.provider_name}s offert på {formatSek(offer.offer_total_ex_vat)} exkl. moms. Övriga
+            lärosäten får besked om att ni har valt en annan offert.
+          </p>
+          <div>
+            <label className="block text-xs text-[var(--fg-subtle)] mb-1" htmlFor={`ref-${offer.quote_id}`}>
+              Er referens (valfri, hamnar på fakturan)
+            </label>
+            <input
+              id={`ref-${offer.quote_id}`}
+              value={reference}
+              onChange={e => setReference(e.target.value)}
+              maxLength={120}
+              className="w-full px-3.5 py-2.5 rounded-[10px] border border-[var(--border)] bg-[var(--bg-raised)] text-[15px] outline-none focus:border-[var(--accent)]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-[var(--fg-subtle)] mb-1" htmlFor={`why-${offer.quote_id}`}>
+              Varför valde ni den här offerten? (valfritt, delas med de lärosäten som inte valdes)
+            </label>
+            <select
+              id={`why-${offer.quote_id}`}
+              value={reasonCode}
+              onChange={e => setReasonCode(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-[10px] border border-[var(--border)] bg-[var(--bg-raised)] text-[15px] outline-none focus:border-[var(--accent)]"
+            >
+              <option value="">Ange ingen anledning</option>
+              {NOT_SELECTED_REASONS.map(r => (
+                <option key={r.code} value={r.code}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+            {reasonCode && (
+              <textarea
+                rows={2}
+                value={reasonText}
+                onChange={e => setReasonText(e.target.value)}
+                maxLength={1000}
+                placeholder="Kommentar (valfri)"
+                className="mt-2 w-full px-3.5 py-2.5 rounded-[10px] border border-[var(--border)] bg-[var(--bg-raised)] text-[15px] outline-none focus:border-[var(--accent)] resize-none"
+              />
+            )}
+          </div>
+          {billingOk === false && orgId && (
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] p-3 space-y-3">
+              <p className="text-sm text-[var(--fg)]">Fakturauppgifter saknas. Fyll i dem så att vi kan skapa fakturaunderlaget.</p>
+              <BillingDetailsForm
+                orgId={orgId}
+                canEdit
+                onSaved={d => setBilling(d)}
+              />
+            </div>
+          )}
+          <div className="rounded-lg bg-[var(--bg-raised)] p-3">
+            <p className="text-xs font-medium text-[var(--fg)] mb-1">Avbokningsvillkor</p>
+            <p className="text-sm text-[var(--fg-muted)]">{policySummary(policy)}</p>
+          </div>
+          <label className="flex items-start gap-2 text-sm text-[var(--fg)]">
+            <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-1" />
+            Jag har läst avbokningsvillkoren och accepterar dem.
+          </label>
+          <div className="flex gap-2">
+            <button type="button" onClick={accept} disabled={busy || !confirmed || billingOk !== true} className={primaryButton}>
+              {busy ? 'Accepterar…' : 'Bekräfta och acceptera'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccepting(false)}
+              disabled={busy}
+              className="px-4 py-2.5 rounded-[10px] text-sm font-medium border border-[var(--border)] bg-white hover:bg-[var(--bg-raised)]"
+            >
+              Avbryt
+            </button>
+          </div>
+        </div>
+      )}
+    </li>
+  );
 }
 
 function DetailRow({ label, value }: { label: string; value: string | number | null | undefined }) {
@@ -325,16 +513,16 @@ export function TrainingRequestsView() {
                     <p className="text-[11px] font-medium tracking-[0.1em] uppercase text-[var(--fg-subtle)] mb-2">Offerter</p>
                     <ul className="space-y-3">
                       {detail.offers.map(o => (
-                        <li key={o.quote_id} className="rounded-xl bg-[var(--accent-dim)] p-4">
-                          <div className="flex items-center justify-between gap-3 mb-1">
-                            <p className="text-sm font-semibold text-[var(--fg)]">{o.provider_name}</p>
-                            <span className="text-xs text-[var(--fg-muted)]">{OFFER_STATUS[o.status] ?? o.status}</span>
-                          </div>
-                          {o.response && <p className="text-sm text-[var(--fg)] leading-relaxed whitespace-pre-line">{o.response}</p>}
-                          <p className="text-xs text-[var(--fg-subtle)] mt-2">
-                            {new Date(o.responded_at).toLocaleDateString('sv-SE')}
-                          </p>
-                        </li>
+                        <OfferCard
+                          key={o.quote_id}
+                          offer={o}
+                          orgId={r.buyer_org_id}
+                          canAccept={r.status === 'offers_received'}
+                          onAccepted={async () => {
+                            await load();
+                            loadDetail(r.id);
+                          }}
+                        />
                       ))}
                     </ul>
                   </div>

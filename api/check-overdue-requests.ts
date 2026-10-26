@@ -1,11 +1,110 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from './_lib/supabaseAdmin.js';
 import { sendEmail } from './_lib/sendEmail.js';
-import { rfpEscalated, trainingAssignmentOverdue } from './_lib/emailTemplates.js';
+import { rfpEscalated, trainingAssignmentOverdue, invoiceBasesReady, payoutReminderAdmin, type ReadyBasisItem, type PayoutReminderItem } from './_lib/emailTemplates.js';
 
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
 const APP_URL = process.env.APP_URL;
 const BATCH_SIZE = 25;
+const READY_MAIL_MAX_ROWS = 50;
+
+function one<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+}
+
+const sek = new Intl.NumberFormat('sv-SE', { style: 'currency', currency: 'SEK', maximumFractionDigits: 2 });
+
+// Fakturaunderlag: flytta de vars kurs har startat till "klar" och mejla admin ETT samlat mejl.
+// Flaggan ready_notify_pending rensas först när mejlet har gått iväg, så ett misslyckat mejl
+// försöks igen nästa körning, och en körning till samma dag skickar inget extra.
+// Utbetalningar som närmar sig: ETT samlat mejl till admin per körning för betalda underlag vars
+// planerade utbetalning ligger inom två dagar (eller har passerat). payout_reminder_sent_at sätts först
+// när mejlet har gått iväg, så ett misslyckat mejl försöks igen och ett underlag påminns bara en gång.
+async function processPayoutReminders(): Promise<{ notified: number }> {
+  const horizon = new Date();
+  horizon.setDate(horizon.getDate() + 2);
+  const { data, error } = await supabaseAdmin
+    .from('invoice_bases')
+    .select('id, number, payout_amount, payout_due_date, bookings(title, providers(name))')
+    .eq('status', 'paid')
+    .is('payout_reminder_sent_at', null)
+    .lte('payout_due_date', horizon.toLocaleDateString('sv-SE'))
+    .order('payout_due_date', { ascending: true })
+    .limit(READY_MAIL_MAX_ROWS);
+  if (error) throw error;
+  const rows = data ?? [];
+  if (rows.length === 0) return { notified: 0 };
+
+  const items: PayoutReminderItem[] = rows.map(r => {
+    const b = one(r.bookings as any);
+    return {
+      number: r.number as string,
+      providerName: one<any>(b?.providers)?.name ?? 'Okänt lärosäte',
+      title: b?.title ?? 'Utbildning',
+      payoutAmount: sek.format(Number(r.payout_amount)),
+      dueDate: new Date(r.payout_due_date as string).toLocaleDateString('sv-SE'),
+    };
+  });
+  const content = payoutReminderAdmin({ items, linkUrl: APP_URL ? `${APP_URL}/admin?tab=fakturering` : undefined });
+  const result = await sendEmail({ to: ADMIN_EMAIL ?? null, ...content, messageType: 'payout_reminder' });
+  if (!result.success) return { notified: 0 };
+
+  const { error: markError } = await supabaseAdmin
+    .from('invoice_bases')
+    .update({ payout_reminder_sent_at: new Date().toISOString() })
+    .in('id', rows.map(r => r.id));
+  if (markError) throw markError;
+  return { notified: rows.length };
+}
+
+async function processInvoiceBasesReady(): Promise<{ moved: number; notified: number }> {
+  const { data: moved, error: moveError } = await supabaseAdmin.rpc('billing_mark_ready_due');
+  if (moveError) throw moveError;
+
+  const { data: pending, error: pendingError } = await supabaseAdmin
+    .from('invoice_bases')
+    .select('id, number, total_ex_vat, bookings(title, start_date, providers(name), organizations(name))')
+    .eq('ready_notify_pending', true)
+    .order('created_at', { ascending: true })
+    .limit(READY_MAIL_MAX_ROWS + 1);
+  if (pendingError) throw pendingError;
+
+  const rows = pending ?? [];
+  if (rows.length === 0) return { moved: (moved ?? []).length, notified: 0 };
+
+  const shown = rows.slice(0, READY_MAIL_MAX_ROWS);
+  const items: ReadyBasisItem[] = shown.map(r => {
+    const b = one(r.bookings as any);
+    return {
+      number: r.number as string,
+      title: b?.title ?? 'Utbildning',
+      providerName: one(b?.providers)?.name ?? 'Okänt lärosäte',
+      buyerName: one(b?.organizations)?.name ?? 'Okänd köpare',
+      startDate: b?.start_date ? new Date(b.start_date).toLocaleDateString('sv-SE') : '–',
+      totalExVat: sek.format(Number(r.total_ex_vat)),
+    };
+  });
+
+  // Fler än visas? Nästa körning tar resten (flaggan ligger kvar), och mejlet säger hur många.
+  let more = 0;
+  if (rows.length > shown.length) {
+    const { count } = await supabaseAdmin
+      .from('invoice_bases')
+      .select('id', { count: 'exact', head: true })
+      .eq('ready_notify_pending', true);
+    more = Math.max((count ?? rows.length) - shown.length, 0);
+  }
+  const content = invoiceBasesReady({ items, more, linkUrl: APP_URL ? `${APP_URL}/admin` : undefined });
+  const result = await sendEmail({ to: ADMIN_EMAIL ?? null, ...content, messageType: 'invoice_bases_ready' });
+  if (!result.success) return { moved: (moved ?? []).length, notified: 0 };
+
+  const { error: clearError } = await supabaseAdmin
+    .from('invoice_bases')
+    .update({ ready_notify_pending: false })
+    .in('id', shown.map(r => r.id));
+  if (clearError) throw clearError;
+  return { moved: (moved ?? []).length, notified: shown.length };
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const authHeader = req.headers.authorization;
@@ -81,5 +180,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('check-overdue-requests training assignments error:', err);
   }
 
-  return res.status(200).json({ escalated, assignmentsEscalated });
+  // Fakturaunderlag som blivit klara vid kursstart.
+  let invoiceBases = { moved: 0, notified: 0 };
+  try {
+    invoiceBases = await processInvoiceBasesReady();
+  } catch (err) {
+    console.error('check-overdue-requests invoice bases error:', err);
+  }
+
+  let payoutReminders = { notified: 0 };
+  try {
+    payoutReminders = await processPayoutReminders();
+  } catch (err) {
+    console.error('check-overdue-requests payout reminders error:', err);
+  }
+
+  return res.status(200).json({ escalated, assignmentsEscalated, invoiceBases, payoutReminders });
 }

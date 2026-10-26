@@ -255,7 +255,14 @@ export function ProviderCourseFormPage() {
       navigate('/provider/courses');
     } catch (err: any) {
       console.error(err);
-      toast.error('Något gick fel', { description: err.message });
+      if (typeof err?.message === 'string' && err.message.includes('avbokningsvillkor')) {
+        toast.error('Registrera avbokningsvillkor först', {
+          description: 'En kurs kan inte publiceras innan lärosätet har registrerat sina avbokningsregler. Du kan spara kursen som utkast under tiden.',
+          action: { label: 'Gå till Villkor', onClick: () => navigate('/provider/villkor') },
+        });
+      } else {
+        toast.error('Något gick fel', { description: err.message });
+      }
     } finally {
       setSaving(false);
     }

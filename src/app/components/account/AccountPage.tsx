@@ -6,9 +6,13 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { supabase } from '../../../lib/supabase';
 import { useTrainingRequestUpdates } from '../../../hooks/useTrainingRequestUpdates';
 import { TrainingRequestsView } from './TrainingRequestsView';
+import { BookingsView } from './BookingsView';
+import { InvoicesView } from './InvoicesView';
+import { useInvoiceUnreadCount } from '../../../hooks/useInvoiceUpdates';
 
 interface Membership {
   display_name: string;
+  access_role: string;
   organizations: { id: string; name: string; organization_number: string | null };
 }
 
@@ -16,7 +20,7 @@ interface AccountRequest {
   id: string;
   course_topic: string;
   description: string;
-  status: 'new' | 'responded' | 'negotiating' | 'accepted' | 'declined';
+  status: 'new' | 'responded' | 'negotiating' | 'accepted' | 'declined' | 'not_selected';
   budget: string | null;
   timeline: string;
   participants_count: string;
@@ -31,6 +35,7 @@ const STATUS: Record<AccountRequest['status'], { label: string; className: strin
   negotiating: { label: 'Dialog pågår', className: 'bg-amber-100 text-amber-700' },
   accepted: { label: 'Accepterad', className: 'bg-green-100 text-green-700' },
   declined: { label: 'Avböjd', className: 'bg-red-100 text-red-700' },
+  not_selected: { label: 'Ej vald', className: 'bg-slate-100 text-slate-600' },
 };
 
 const inputClass =
@@ -220,10 +225,22 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = searchParams.get('tab') === 'efterfragningar' ? 'training' : 'rfp';
+  const tabParam = searchParams.get('tab');
+  const tab: 'rfp' | 'training' | 'bookings' | 'invoices' =
+    tabParam === 'efterfragningar' ? 'training' : tabParam === 'bokningar' ? 'bookings' : tabParam === 'fakturor' ? 'invoices' : 'rfp';
+  const unreadInvoices = useInvoiceUnreadCount('buyer');
   const { unreadCount } = useTrainingRequestUpdates();
-  const selectTab = (next: 'rfp' | 'training') =>
-    setSearchParams(next === 'training' ? { tab: 'efterfragningar' } : {}, { replace: true });
+  const selectTab = (next: 'rfp' | 'training' | 'bookings' | 'invoices') =>
+    setSearchParams(
+      next === 'training'
+        ? { tab: 'efterfragningar' }
+        : next === 'bookings'
+          ? { tab: 'bokningar' }
+          : next === 'invoices'
+            ? { tab: 'fakturor' }
+            : {},
+      { replace: true }
+    );
 
   useEffect(() => {
     let active = true;
@@ -274,6 +291,8 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
           {([
             ['rfp', 'Förfrågningar'],
             ['training', 'Mina efterfrågningar'],
+            ['bookings', 'Bokningar'],
+            ['invoices', 'Fakturor'],
           ] as const).map(([key, label]) => (
             <button
               key={key}
@@ -288,6 +307,11 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
               }`}
             >
               {label}
+              {key === 'invoices' && unreadInvoices > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-green-600 text-white text-[11px] font-medium">
+                  {unreadInvoices}
+                </span>
+              )}
               {key === 'training' && unreadCount > 0 && (
                 <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-green-600 text-white text-[11px] font-medium">
                   {unreadCount}
@@ -304,6 +328,16 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
       </div>
 
       {tab === 'training' && <TrainingRequestsView />}
+
+      {tab === 'invoices' && <InvoicesView />}
+
+      {tab === 'bookings' && (
+        <BookingsView
+          orgId={membership.organizations.id}
+          canEditBilling={['owner', 'admin'].includes(membership.access_role)}
+          canBook={['owner', 'admin', 'buyer'].includes(membership.access_role)}
+        />
+      )}
 
       {tab === 'rfp' && (
         <>
@@ -427,7 +461,7 @@ export function AccountPage() {
     setMembershipLoading(true);
     const { data, error } = await supabase
       .from('organization_members')
-      .select('display_name, organizations(id, name, organization_number)')
+      .select('display_name, access_role, organizations(id, name, organization_number)')
       .eq('user_id', user.id)
       .maybeSingle();
     if (error) toast.error('Kunde inte hämta ditt konto', { description: error.message });
