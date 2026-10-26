@@ -194,6 +194,15 @@ export type Database = {
       }
       custom_requests: {
         Row: {
+          not_selected_reason_code: string | null
+          not_selected_reason_text: string | null
+          offer_end_date: string | null
+          offer_location: string | null
+          offer_participants: number | null
+          offer_start_date: string | null
+          offer_terms: string | null
+          offer_total_ex_vat: number | null
+          offer_valid_until: string | null
           ai_score: string
           budget: string | null
           company: string
@@ -217,6 +226,15 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          not_selected_reason_code?: string | null
+          not_selected_reason_text?: string | null
+          offer_end_date?: string | null
+          offer_location?: string | null
+          offer_participants?: number | null
+          offer_start_date?: string | null
+          offer_terms?: string | null
+          offer_total_ex_vat?: number | null
+          offer_valid_until?: string | null
           ai_score?: string
           budget?: string | null
           company: string
@@ -240,6 +258,15 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          not_selected_reason_code?: string | null
+          not_selected_reason_text?: string | null
+          offer_end_date?: string | null
+          offer_location?: string | null
+          offer_participants?: number | null
+          offer_start_date?: string | null
+          offer_terms?: string | null
+          offer_total_ex_vat?: number | null
+          offer_valid_until?: string | null
           ai_score?: string
           budget?: string | null
           company?: string
@@ -549,6 +576,7 @@ export type Database = {
       }
       providers: {
         Row: {
+          cancellation_policy: Json | null
           contact_email: string | null
           contact_phone: string | null
           created_at: string
@@ -563,6 +591,7 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
+          cancellation_policy?: Json | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
@@ -577,6 +606,7 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
+          cancellation_policy?: Json | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
@@ -1033,6 +1063,403 @@ export type Database = {
             columns: ["marketplace_id"]
             isOneToOne: false
             referencedRelation: "marketplaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_settings: {
+        Row: {
+          id: boolean
+          default_vat_rate: number
+          commission_rate: number
+          payment_terms_days: number
+          payout_days_after_payment: number
+          seller_name: string | null
+          seller_org_number: string | null
+          seller_vat_number: string | null
+          seller_address: Json | null
+          seller_bankgiro: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: boolean
+          default_vat_rate?: number
+          commission_rate?: number
+          payment_terms_days?: number
+          payout_days_after_payment?: number
+          seller_name?: string | null
+          seller_org_number?: string | null
+          seller_vat_number?: string | null
+          seller_address?: Json | null
+          seller_bankgiro?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: boolean
+          default_vat_rate?: number
+          commission_rate?: number
+          payment_terms_days?: number
+          payout_days_after_payment?: number
+          seller_name?: string | null
+          seller_org_number?: string | null
+          seller_vat_number?: string | null
+          seller_address?: Json | null
+          seller_bankgiro?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+        ]
+      }
+      bookings: {
+        Row: {
+          id: string
+          client_booking_id: string
+          source: string
+          buyer_org_id: string
+          buyer_user_id: string
+          provider_id: string
+          marketplace_id: string | null
+          training_id: string | null
+          scheduled_start_id: string | null
+          training_request_id: string | null
+          quote_request_id: string | null
+          title: string
+          participants: number
+          unit_price_ex_vat: number | null
+          total_ex_vat: number
+          vat_rate: number
+          commission_rate: number
+          start_date: string
+          reference: string | null
+          cancellation_policy: Json | null
+          cancellation_accepted_at: string | null
+          cancellation_requested_at: string | null
+          cancellation_request_message: string | null
+          status: string
+          confirmed_at: string
+          cancelled_at: string | null
+          cancel_reason: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          client_booking_id: string
+          source: string
+          buyer_org_id: string
+          buyer_user_id: string
+          provider_id: string
+          marketplace_id?: string | null
+          training_id?: string | null
+          scheduled_start_id?: string | null
+          training_request_id?: string | null
+          quote_request_id?: string | null
+          title: string
+          participants: number
+          unit_price_ex_vat?: number | null
+          total_ex_vat: number
+          vat_rate: number
+          commission_rate: number
+          start_date: string
+          reference?: string | null
+          cancellation_policy?: Json | null
+          cancellation_accepted_at?: string | null
+          cancellation_requested_at?: string | null
+          cancellation_request_message?: string | null
+          status?: string
+          confirmed_at?: string
+          cancelled_at?: string | null
+          cancel_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          client_booking_id?: string
+          source?: string
+          buyer_org_id?: string
+          buyer_user_id?: string
+          provider_id?: string
+          marketplace_id?: string | null
+          training_id?: string | null
+          scheduled_start_id?: string | null
+          training_request_id?: string | null
+          quote_request_id?: string | null
+          title?: string
+          participants?: number
+          unit_price_ex_vat?: number | null
+          total_ex_vat?: number
+          vat_rate?: number
+          commission_rate?: number
+          start_date?: string
+          reference?: string | null
+          cancellation_policy?: Json | null
+          cancellation_accepted_at?: string | null
+          cancellation_requested_at?: string | null
+          cancellation_request_message?: string | null
+          status?: string
+          confirmed_at?: string
+          cancelled_at?: string | null
+          cancel_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_buyer_org_id_fkey"
+            columns: ["buyer_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_marketplace_id_fkey"
+            columns: ["marketplace_id"]
+            isOneToOne: false
+            referencedRelation: "marketplaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_training_id_fkey"
+            columns: ["training_id"]
+            isOneToOne: false
+            referencedRelation: "trainings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_scheduled_start_id_fkey"
+            columns: ["scheduled_start_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_starts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_training_request_id_fkey"
+            columns: ["training_request_id"]
+            isOneToOne: false
+            referencedRelation: "training_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_quote_request_id_fkey"
+            columns: ["quote_request_id"]
+            isOneToOne: false
+            referencedRelation: "custom_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_basis_events: {
+        Row: {
+          id: string
+          basis_id: string
+          actor_user_id: string | null
+          actor_role: string
+          event_type: string
+          visible_to_provider: boolean
+          payload: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          basis_id: string
+          actor_user_id?: string | null
+          actor_role: string
+          event_type: string
+          visible_to_provider?: boolean
+          payload?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          basis_id?: string
+          actor_user_id?: string | null
+          actor_role?: string
+          event_type?: string
+          visible_to_provider?: boolean
+          payload?: Json
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_basis_events_basis_id_fkey"
+            columns: ["basis_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_bases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_bases: {
+        Row: {
+          id: string
+          booking_id: string
+          number: string
+          status: string
+          lines: Json
+          total_ex_vat: number
+          vat_rate: number
+          vat_amount: number
+          total_inc_vat: number
+          commission_amount: number
+          payout_amount: number
+          adjusted: boolean
+          invoice_date: string | null
+          due_date: string | null
+          exported_at: string | null
+          sent_at: string | null
+          paid_at: string | null
+          payout_due_date: string | null
+          paid_out_at: string | null
+          fortnox_invoice_no: string | null
+          credit_note_no: string | null
+          payout_reference: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          booking_id: string
+          number?: string
+          status?: string
+          lines?: Json
+          total_ex_vat: number
+          vat_rate: number
+          vat_amount: number
+          total_inc_vat: number
+          commission_amount: number
+          payout_amount: number
+          adjusted?: boolean
+          invoice_date?: string | null
+          due_date?: string | null
+          exported_at?: string | null
+          sent_at?: string | null
+          paid_at?: string | null
+          payout_due_date?: string | null
+          paid_out_at?: string | null
+          fortnox_invoice_no?: string | null
+          credit_note_no?: string | null
+          payout_reference?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          booking_id?: string
+          number?: string
+          status?: string
+          lines?: Json
+          total_ex_vat?: number
+          vat_rate?: number
+          vat_amount?: number
+          total_inc_vat?: number
+          commission_amount?: number
+          payout_amount?: number
+          adjusted?: boolean
+          invoice_date?: string | null
+          due_date?: string | null
+          exported_at?: string | null
+          sent_at?: string | null
+          paid_at?: string | null
+          payout_due_date?: string | null
+          paid_out_at?: string | null
+          fortnox_invoice_no?: string | null
+          credit_note_no?: string | null
+          payout_reference?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_bases_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          id: string
+          name: string
+          organization_number: string | null
+          created_at: string
+          invoice_address: Json | null
+          invoice_email: string | null
+          e_invoice_id: string | null
+          vat_number: string | null
+          default_reference: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          organization_number?: string | null
+          created_at?: string
+          invoice_address?: Json | null
+          invoice_email?: string | null
+          e_invoice_id?: string | null
+          vat_number?: string | null
+          default_reference?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          organization_number?: string | null
+          created_at?: string
+          invoice_address?: Json | null
+          invoice_email?: string | null
+          e_invoice_id?: string | null
+          vat_number?: string | null
+          default_reference?: string | null
+        }
+        Relationships: [
+        ]
+      }
+      provider_payout_details: {
+        Row: {
+          provider_id: string
+          payout_details: Json
+          payout_org_number: string | null
+          vat_registered: boolean | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          provider_id: string
+          payout_details?: Json
+          payout_org_number?: string | null
+          vat_registered?: boolean | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          provider_id?: string
+          payout_details?: Json
+          payout_org_number?: string | null
+          vat_registered?: boolean | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_payout_details_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
             referencedColumns: ["id"]
           },
         ]
