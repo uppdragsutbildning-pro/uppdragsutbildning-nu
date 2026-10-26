@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import {
   LayoutDashboard, BookOpen, Users, MessageSquare,
-  History, LogOut, Menu, X, Globe, FileText, Sparkles
+  History, LogOut, Menu, X, Globe, FileText, Sparkles, Receipt
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -19,6 +19,7 @@ import type { Provider } from '../../../lib/supabase';
 import { supabase } from '../../../lib/supabaseClient';
 import { ProviderProvider } from '../../../contexts/ProviderContext';
 import { ASSIGNMENTS_CHANGED_EVENT } from './ProviderTrainingRequestsPage';
+import { useInvoiceUnreadCount } from '../../../hooks/useInvoiceUpdates';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Översikt', path: '/provider/dashboard' },
@@ -28,6 +29,7 @@ const navItems = [
   { icon: Sparkles, label: 'Efterfrågningar', path: '/provider/efterfragningar' },
   { icon: MessageSquare, label: 'Förfrågningar', path: '/provider/requests' },
   { icon: History, label: 'Historik', path: '/provider/history' },
+  { icon: Receipt, label: 'Fakturering', path: '/provider/fakturering' },
   { icon: FileText, label: 'Villkor', path: '/provider/villkor' },
 ];
 
@@ -40,6 +42,7 @@ export function ProviderLayout() {
   const [allProviders, setAllProviders] = useState<Provider[]>([]);
   const [selectedProviderId, setSelectedProviderId] = useState<string>('');
   const [newAssignments, setNewAssignments] = useState(0);
+  const newInvoices = useInvoiceUnreadCount('provider', selectedProviderId || undefined);
 
   const isAdmin = profile?.role === 'admin';
 
@@ -227,6 +230,11 @@ export function ProviderLayout() {
                       {newAssignments}
                     </span>
                   )}
+                  {item.path === '/provider/fakturering' && newInvoices > 0 && (
+                    <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-green-600 text-white text-xs font-medium">
+                      {newInvoices}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -258,6 +266,11 @@ export function ProviderLayout() {
                       {item.path === '/provider/efterfragningar' && newAssignments > 0 && (
                         <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-green-600 text-white text-xs font-medium">
                           {newAssignments}
+                        </span>
+                      )}
+                      {item.path === '/provider/fakturering' && newInvoices > 0 && (
+                        <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-green-600 text-white text-xs font-medium">
+                          {newInvoices}
                         </span>
                       )}
                     </Link>

@@ -7,6 +7,8 @@ import { supabase } from '../../../lib/supabase';
 import { useTrainingRequestUpdates } from '../../../hooks/useTrainingRequestUpdates';
 import { TrainingRequestsView } from './TrainingRequestsView';
 import { BookingsView } from './BookingsView';
+import { InvoicesView } from './InvoicesView';
+import { useInvoiceUnreadCount } from '../../../hooks/useInvoiceUpdates';
 
 interface Membership {
   display_name: string;
@@ -224,12 +226,19 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
   const [expanded, setExpanded] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const tab: 'rfp' | 'training' | 'bookings' =
-    tabParam === 'efterfragningar' ? 'training' : tabParam === 'bokningar' ? 'bookings' : 'rfp';
+  const tab: 'rfp' | 'training' | 'bookings' | 'invoices' =
+    tabParam === 'efterfragningar' ? 'training' : tabParam === 'bokningar' ? 'bookings' : tabParam === 'fakturor' ? 'invoices' : 'rfp';
+  const unreadInvoices = useInvoiceUnreadCount('buyer');
   const { unreadCount } = useTrainingRequestUpdates();
-  const selectTab = (next: 'rfp' | 'training' | 'bookings') =>
+  const selectTab = (next: 'rfp' | 'training' | 'bookings' | 'invoices') =>
     setSearchParams(
-      next === 'training' ? { tab: 'efterfragningar' } : next === 'bookings' ? { tab: 'bokningar' } : {},
+      next === 'training'
+        ? { tab: 'efterfragningar' }
+        : next === 'bookings'
+          ? { tab: 'bokningar' }
+          : next === 'invoices'
+            ? { tab: 'fakturor' }
+            : {},
       { replace: true }
     );
 
@@ -283,6 +292,7 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
             ['rfp', 'Förfrågningar'],
             ['training', 'Mina efterfrågningar'],
             ['bookings', 'Bokningar'],
+            ['invoices', 'Fakturor'],
           ] as const).map(([key, label]) => (
             <button
               key={key}
@@ -297,6 +307,11 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
               }`}
             >
               {label}
+              {key === 'invoices' && unreadInvoices > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-green-600 text-white text-[11px] font-medium">
+                  {unreadInvoices}
+                </span>
+              )}
               {key === 'training' && unreadCount > 0 && (
                 <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-green-600 text-white text-[11px] font-medium">
                   {unreadCount}
@@ -313,6 +328,8 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
       </div>
 
       {tab === 'training' && <TrainingRequestsView />}
+
+      {tab === 'invoices' && <InvoicesView />}
 
       {tab === 'bookings' && (
         <BookingsView
