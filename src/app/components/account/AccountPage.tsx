@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { ArrowRight, ChevronDown, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
 import { supabase } from '../../../lib/supabase';
+import { useTrainingRequestUpdates } from '../../../hooks/useTrainingRequestUpdates';
+import { TrainingRequestsView } from './TrainingRequestsView';
 
 interface Membership {
   display_name: string;
@@ -217,6 +219,11 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
   const [requests, setRequests] = useState<AccountRequest[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get('tab') === 'efterfragningar' ? 'training' : 'rfp';
+  const { unreadCount } = useTrainingRequestUpdates();
+  const selectTab = (next: 'rfp' | 'training') =>
+    setSearchParams(next === 'training' ? { tab: 'efterfragningar' } : {}, { replace: true });
 
   useEffect(() => {
     let active = true;
@@ -262,6 +269,44 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
         </div>
       </div>
 
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] mb-5" role="tablist">
+        <div className="flex gap-1">
+          {([
+            ['rfp', 'Förfrågningar'],
+            ['training', 'Mina efterfrågningar'],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => selectTab(key)}
+              className={`px-4 py-2.5 text-sm -mb-px border-b-2 transition-colors ${
+                tab === key
+                  ? 'border-[var(--accent)] text-[var(--fg)] font-semibold'
+                  : 'border-transparent text-[var(--fg-muted)] hover:text-[var(--fg)]'
+              }`}
+            >
+              {label}
+              {key === 'training' && unreadCount > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-green-600 text-white text-[11px] font-medium">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        {tab === 'training' && (
+          <Link to="/efterfraga" className="text-sm text-[var(--accent)] hover:underline whitespace-nowrap">
+            Efterfråga anpassad utbildning
+          </Link>
+        )}
+      </div>
+
+      {tab === 'training' && <TrainingRequestsView />}
+
+      {tab === 'rfp' && (
+        <>
       <h2 className="text-[15px] font-semibold text-[var(--fg)] mb-3">Förfrågningar</h2>
 
       {error && (
@@ -362,6 +407,8 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
           );
         })}
       </ul>
+        </>
+      )}
     </Shell>
   );
 }
