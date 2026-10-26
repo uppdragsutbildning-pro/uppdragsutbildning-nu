@@ -206,6 +206,8 @@ export type Database = {
           id: string
           marketplace_id: string | null
           participants_count: string
+          provider_id: string | null
+          training_request_assignment_id: string | null
           response: string | null
           response_deadline: string | null
           status: string
@@ -227,6 +229,8 @@ export type Database = {
           id?: string
           marketplace_id?: string | null
           participants_count?: string
+          provider_id?: string | null
+          training_request_assignment_id?: string | null
           response?: string | null
           response_deadline?: string | null
           status?: string
@@ -248,6 +252,8 @@ export type Database = {
           id?: string
           marketplace_id?: string | null
           participants_count?: string
+          provider_id?: string | null
+          training_request_assignment_id?: string | null
           response?: string | null
           response_deadline?: string | null
           status?: string
@@ -257,6 +263,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "custom_requests_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "custom_requests_training_request_assignment_id_fkey"
+            columns: ["training_request_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "training_request_assignments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "custom_requests_marketplace_id_fkey"
             columns: ["marketplace_id"]
@@ -773,6 +793,246 @@ export type Database = {
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_request_assignments: {
+        Row: {
+          id: string
+          request_id: string
+          provider_id: string
+          assigned_by: string | null
+          status: string
+          response_deadline: string
+          viewed_at: string | null
+          responded_at: string | null
+          decline_reason: string | null
+          quote_request_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          provider_id: string
+          assigned_by?: string | null
+          status?: string
+          response_deadline: string
+          viewed_at?: string | null
+          responded_at?: string | null
+          decline_reason?: string | null
+          quote_request_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          provider_id?: string
+          assigned_by?: string | null
+          status?: string
+          response_deadline?: string
+          viewed_at?: string | null
+          responded_at?: string | null
+          decline_reason?: string | null
+          quote_request_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_request_assignments_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "training_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_request_assignments_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_request_assignments_quote_request_id_fkey"
+            columns: ["quote_request_id"]
+            isOneToOne: false
+            referencedRelation: "custom_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_request_events: {
+        Row: {
+          id: string
+          request_id: string
+          assignment_id: string | null
+          actor_user_id: string | null
+          actor_role: string
+          event_type: string
+          visible_to_buyer: boolean
+          payload: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          assignment_id?: string | null
+          actor_user_id?: string | null
+          actor_role: string
+          event_type: string
+          visible_to_buyer?: boolean
+          payload?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          assignment_id?: string | null
+          actor_user_id?: string | null
+          actor_role?: string
+          event_type?: string
+          visible_to_buyer?: boolean
+          payload?: Json
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_request_events_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "training_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_request_events_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "training_request_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_request_admin_notes: {
+        Row: {
+          id: string
+          request_id: string
+          author_id: string | null
+          body: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          author_id?: string | null
+          body: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          author_id?: string | null
+          body?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_request_admin_notes_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "training_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_requests: {
+        Row: {
+          id: string
+          client_request_id: string
+          buyer_user_id: string
+          buyer_org_id: string | null
+          title: string
+          search_query: string | null
+          source: string
+          description: string
+          learning_goals: string | null
+          target_group: string
+          participant_count: number | null
+          delivery_format: string
+          location: string | null
+          desired_start: string | null
+          budget_range: string | null
+          ssyk_skills: Json
+          marketplace_id: string | null
+          status: string
+          submitted_at: string
+          closed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          client_request_id: string
+          buyer_user_id: string
+          buyer_org_id?: string | null
+          title: string
+          search_query?: string | null
+          source?: string
+          description: string
+          learning_goals?: string | null
+          target_group: string
+          participant_count?: number | null
+          delivery_format: string
+          location?: string | null
+          desired_start?: string | null
+          budget_range?: string | null
+          ssyk_skills?: Json
+          marketplace_id?: string | null
+          status?: string
+          submitted_at?: string
+          closed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          client_request_id?: string
+          buyer_user_id?: string
+          buyer_org_id?: string | null
+          title?: string
+          search_query?: string | null
+          source?: string
+          description?: string
+          learning_goals?: string | null
+          target_group?: string
+          participant_count?: number | null
+          delivery_format?: string
+          location?: string | null
+          desired_start?: string | null
+          budget_range?: string | null
+          ssyk_skills?: Json
+          marketplace_id?: string | null
+          status?: string
+          submitted_at?: string
+          closed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_requests_buyer_org_id_fkey"
+            columns: ["buyer_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_requests_marketplace_id_fkey"
+            columns: ["marketplace_id"]
+            isOneToOne: false
+            referencedRelation: "marketplaces"
             referencedColumns: ["id"]
           },
         ]
