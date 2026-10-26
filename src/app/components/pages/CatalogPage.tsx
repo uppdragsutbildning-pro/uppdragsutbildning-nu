@@ -8,6 +8,13 @@ import { usePaginatedQuery, getPaginationRange } from '../../../hooks/usePaginat
 import { useMarketplace } from '../../../lib/marketplaceContext';
 import { getMarketplaceTrainingIds } from '../../../lib/marketplaces';
 import {
+  WEAK_RESULTS_THRESHOLD,
+  buildRequestUrl,
+  NoResultsRequestBlock,
+  WeakResultsRequestCard,
+  PermanentRequestLink,
+} from './CustomTrainingPrompt';
+import {
   Pagination,
   PaginationContent,
   PaginationItem,
@@ -20,7 +27,7 @@ import {
 const PAGE_SIZE = 12;
 
 export function CatalogPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
   const [categories, setCategories] = useState<AdaptedCategory[]>([]);
   const [providers, setProviders] = useState<AdaptedProvider[]>([]);
@@ -93,6 +100,7 @@ export function CatalogPage() {
 
   const {
     rows: trainingRows,
+    loading: trainingsLoading,
     page,
     setPage,
     totalPages,
@@ -158,6 +166,31 @@ export function CatalogPage() {
   };
 
   const activeFiltersCount = selectedCategories.length + selectedFormats.length + selectedProviders.length;
+
+  // "Rensa filter" lämnade tidigare kvar sökordet; i tomläget rensas båda.
+  const clearSearchAndFilters = () => {
+    clearFilters();
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.delete('q');
+      next.delete('category');
+      return next;
+    }, { replace: true });
+  };
+
+  // Sökkontext för "Efterfråga anpassad utbildning" (Paket C → D).
+  const resultsReady = !trainingsLoading && !scopeLoading && !marketplaceLoading;
+  const isSearching = Boolean(searchQuery) || activeFiltersCount > 0;
+  const noResults = resultsReady && filteredTrainings.length === 0;
+  const weakResults = resultsReady && isSearching && count > 0 && count <= WEAK_RESULTS_THRESHOLD;
+  const requestUrl = buildRequestUrl({
+    source: noResults ? 'search_no_results' : weakResults ? 'search_weak_results' : 'direct',
+    searchQuery,
+    categories: selectedCategories,
+    formats: selectedFormats,
+    providers: selectedProviders,
+    marketplaceSlug: marketplace?.slug,
+  });
 
   const visibleCategories = scopedCategoryIds
     ? categories.filter(c => scopedCategoryIds.has(c.id))
@@ -475,25 +508,17 @@ export function CatalogPage() {
                     </p>
                   </div>
                 </div>
-              ) : filteredTrainings.length === 0 && (
-                <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-                  <div className="max-w-md mx-auto">
-                    <Filter className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                      Inga utbildningar hittades
-                    </h3>
-                    <p className="text-slate-600 mb-6">
-                      Försök justera dina filter eller sökord för att hitta det du letar efter.
-                    </p>
-                    <button
-                      onClick={clearFilters}
-                      className="px-6 py-2 bg-[var(--marketplace-primary)] text-white rounded-lg hover:brightness-90 transition-colors font-medium"
-                    >
-                      Rensa filter
-                    </button>
-                  </div>
-                </div>
+              ) : noResults && (
+                <NoResultsRequestBlock
+                  searchQuery={searchQuery}
+                  requestUrl={requestUrl}
+                  hasActiveFilters={activeFiltersCount > 0}
+                  onClearAll={clearSearchAndFilters}
+                />
               )}
+
+              {weakResults && <WeakResultsRequestCard requestUrl={requestUrl} />}
+              {resultsReady && count > WEAK_RESULTS_THRESHOLD && <PermanentRequestLink requestUrl={requestUrl} />}
             </div>
 
             {totalPages > 1 && (

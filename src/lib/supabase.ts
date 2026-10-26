@@ -115,6 +115,8 @@ export interface CustomRequest {
   recommended_categories?: string[];
   has_provider_match?: boolean;
   marketplace_id?: string | null;
+  provider_id?: string | null;
+  training_request_assignment_id?: string | null;
   submitted_at: string;
   updated_at: string;
 }

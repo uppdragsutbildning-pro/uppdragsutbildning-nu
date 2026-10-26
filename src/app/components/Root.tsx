@@ -3,6 +3,7 @@ import { LayoutDashboard, Menu, X } from 'lucide-react';
 import { useState, useEffect, type CSSProperties } from 'react';
 import { Logo } from './Logo';
 import { useMarketplace } from '../../lib/marketplaceContext';
+import { useTrainingRequestUpdates } from '../../hooks/useTrainingRequestUpdates';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -18,6 +19,7 @@ export function Root() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { marketplace, branding } = useMarketplace();
+  const { unreadCount } = useTrainingRequestUpdates();
 
   const isProviderRoute = location.pathname.startsWith('/provider');
   const isAdminRoute = location.pathname.startsWith('/admin');
@@ -128,6 +130,11 @@ export function Root() {
                       }`}
                     >
                       Mitt konto
+                      {unreadCount > 0 && (
+                        <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-green-600 text-white text-[11px] font-medium align-middle" aria-label={`${unreadCount} nya uppdateringar`}>
+                          {unreadCount}
+                        </span>
+                      )}
                     </Link>
                   )}
                 </>
@@ -222,6 +229,11 @@ export function Root() {
                         className="px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition-colors"
                       >
                         Mitt konto
+                        {unreadCount > 0 && (
+                        <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-green-600 text-white text-[11px] font-medium align-middle" aria-label={`${unreadCount} nya uppdateringar`}>
+                          {unreadCount}
+                        </span>
+                      )}
                       </Link>
                     )}
                   </>

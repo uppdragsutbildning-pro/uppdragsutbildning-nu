@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import {
   Search, MessageSquare, Eye, Send, Clock, CheckCircle,
-  X, Briefcase, Users, Calendar, DollarSign, FileText, Globe
+  X, Briefcase, Users, Calendar, DollarSign, FileText, Globe, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProviderContext } from '../../../contexts/ProviderContext';
@@ -10,6 +11,8 @@ import { supabase } from '../../../lib/supabaseClient';
 
 export function ProviderRequestsPage() {
   const { selectedProviderId } = useProviderContext();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openId = searchParams.get('open');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'new' | 'responded' | 'negotiating' | 'accepted' | 'declined'>('all');
   const [selectedRequest, setSelectedRequest] = useState<CustomRequest | null>(null);
@@ -21,6 +24,15 @@ export function ProviderRequestsPage() {
   useEffect(() => {
     loadRequests();
   }, [selectedProviderId]);
+
+  // Djuplänk från Efterfrågningar (?open=<offert-id>): öppna svarsvyn direkt.
+  useEffect(() => {
+    if (!openId || loading) return;
+    const match = requests.find((r) => r.id === openId);
+    if (match) setSelectedRequest(match);
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openId, loading, requests]);
 
   // "Via: X"-attribution (Paket F/G, docs/specs/partnermarknadsplatser.md avsnitt 10)
   useEffect(() => {
@@ -54,15 +66,15 @@ export function ProviderRequestsPage() {
       if (trainingsError) throw trainingsError;
 
       const trainingIds = (providerTrainings ?? []).map((training) => training.id);
-      if (trainingIds.length === 0) {
-        setRequests([]);
-        return;
-      }
+      // Offertrader från anpassade efterfrågningar saknar training_id och
+      // hittas via provider_id (tilldelningen).
+      const filters = [`provider_id.eq.${selectedProviderId}`];
+      if (trainingIds.length > 0) filters.push(`training_id.in.(${trainingIds.join(',')})`);
 
       const { data, error } = await supabase
         .from('custom_requests')
         .select('*')
-        .in('training_id', trainingIds)
+        .or(filters.join(','))
         .order('submitted_at', { ascending: false });
       if (error) throw error;
       setRequests(data || []);
@@ -241,6 +253,12 @@ export function ProviderRequestsPage() {
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getScoreColor(req.ai_score)}`}>
                       AI-poäng: {req.ai_score === 'high' ? 'Hög' : req.ai_score === 'medium' ? 'Medel' : 'Låg'}
                     </span>
+                    {req.training_request_assignment_id && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-100">
+                        <Sparkles className="w-3 h-3" />
+                        Anpassad efterfrågan
+                      </span>
+                    )}
                     {req.marketplace_id && marketplaceNames[req.marketplace_id] && (
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-100">
                         <Globe className="w-3 h-3" />
@@ -335,8 +353,8 @@ export function ProviderRequestsPage() {
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border ${getStatusColor(selectedRequest.status)}`}>
                   {getStatusLabel(selectedRequest.status)}
                 </span>
-                <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getScoreColor(selectedRequest.aiScore)}`}>
-                  AI-matchning: {selectedRequest.aiScore === 'high' ? 'Hög' : selectedRequest.aiScore === 'medium' ? 'Medel' : 'Låg'}
+                <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getScoreColor(selectedRequest.ai_score)}`}>
+                  AI-matchning: {selectedRequest.ai_score === 'high' ? 'Hög' : selectedRequest.ai_score === 'medium' ? 'Medel' : 'Låg'}
                 </span>
                 <span className="text-sm text-slate-500">
                   {new Date(selectedRequest.submitted_at).toLocaleString('sv-SE')}
@@ -355,7 +373,7 @@ export function ProviderRequestsPage() {
                   <Briefcase className="w-4 h-4 text-blue-600" />
                   Kursämne
                 </h3>
-                <p className="text-slate-900 font-medium">{selectedRequest.courseTopic}</p>
+                <p className="text-slate-900 font-medium">{selectedRequest.course_topic}</p>
               </div>
 
               {/* Description */}
@@ -388,7 +406,7 @@ export function ProviderRequestsPage() {
                     <Users className="w-4 h-4" />
                     Deltagare
                   </div>
-                  <div className="font-semibold text-slate-900">{selectedRequest.participantsCount}</div>
+                  <div className="font-semibold text-slate-900">{selectedRequest.participants_count}</div>
                 </div>
               </div>
 
@@ -398,18 +416,18 @@ export function ProviderRequestsPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-600">Namn:</span>
-                    <span className="font-medium text-slate-900">{selectedRequest.contactName}</span>
+                    <span className="font-medium text-slate-900">{selectedRequest.contact_name}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-600">E-post:</span>
-                    <a href={`mailto:${selectedRequest.contactEmail}`} className="text-blue-600 hover:text-blue-700">
-                      {selectedRequest.contactEmail}
+                    <a href={`mailto:${selectedRequest.contact_email}`} className="text-blue-600 hover:text-blue-700">
+                      {selectedRequest.contact_email}
                     </a>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-600">Telefon:</span>
-                    <a href={`tel:${selectedRequest.contactPhone}`} className="text-blue-600 hover:text-blue-700">
-                      {selectedRequest.contactPhone}
+                    <a href={`tel:${selectedRequest.contact_phone}`} className="text-blue-600 hover:text-blue-700">
+                      {selectedRequest.contact_phone}
                     </a>
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from './_lib/supabaseAdmin.js';
 import { sendEmail } from './_lib/sendEmail.js';
-import { rfpEscalated } from './_lib/emailTemplates.js';
+import { rfpEscalated, trainingAssignmentOverdue } from './_lib/emailTemplates.js';
 
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
 const APP_URL = process.env.APP_URL;
@@ -43,5 +43,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     escalated++;
   }
 
-  return res.status(200).json({ escalated });
+  // Anpassade efterfrågningar: lärosäten som passerat sin svarsdeadline utan att svara.
+  let assignmentsEscalated = 0;
+  try {
+    const { data: overdueAssignments, error: asgError } = await supabaseAdmin
+      .from('training_request_assignments')
+      .select('id, request_id, response_deadline, providers(name), training_requests(title)')
+      .in('status', ['assigned', 'viewed'])
+      .lt('response_deadline', new Date().toISOString())
+      .is('escalated_at', null)
+      .limit(BATCH_SIZE);
+    if (asgError) throw asgError;
+
+    for (const row of overdueAssignments ?? []) {
+      const provider = row.providers as { name?: string } | { name?: string }[] | null;
+      const request = row.training_requests as { title?: string } | { title?: string }[] | null;
+      const providerName = (Array.isArray(provider) ? provider[0]?.name : provider?.name) ?? 'Okänt lärosäte';
+      const title = (Array.isArray(request) ? request[0]?.title : request?.title) ?? 'Efterfrågan';
+      const content = trainingAssignmentOverdue({
+        title,
+        providerName,
+        deadline: new Date(row.response_deadline).toLocaleDateString('sv-SE'),
+        linkUrl: APP_URL ? `${APP_URL}/admin` : undefined,
+      });
+      await sendEmail({ to: ADMIN_EMAIL, ...content, messageType: 'training_assignment_overdue', relatedTable: 'training_requests', relatedId: row.request_id });
+      await supabaseAdmin.from('training_request_assignments').update({ escalated_at: new Date().toISOString() }).eq('id', row.id);
+      await supabaseAdmin.from('training_request_events').insert({
+        request_id: row.request_id,
+        assignment_id: row.id,
+        actor_role: 'system',
+        event_type: 'deadline_passed',
+        visible_to_buyer: false,
+      });
+      assignmentsEscalated++;
+    }
+  } catch (err) {
+    console.error('check-overdue-requests training assignments error:', err);
+  }
+
+  return res.status(200).json({ escalated, assignmentsEscalated });
 }

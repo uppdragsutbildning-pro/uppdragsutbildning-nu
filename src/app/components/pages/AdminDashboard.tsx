@@ -7,6 +7,7 @@ import type { CustomRequest, Profile, Provider } from '../../../lib/supabase';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import { MarketplacesTab } from '../admin/MarketplacesTab';
+import { TrainingRequestsTab, useOpenTrainingRequestsCount } from '../admin/TrainingRequestsTab';
 import { CpiRecordDrawer } from '../admin/CpiRecordDrawer';
 import { getPaginationRange } from '../../../hooks/usePaginatedQuery';
 import {
@@ -19,7 +20,7 @@ import {
   PaginationEllipsis,
 } from '../ui/pagination';
 
-type Tab = 'overview' | 'trainings' | 'leads' | 'providers' | 'marketplaces' | 'users' | 'kompetensindex';
+type Tab = 'overview' | 'trainings' | 'leads' | 'efterfragningar' | 'providers' | 'marketplaces' | 'users' | 'kompetensindex';
 
 export interface CpiRecord {
   id: string;
@@ -40,6 +41,7 @@ export interface CpiRecord {
 export function AdminDashboard() {
   const { signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const openTrainingRequests = useOpenTrainingRequestsCount();
   const [users, setUsers] = useState<(Profile & { provider_name?: string })[]>([]);
   const [supabaseProviders, setSupabaseProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(false);
@@ -424,6 +426,21 @@ export function AdminDashboard() {
               }`}
             >
               Alla Förfrågningar
+            </button>
+            <button
+              onClick={() => setActiveTab('efterfragningar')}
+              className={`pb-3 border-b-2 transition-colors ${
+                activeTab === 'efterfragningar'
+                  ? 'border-blue-600 text-blue-600 font-medium'
+                  : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Efterfrågningar
+              {openTrainingRequests > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-green-600 text-white text-xs font-medium">
+                  {openTrainingRequests}
+                </span>
+              )}
             </button>
             <button
               onClick={() => setActiveTab('providers')}
@@ -1019,6 +1036,8 @@ export function AdminDashboard() {
         )}
 
         {/* Marketplaces Tab */}
+        {activeTab === 'efterfragningar' && <TrainingRequestsTab />}
+
         {activeTab === 'marketplaces' && <MarketplacesTab />}
 
         {/* Users Tab */}

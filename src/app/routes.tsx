@@ -4,6 +4,7 @@ import { HomePage } from "./components/pages/HomePage";
 import { CatalogPage } from "./components/pages/CatalogPage";
 import { TrainingDetailPage } from "./components/pages/TrainingDetailPage";
 import { RequestFlowPage } from "./components/pages/RequestFlowPage";
+import { RequestCustomTrainingPage } from "./components/pages/RequestCustomTrainingPage";
 import { LoginPage } from "./components/pages/LoginPage";
 import { AdminDashboard } from "./components/pages/AdminDashboard";
 import { NotFound } from "./components/pages/NotFound";
@@ -19,6 +20,7 @@ import { ProviderMarketplacesPage } from "./components/provider/ProviderMarketpl
 import { ProviderCourseFormPage } from "./components/provider/ProviderCourseFormPage";
 import { ProviderApplicationsPage } from "./components/provider/ProviderApplicationsPage";
 import { ProviderRequestsPage } from "./components/provider/ProviderRequestsPage";
+import { ProviderTrainingRequestsPage } from "./components/provider/ProviderTrainingRequestsPage";
 import { ProviderHistoryPage } from "./components/provider/ProviderHistoryPage";
 import { ProviderTermsSettingsPage } from "./components/provider/ProviderTermsSettingsPage";
 import { MarketplaceFormPage } from "./components/admin/MarketplaceFormPage";
@@ -38,6 +40,7 @@ export const router = createBrowserRouter([
       { path: "om-tjansten", Component: OmTjansten },
       { path: "leverantor/:id/villkor", Component: ProviderTermsPage },
       { path: "konto", Component: AccountPage },
+      { path: "efterfraga", Component: RequestCustomTrainingPage },
       { path: "request", Component: RequestFlowPage },
       { path: "request/:trainingId", Component: RequestFlowPage },
       { path: "login", Component: LoginPage },
@@ -98,6 +101,7 @@ export const router = createBrowserRouter([
       { path: "courses/:id/edit", Component: ProviderCourseFormPage },
       { path: "marketplaces", Component: ProviderMarketplacesPage },
       { path: "applications", Component: ProviderApplicationsPage },
+      { path: "efterfragningar", Component: ProviderTrainingRequestsPage },
       { path: "requests", Component: ProviderRequestsPage },
       { path: "history", Component: ProviderHistoryPage },
       { path: "villkor", Component: ProviderTermsSettingsPage },
