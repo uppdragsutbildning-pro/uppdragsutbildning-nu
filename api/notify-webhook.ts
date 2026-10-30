@@ -76,7 +76,7 @@ async function handleTrainingRequestEvent(ev: TrainingRequestEvent) {
   const payload = ev.payload ?? {};
   const message = typeof payload.message === 'string' ? payload.message : null;
   const mail = { relatedTable: 'training_requests', relatedId: ev.request_id };
-  const accountLink = APP_URL ? `${APP_URL}/konto?tab=efterfragningar` : undefined;
+  const accountLink = APP_URL ? `${APP_URL}/konto?tab=arenden` : undefined;
 
   if (ev.event_type === 'submitted') {
     if (!ADMIN_EMAIL) return;
@@ -241,7 +241,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Offerter från anpassade efterfrågningar länkar till Mitt konto (där köparen ser svaret).
         const content = rfpResponded({
           courseTopic: record.course_topic,
-          linkUrl: record.training_request_assignment_id && APP_URL ? `${APP_URL}/konto?tab=efterfragningar` : undefined,
+          linkUrl: record.training_request_assignment_id && APP_URL ? `${APP_URL}/konto?tab=arenden` : undefined,
         });
         await sendEmail({ to: record.contact_email, ...content, messageType: 'rfp_responded', relatedTable: 'custom_requests', relatedId: record.id });
       } else if (statusChanged && record.status === 'accepted') {

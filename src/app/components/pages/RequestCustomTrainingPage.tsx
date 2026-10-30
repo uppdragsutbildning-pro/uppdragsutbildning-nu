@@ -258,7 +258,7 @@ function Confirmation() {
             </li>
           ))}
         </ol>
-        <Link to="/konto?tab=efterfragningar" className={primaryButton}>
+        <Link to="/konto?tab=arenden" className={primaryButton}>
           Gå till Mitt konto <ArrowRight className="w-4 h-4" aria-hidden="true" />
         </Link>
       </Card>
