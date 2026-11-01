@@ -12,6 +12,7 @@ export interface RequestDraft {
   suggestedFormat: string;
   formData: {
     companyName: string;
+    organizationNumber: string;
     contactName: string;
     email: string;
     phone: string;

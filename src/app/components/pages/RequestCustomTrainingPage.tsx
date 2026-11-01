@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
 import { supabase } from '../../../lib/supabase';
 import { useMarketplace } from '../../../lib/marketplaceContext';
+import { ORGANIZATION_NUMBER_ERROR, normalizeOrganizationNumber } from '../../../lib/organizationNumber';
 import {
   EMPTY_FORM,
   clearDraft,
@@ -190,12 +191,20 @@ function OrganizationPanel({ onDone }: { onDone: () => void }) {
   const [displayName, setDisplayName] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const [orgNumberError, setOrgNumberError] = useState<string | null>(null);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    const normalizedOrgNumber = normalizeOrganizationNumber(orgNumber);
+    if (!normalizedOrgNumber) {
+      setOrgNumberError(ORGANIZATION_NUMBER_ERROR);
+      return;
+    }
+    setOrgNumberError(null);
     setSaving(true);
     const { error } = await supabase.rpc('create_my_organization', {
       p_name: orgName,
-      p_organization_number: orgNumber,
+      p_organization_number: normalizedOrgNumber,
       p_display_name: displayName,
     });
     setSaving(false);
@@ -217,8 +226,8 @@ function OrganizationPanel({ onDone }: { onDone: () => void }) {
         <Field label="Organisation" htmlFor="org-name">
           <input id="org-name" required value={orgName} onChange={e => setOrgName(e.target.value)} placeholder="T.ex. Region Exempel" className={inputClass} />
         </Field>
-        <Field label="Organisationsnummer" optional htmlFor="org-number">
-          <input id="org-number" value={orgNumber} onChange={e => setOrgNumber(e.target.value)} placeholder="556000-0000" className={inputClass} />
+        <Field label="Organisationsnummer" htmlFor="org-number" error={orgNumberError ?? undefined}>
+          <input id="org-number" required inputMode="numeric" value={orgNumber} onChange={e => setOrgNumber(e.target.value)} placeholder="556000-0000" aria-invalid={orgNumberError ? true : undefined} className={inputClass} />
         </Field>
         <Field label="Ditt namn" htmlFor="display-name">
           <input id="display-name" required autoComplete="name" value={displayName} onChange={e => setDisplayName(e.target.value)} className={inputClass} />

@@ -8,6 +8,7 @@ import { useMarketplace } from '../../../lib/marketplaceContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useEmailCodeLogin } from '../../../hooks/useEmailCodeLogin';
 import { clearRequestDraft, loadRequestDraft, saveRequestDraft } from '../../../lib/requestDraft';
+import { ORGANIZATION_NUMBER_ERROR, normalizeOrganizationNumber } from '../../../lib/organizationNumber';
 
 type Step = 'describe' | 'ai-analysis' | 'form' | 'confirmation';
 
@@ -40,12 +41,16 @@ export function RequestFlowPage() {
   // Form data
   const [formData, setFormData] = useState({
     companyName: '',
+    organizationNumber: '',
     contactName: '',
     email: '',
     phone: '',
     budget: '',
     timeline: ''
   });
+  // Organisationsnumret frågas bara efter när köparen inte redan tillhör en organisation.
+  const [hasOrganization, setHasOrganization] = useState(false);
+  const [orgNumberError, setOrgNumberError] = useState<string | null>(null);
 
   // Köparen måste vara inloggad för att skicka: koden skickas vid "Skicka förfrågan" och
   // förfrågan kopplas till köparens organisation (skapas av formuläret vid första gången).
@@ -64,15 +69,31 @@ export function RequestFlowPage() {
     setAiSummary(draft.aiSummary);
     setRecommendedCategories(draft.recommendedCategories);
     setSuggestedFormat(draft.suggestedFormat);
-    setFormData(draft.formData);
+    setFormData(prev => ({ ...prev, ...draft.formData }));
     setStep('form');
     toast.success('Du är inloggad. Kontrollera uppgifterna och skicka förfrågan.');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Inloggad köpare: förifyll e-post.
+  // Inloggad köpare: förifyll e-post och ta reda på om organisationen redan finns.
   useEffect(() => {
-    if (authUser?.email) setFormData(prev => (prev.email ? prev : { ...prev, email: authUser.email! }));
+    if (!authUser) {
+      setHasOrganization(false);
+      return;
+    }
+    if (authUser.email) setFormData(prev => (prev.email ? prev : { ...prev, email: authUser.email! }));
+    let active = true;
+    supabase
+      .from('organization_members')
+      .select('organization_id')
+      .eq('user_id', authUser.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (active) setHasOrganization(!!data);
+      });
+    return () => {
+      active = false;
+    };
   }, [authUser]);
 
   const handleDescriptionSubmit = async (e: React.FormEvent) => {
@@ -113,9 +134,16 @@ export function RequestFlowPage() {
       .maybeSingle();
     orgId = membership?.organization_id ?? null;
     if (!orgId) {
+      const normalizedOrgNumber = normalizeOrganizationNumber(formData.organizationNumber);
+      if (!normalizedOrgNumber) {
+        setOrgNumberError(ORGANIZATION_NUMBER_ERROR);
+        setAwaitingCode(false);
+        toast.error('Organisationsnummer saknas eller är ogiltigt');
+        return false;
+      }
       const { data: newOrg, error: orgError } = await supabase.rpc('create_my_organization', {
         p_name: formData.companyName,
-        p_organization_number: '',
+        p_organization_number: normalizedOrgNumber,
         p_display_name: formData.contactName,
       });
       if (orgError) {
@@ -205,7 +233,13 @@ export function RequestFlowPage() {
         await submitRequest(sessionUser.id);
         return;
       }
-      // Ingen inloggning än: spara utkastet och skicka en kod till e-postadressen i formuläret.
+      // Ingen inloggning än: kräv ett giltigt organisationsnummer, spara utkastet och skicka en kod
+      // till e-postadressen i formuläret.
+      if (!hasOrganization && !normalizeOrganizationNumber(formData.organizationNumber)) {
+        setOrgNumberError(ORGANIZATION_NUMBER_ERROR);
+        return;
+      }
+      setOrgNumberError(null);
       saveRequestDraft({
         trainingId: trainingId ?? null,
         description,
@@ -507,6 +541,32 @@ export function RequestFlowPage() {
                       required
                     />
                   </div>
+
+                  {!hasOrganization && (
+                    <div>
+                      <label htmlFor="request-org-number" className="flex items-center gap-2 text-sm font-medium text-slate-900 mb-2">
+                        <Building className="w-4 h-4" />
+                        Organisationsnummer *
+                      </label>
+                      <input
+                        id="request-org-number"
+                        type="text"
+                        inputMode="numeric"
+                        value={formData.organizationNumber}
+                        onChange={(e) => updateFormData('organizationNumber', e.target.value)}
+                        placeholder="556000-0000"
+                        aria-invalid={orgNumberError ? true : undefined}
+                        aria-describedby={orgNumberError ? 'request-org-number-error' : undefined}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--marketplace-primary)]/20 focus:border-[var(--marketplace-primary)] outline-none"
+                        required
+                      />
+                      {orgNumberError && (
+                        <p id="request-org-number-error" role="alert" className="text-sm text-red-700 mt-1.5">
+                          {orgNumberError}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   <div>
                     <label className="flex items-center gap-2 text-sm font-medium text-slate-900 mb-2">

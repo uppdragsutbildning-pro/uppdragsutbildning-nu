@@ -9,6 +9,7 @@ import { CasesView } from './CasesView';
 import { BookingsView } from './BookingsView';
 import { InvoicesView } from './InvoicesView';
 import { useInvoiceUnreadCount } from '../../../hooks/useInvoiceUpdates';
+import { ORGANIZATION_NUMBER_ERROR, normalizeOrganizationNumber } from '../../../lib/organizationNumber';
 
 interface Membership {
   display_name: string;
@@ -198,12 +199,20 @@ function OnboardingForm({ onDone }: { onDone: () => void }) {
   const [displayName, setDisplayName] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const [orgNumberError, setOrgNumberError] = useState<string | null>(null);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    const normalizedOrgNumber = normalizeOrganizationNumber(orgNumber);
+    if (!normalizedOrgNumber) {
+      setOrgNumberError(ORGANIZATION_NUMBER_ERROR);
+      return;
+    }
+    setOrgNumberError(null);
     setSaving(true);
     const { error } = await supabase.rpc('create_my_organization', {
       p_name: orgName,
-      p_organization_number: orgNumber,
+      p_organization_number: normalizedOrgNumber,
       p_display_name: displayName,
     });
     setSaving(false);
@@ -239,15 +248,24 @@ function OnboardingForm({ onDone }: { onDone: () => void }) {
           </div>
           <div>
             <label htmlFor="org-number" className="block text-[13px] font-medium text-[var(--fg)] mb-1.5">
-              Organisationsnummer <span className="text-[var(--fg-subtle)] font-normal">(valfritt)</span>
+              Organisationsnummer
             </label>
             <input
               id="org-number"
+              required
+              inputMode="numeric"
               value={orgNumber}
               onChange={(e) => setOrgNumber(e.target.value)}
               placeholder="556000-0000"
+              aria-invalid={orgNumberError ? true : undefined}
+              aria-describedby={orgNumberError ? 'org-number-error' : undefined}
               className={inputClass}
             />
+            {orgNumberError && (
+              <p id="org-number-error" role="alert" className="text-sm text-red-700 mt-1.5">
+                {orgNumberError}
+              </p>
+            )}
           </div>
           <div>
             <label htmlFor="display-name" className="block text-[13px] font-medium text-[var(--fg)] mb-1.5">
