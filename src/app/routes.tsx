@@ -1,9 +1,8 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import { Root } from "./components/Root";
 import { HomePage } from "./components/pages/HomePage";
 import { CatalogPage } from "./components/pages/CatalogPage";
 import { TrainingDetailPage } from "./components/pages/TrainingDetailPage";
-import { RequestFlowPage } from "./components/pages/RequestFlowPage";
 import { RequestCustomTrainingPage } from "./components/pages/RequestCustomTrainingPage";
 import { LoginPage } from "./components/pages/LoginPage";
 import { AdminDashboard } from "./components/pages/AdminDashboard";
@@ -44,8 +43,9 @@ export const router = createBrowserRouter([
       { path: "leverantor/:id/villkor", Component: ProviderTermsPage },
       { path: "konto", Component: AccountPage },
       { path: "efterfraga", Component: RequestCustomTrainingPage },
-      { path: "request", Component: RequestFlowPage },
-      { path: "request/:trainingId", Component: RequestFlowPage },
+      // Gamla offertförfrågningsflödet är ersatt av efterfrågeformuläret; länkar fortsätter fungera.
+      { path: "request", element: <Navigate to="/efterfraga" replace /> },
+      { path: "request/:trainingId", element: <Navigate to="/efterfraga" replace /> },
       { path: "login", Component: LoginPage },
       {
         path: "admin",

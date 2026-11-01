@@ -110,16 +110,6 @@ export function Root() {
                   >
                     Kompetensindex
                   </Link>
-                  <Link
-                    to="/request"
-                    className={`text-sm transition-colors ${
-                      location.pathname === '/request'
-                        ? 'text-[var(--marketplace-primary)] font-medium'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Efterfråga Utbildning
-                  </Link>
                   {!showBranding && (
                     <Link
                       to="/konto"
@@ -210,17 +200,6 @@ export function Root() {
                       }`}
                     >
                       Kompetensindex
-                    </Link>
-                    <Link
-                      to="/request"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                        location.pathname === '/request'
-                          ? 'bg-[var(--marketplace-primary)]/10 text-[var(--marketplace-primary)] font-medium'
-                          : 'text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      Efterfråga Utbildning
                     </Link>
                     {!showBranding && (
                       <Link
@@ -313,7 +292,6 @@ export function Root() {
                 <h3 className="font-medium text-white mb-3">Plattform</h3>
                 <ul className="space-y-2 text-sm">
                   <li><Link to="/catalog" className="hover:text-white transition-colors">Bläddra Utbildningar</Link></li>
-                  <li><Link to="/request" className="hover:text-white transition-colors">Efterfråga Utbildning</Link></li>
                   {!showBranding && (
                     <li><Link to="/provider" className="hover:text-white transition-colors">För Leverantörer</Link></li>
                   )}

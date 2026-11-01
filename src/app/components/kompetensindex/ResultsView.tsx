@@ -573,7 +573,7 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
               Gör en ny analys
             </button>
             <button
-              onClick={() => navigate('/request?cpi=true')}
+              onClick={() => navigate('/efterfraga')}
               className="px-6 py-3 bg-white text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors"
             >
               Begär offert från lärosäten →

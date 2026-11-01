@@ -139,10 +139,14 @@ export function TrainingDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookParam, training]);
 
+  // Anpassad utbildning begärs i samma formulär som efter en sökning utan träff (/efterfraga),
+  // med kursen och lärosätet som utgångspunkt.
   function goToRequest() {
     if (!training) return;
     const forceNoMarketplace = !!marketplace && inMarketplaceScope === false;
-    navigate(`/request/${training.id}`, { state: { forceNoMarketplace } });
+    const params = new URLSearchParams({ course: training.title, courseProvider: training.provider.name });
+    if (marketplace?.slug && !forceNoMarketplace) params.set('via', marketplace.slug);
+    navigate(`/efterfraga?${params.toString()}`, { state: { forceNoMarketplace } });
   }
 
   if (loading) {
@@ -252,7 +256,7 @@ export function TrainingDetailPage() {
             <div className="lg:hidden flex gap-3">
               {isCustom && (
                 <button onClick={goToRequest} className="flex-1 flex items-center justify-center gap-2 bg-[var(--marketplace-primary)] hover:brightness-90 text-white px-4 py-3 rounded-xl font-medium text-sm transition-colors shadow-sm">
-                  <Sparkles className="w-4 h-4" />Begär offert
+                  <Sparkles className="w-4 h-4" />Begär anpassad utbildning
                 </button>
               )}
               {hasStarts && nextStart && (
@@ -463,46 +467,6 @@ export function TrainingDetailPage() {
           {/* RIGHT SIDEBAR */}
           <div className="hidden lg:block lg:col-span-1">
             <div className="sticky top-24 space-y-4">
-              {isCustom && (
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                  <div className="bg-gradient-to-r from-[var(--marketplace-secondary)] to-[var(--marketplace-primary)] px-5 py-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Briefcase className="w-4 h-4 text-violet-200" />
-                      <span className="text-violet-100 text-sm font-medium">Skräddarsydd utbildning</span>
-                    </div>
-                    <h3 className="text-white font-bold">Anpassa för er organisation</h3>
-                  </div>
-                  <div className="p-5">
-                    <p className="text-sm text-slate-600 mb-4 leading-relaxed">{provider.name} kan skräddarsy utbildningen utifrån er verksamhets unika behov, bransch och mål.</p>
-                    <button onClick={goToRequest} className="w-full flex items-center justify-center gap-2 bg-[var(--marketplace-primary)] hover:brightness-90 text-white px-4 py-3 rounded-lg font-medium text-sm transition-colors mb-2">
-                      <Sparkles className="w-4 h-4" />Begär offert
-                    </button>
-                    <Link to="/request" className="block w-full text-center px-4 py-2.5 border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium text-sm">
-                      Beskriv ert behov
-                    </Link>
-                    {training.contactPerson && (
-                      <div className="mt-4 pt-4 border-t border-slate-100">
-                        <p className="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wide">Kontaktperson</p>
-                        <p className="font-medium text-slate-900 text-sm mb-0.5">{training.contactPerson.name}</p>
-                        <p className="text-xs text-slate-500 mb-3">{training.contactPerson.title}</p>
-                        <div className="space-y-1.5">
-                          <a href={`mailto:${training.contactPerson.email}`} className="flex items-center gap-2 text-xs text-slate-600 hover:text-[var(--marketplace-primary)] transition-colors">
-                            <Mail className="w-3.5 h-3.5 flex-shrink-0" />{training.contactPerson.email}
-                          </a>
-                          <a href={`tel:${training.contactPerson.phone}`} className="flex items-center gap-2 text-xs text-slate-600 hover:text-[var(--marketplace-primary)] transition-colors">
-                            <Phone className="w-3.5 h-3.5 flex-shrink-0" />{training.contactPerson.phone}
-                          </a>
-                        </div>
-                        <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          {training.contactPerson.responseTime}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
               {hasStarts && (
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                   <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-4">
@@ -545,7 +509,7 @@ export function TrainingDetailPage() {
                             </div>
                           </div>
                           <button onClick={goToRequest} className="w-full flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors">
-                            <Sparkles className="w-4 h-4" />Diskutera anpassad lösning
+                            <Sparkles className="w-4 h-4" />Begär anpassad utbildning
                           </button>
                         </div>
                       </>
@@ -583,6 +547,43 @@ export function TrainingDetailPage() {
                   <Share2 className="w-4 h-4" />Kopiera länk
                 </button>
               </div>
+
+              {isCustom && (
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="bg-[var(--marketplace-primary)] px-5 py-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Briefcase className="w-4 h-4 text-white/70" />
+                      <span className="text-white/80 text-sm font-medium">Skräddarsydd utbildning</span>
+                    </div>
+                    <h3 className="text-white font-bold">Anpassa för er organisation</h3>
+                  </div>
+                  <div className="p-5">
+                    <p className="text-sm text-slate-600 mb-4 leading-relaxed">{provider.name} kan skräddarsy utbildningen utifrån er verksamhets unika behov, bransch och mål.</p>
+                    <button onClick={goToRequest} className="w-full flex items-center justify-center gap-2 bg-[var(--marketplace-primary)] hover:brightness-90 text-white px-4 py-3 rounded-lg font-medium text-sm transition-colors mb-2">
+                      <Sparkles className="w-4 h-4" />Begär anpassad utbildning
+                    </button>
+                    {training.contactPerson && (
+                      <div className="mt-4 pt-4 border-t border-slate-100">
+                        <p className="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wide">Kontaktperson</p>
+                        <p className="font-medium text-slate-900 text-sm mb-0.5">{training.contactPerson.name}</p>
+                        <p className="text-xs text-slate-500 mb-3">{training.contactPerson.title}</p>
+                        <div className="space-y-1.5">
+                          <a href={`mailto:${training.contactPerson.email}`} className="flex items-center gap-2 text-xs text-slate-600 hover:text-[var(--marketplace-primary)] transition-colors">
+                            <Mail className="w-3.5 h-3.5 flex-shrink-0" />{training.contactPerson.email}
+                          </a>
+                          <a href={`tel:${training.contactPerson.phone}`} className="flex items-center gap-2 text-xs text-slate-600 hover:text-[var(--marketplace-primary)] transition-colors">
+                            <Phone className="w-3.5 h-3.5 flex-shrink-0" />{training.contactPerson.phone}
+                          </a>
+                        </div>
+                        <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          {training.contactPerson.responseTime}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -604,7 +605,7 @@ export function TrainingDetailPage() {
       <div className="fixed bottom-0 left-0 right-0 lg:hidden bg-white border-t border-slate-200 px-4 py-3 flex gap-3 z-40 shadow-lg">
         {isCustom && (
           <button onClick={goToRequest} className="flex-1 flex items-center justify-center gap-2 bg-[var(--marketplace-primary)] hover:brightness-90 text-white py-3 rounded-xl font-medium text-sm transition-colors">
-            <Sparkles className="w-4 h-4" />Begär offert
+            <Sparkles className="w-4 h-4" />Begär anpassad utbildning
           </button>
         )}
         {hasStarts && nextStart && (

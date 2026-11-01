@@ -76,7 +76,7 @@ export function OmTjansten() {
               </p>
             </div>
             <Link
-              to="/request"
+              to="/efterfraga"
               className="shrink-0 inline-flex items-center gap-2 px-6 py-3 bg-white text-[var(--marketplace-primary)] rounded-lg font-semibold hover:bg-[var(--marketplace-primary)]/10 transition-colors"
             >
               Kom igång

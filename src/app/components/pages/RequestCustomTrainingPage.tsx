@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useLocation, useSearchParams } from 'react-router';
 import { ArrowRight, CheckCircle2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
 import { supabase } from '../../../lib/supabase';
 import { useMarketplace } from '../../../lib/marketplaceContext';
+import { useEmailCodeLogin } from '../../../hooks/useEmailCodeLogin';
 import { normalizeOrganizationNumber, organizationNumberError } from '../../../lib/organizationNumber';
 import {
   EMPTY_FORM,
@@ -49,7 +50,10 @@ function initDraft(params: URLSearchParams): TrainingRequestDraft {
   const q = params.get('q')?.trim() ?? '';
   const sourceParam = params.get('source') as RequestSource | null;
   const source: RequestSource = sourceParam && SOURCES.includes(sourceParam) ? sourceParam : 'direct';
-  const contextKey = q || sourceParam ? `${q}|${source}` : '';
+  // Från en kurssida ("Begär anpassad utbildning"): kursen och lärosätet är utgångspunkten.
+  const course = params.get('course')?.trim() ?? '';
+  const courseProvider = params.get('courseProvider')?.trim() ?? '';
+  const contextKey = course ? `course:${course}` : q || sourceParam ? `${q}|${source}` : '';
 
   const stored = loadDraft();
   if (stored && (contextKey === '' || stored.contextKey === contextKey)) return stored;
@@ -62,7 +66,15 @@ function initDraft(params: URLSearchParams): TrainingRequestDraft {
     searchQuery: q,
     contextKey,
     step: 1,
-    form: { ...EMPTY_FORM, title: q, deliveryFormat: format },
+    form: course
+      ? {
+          ...EMPTY_FORM,
+          title: `Anpassad utbildning: ${course}`.slice(0, MAX.title),
+          description: `Vi är intresserade av en anpassad version av kursen "${course}"${
+            courseProvider ? ` från ${courseProvider}` : ''
+          }.\n\nBakgrund och vad vi vill uppnå: `,
+        }
+      : { ...EMPTY_FORM, title: q, deliveryFormat: format },
     skills: [],
     pendingSubmit: false,
   };
@@ -118,24 +130,22 @@ function Shell({ children }: { children: ReactNode }) {
 function SignInPanel({ onBack }: { onBack: () => void }) {
   const { marketplace } = useMarketplace();
   const [email, setEmail] = useState('');
-  const [sending, setSending] = useState(false);
+  const [code, setCode] = useState('');
   const [sent, setSent] = useState(false);
+  const via = marketplace?.slug ? `&via=${encodeURIComponent(marketplace.slug)}` : '';
+  // Mejlet innehåller både en kod och en länk (länken återställer utkastet via ?resume=1).
+  const login = useEmailCodeLogin(`/efterfraga?resume=1${via}`);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!email.trim()) return;
-    setSending(true);
-    const via = marketplace?.slug ? `&via=${encodeURIComponent(marketplace.slug)}` : '';
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/efterfraga?resume=1${via}` },
-    });
-    setSending(false);
-    if (error) {
-      toast.error('Kunde inte skicka inloggningslänk', { description: error.message });
-      return;
-    }
-    setSent(true);
+    if (await login.sendCode(email)) setSent(true);
+  }
+
+  // Vid rätt kod får AuthContext en ny session och efterfrågan skickas automatiskt.
+  async function handleVerify(e: FormEvent) {
+    e.preventDefault();
+    await login.verify(email, code);
   }
 
   return (
@@ -144,21 +154,53 @@ function SignInPanel({ onBack }: { onBack: () => void }) {
         <Mail className="w-5 h-5" aria-hidden="true" />
       </div>
       {sent ? (
-        <>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Kolla din e-post</h2>
-          <p className="text-sm text-slate-600 leading-relaxed">
-            Vi har skickat en inloggningslänk till <strong>{email}</strong>. Din efterfrågan är sparad och
-            skickas automatiskt när du har loggat in.
+        <form onSubmit={handleVerify}>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Ange koden från mejlet</h2>
+          <p className="text-sm text-slate-600 leading-relaxed mb-6">
+            Vi har skickat en kod till <strong>{email}</strong>. Din efterfrågan är sparad och skickas automatiskt
+            när du har loggat in. Du kan också klicka på länken i mejlet.
           </p>
-          <button type="button" onClick={() => setSent(false)} className="mt-5 text-sm text-blue-600 hover:underline">
-            Använd en annan e-postadress
+          <Field label="Kod" htmlFor="req-code" error={login.error ?? undefined}>
+            <input
+              id="req-code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              autoFocus
+              required
+              pattern="[0-9]{6,10}"
+              maxLength={10}
+              value={code}
+              onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="123456"
+              aria-invalid={login.error ? true : undefined}
+              className={`${inputClass} tracking-[0.3em] text-lg`}
+            />
+          </Field>
+          <button type="submit" disabled={login.verifying || code.length < 6} className={`${primaryButton} w-full mt-5`}>
+            {login.verifying ? 'Kontrollerar…' : 'Logga in och skicka'}
           </button>
-        </>
+          <div className="mt-4 flex items-center justify-between text-sm">
+            <button
+              type="button"
+              onClick={async () => {
+                setCode('');
+                if (await login.sendCode(email)) toast.success('Vi har skickat en ny kod');
+              }}
+              disabled={login.sending || login.cooldown > 0}
+              className="text-blue-600 hover:underline disabled:opacity-60 disabled:no-underline"
+            >
+              {login.cooldown > 0 ? `Skicka ny kod (${login.cooldown} s)` : 'Skicka ny kod'}
+            </button>
+            <button type="button" onClick={() => { setSent(false); setCode(''); }} className="text-slate-600 hover:underline">
+              Annan e-postadress
+            </button>
+          </div>
+        </form>
       ) : (
         <form onSubmit={handleSubmit}>
           <h2 className="text-xl font-bold text-slate-900 mb-2">Logga in för att skicka</h2>
           <p className="text-sm text-slate-600 leading-relaxed mb-6">
-            Din efterfrågan är sparad. Ange din arbetsmejl så skickar vi en inloggningslänk, inget lösenord behövs.
+            Din efterfrågan är sparad. Ange din arbetsmejl så skickar vi en engångskod, inget lösenord behövs.
             Efter inloggningen skickas efterfrågan automatiskt.
           </p>
           <Field label="E-postadress" htmlFor="req-email">
@@ -175,8 +217,8 @@ function SignInPanel({ onBack }: { onBack: () => void }) {
           </Field>
           <div className="flex gap-3 mt-5">
             <button type="button" onClick={onBack} className={secondaryButton}>Tillbaka</button>
-            <button type="submit" disabled={sending} className={`${primaryButton} flex-1`}>
-              {sending ? 'Skickar…' : 'Skicka inloggningslänk'}
+            <button type="submit" disabled={login.sending} className={`${primaryButton} flex-1`}>
+              {login.sending ? 'Skickar…' : 'Skicka kod'}
             </button>
           </div>
         </form>
@@ -279,6 +321,11 @@ export function RequestCustomTrainingPage() {
   const [searchParams] = useSearchParams();
   const { user, loading: authLoading, signOut } = useAuth();
   const { marketplace } = useMarketplace();
+  // Kursen ligger inte (längre) i marknadsplatsens urval: attribuera inte efterfrågan dit.
+  const location = useLocation();
+  const [forceNoMarketplace] = useState(
+    () => (location.state as { forceNoMarketplace?: boolean } | null)?.forceNoMarketplace === true
+  );
 
   const [draft, setDraft] = useState<TrainingRequestDraft>(() => initDraft(searchParams));
   const [errors, setErrors] = useState<Errors>({});
@@ -352,7 +399,7 @@ export function RequestCustomTrainingPage() {
         p_desired_start: f.desiredStart || null,
         p_budget_range: f.budgetRange || null,
         p_ssyk_skills: draft.skills.map(s => ({ id: s.id, title: s.label })),
-        p_marketplace_id: marketplace?.id ?? null,
+        p_marketplace_id: forceNoMarketplace ? null : marketplace?.id ?? null,
       });
       if (error) throw error;
 

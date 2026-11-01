@@ -316,7 +316,7 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
           <p className="text-sm text-[var(--fg-muted)] mt-1">Inloggad som {membership.display_name}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/request" className={primaryButton}>
+          <Link to="/efterfraga" className={primaryButton}>
             Ny förfrågan <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </Link>
           <button

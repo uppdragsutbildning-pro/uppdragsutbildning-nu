@@ -247,7 +247,7 @@ export function HomePage() {
             Beskriv ert behov så återkommer vi med konkreta förslag — utan förpliktelser.
           </p>
           <Link
-            to="/request"
+            to="/efterfraga"
             className="inline-flex items-center gap-2 px-7 py-4 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-[15px] font-semibold rounded-xl transition-colors"
           >
             Beskriv ert behov
