@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useParams, useNavigate, useSearchParams } from 'react-router';
+import { Link, useParams, useNavigate, useLocation, useSearchParams } from 'react-router';
 import {
   ArrowLeft, GraduationCap, Clock, MapPin, BookOpen, Sparkles,
   CheckCircle, ChevronDown, Share2, Users, Phone, Mail,
@@ -21,6 +21,7 @@ const formatLabel: Record<string, string> = { online: 'Online', onsite: 'På pla
 export function TrainingDetailPage() {
   const { slug, id: legacyId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [training, setTraining] = useState<AdaptedTraining | null>(null);
   const [loading, setLoading] = useState(true);
   const [openCurriculum, setOpenCurriculum] = useState<number | null>(null);
@@ -161,7 +162,7 @@ export function TrainingDetailPage() {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold text-slate-900 mb-4">Utbildning hittades inte</h1>
-        <Link to="/catalog" className="text-[var(--marketplace-primary)] hover:brightness-90">Tillbaka till katalogen</Link>
+        <Link to="/catalog" className="text-[var(--marketplace-primary)] hover:brightness-90">Sök utbildning</Link>
       </div>
     );
   }
@@ -191,9 +192,19 @@ export function TrainingDetailPage() {
       <div className="relative w-full overflow-hidden" style={{ backgroundImage: `url(${training.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', minHeight: 380 }}>
         <div className="absolute inset-0 bg-gradient-to-br from-[var(--marketplace-primary)]/90 via-[var(--marketplace-primary)]/80 to-slate-900/90" />
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-          <Link to="/catalog" className="inline-flex items-center gap-2 text-blue-200 hover:text-white text-sm transition-colors">
+          <Link
+            to="/catalog"
+            onClick={(e) => {
+              // Tillbaka till träfflistan med sökning och filter kvar, om man kom därifrån.
+              if (location.key !== 'default') {
+                e.preventDefault();
+                navigate(-1);
+              }
+            }}
+            className="inline-flex items-center gap-2 text-blue-200 hover:text-white text-sm transition-colors"
+          >
             <ArrowLeft className="w-4 h-4" />
-            Tillbaka till katalogen
+            Tillbaka till matchningarna
           </Link>
         </div>
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pb-14">

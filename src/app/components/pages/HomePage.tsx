@@ -4,15 +4,7 @@ import { useRef, useState, type CSSProperties } from 'react';
 import { universityPartners } from '../../data/providerLogos';
 import { useMarketplace } from '../../../lib/marketplaceContext';
 import { Button } from '../ui/button';
-
-const NEED_CHIPS = [
-  'Ledarskap i förändring',
-  'AI i verksamheten',
-  'Hållbarhet och CSRD',
-  'Projektledning',
-  'Digital kompetens',
-  'Arbetsmiljö och välmående',
-];
+import { NEED_CHIPS } from '../../../lib/searchSuggestions';
 
 const STEPS = [
   'Beskriv vad er organisation behöver utveckla — med egna ord eller via ett av våra förslag.',

@@ -541,7 +541,7 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
                       onClick={() => navigate('/catalog')}
                       className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
                     >
-                      Utforska utbildningar →
+                      Sök utbildning →
                     </button>
                   </div>
                 </div>

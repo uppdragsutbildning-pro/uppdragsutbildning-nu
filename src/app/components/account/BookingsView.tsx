@@ -188,7 +188,7 @@ export function BookingsView({
             När ni bokar en kursstart eller accepterar en offert dyker bokningen upp här.
           </p>
           <Link to="/catalog" className="text-sm text-[var(--accent)] hover:underline">
-            Utforska utbildningar
+            Sök utbildning
           </Link>
         </div>
       )}

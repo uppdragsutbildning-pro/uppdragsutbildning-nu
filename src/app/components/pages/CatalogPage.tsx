@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { Filter, X, GraduationCap, TrendingUp, ArrowRight, BookOpen, Sparkles } from 'lucide-react';
+import { Filter, X, GraduationCap, TrendingUp, ArrowRight, BookOpen, Sparkles, Search } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { adaptTraining, adaptCategory, adaptProvider, type AdaptedTraining, type AdaptedCategory, type AdaptedProvider } from '../../../lib/marketplaceAdapters';
 import { providerLogos } from '../../data/providerLogos';
 import { usePaginatedQuery, getPaginationRange } from '../../../hooks/usePaginatedQuery';
 import { useMarketplace } from '../../../lib/marketplaceContext';
 import { getMarketplaceTrainingIds } from '../../../lib/marketplaces';
+import { NEED_CHIPS, searchTokens } from '../../../lib/searchSuggestions';
 import {
   WEAK_RESULTS_THRESHOLD,
   buildRequestUrl,
@@ -14,6 +15,14 @@ import {
   WeakResultsRequestCard,
   PermanentRequestLink,
 } from './CustomTrainingPrompt';
+import {
+  CatalogFilterGroups,
+  EMPTY_FILTERS,
+  buildActiveChips,
+  countActiveFilters,
+  isStartFilterActive,
+  type CatalogFilters,
+} from './CatalogFilters';
 import {
   Pagination,
   PaginationContent,
@@ -26,6 +35,23 @@ import {
 
 const PAGE_SIZE = 12;
 
+interface UpcomingStart {
+  training_id: string;
+  start_date: string;
+  price: number | null;
+  available_spots: number | null;
+  location: string | null;
+  language: string | null;
+}
+
+type SortBy = 'relevance' | 'popular' | 'leads' | 'newest';
+
+// Antal sökord (efter rensning av småord) vid vilket fler än ett måste träffa för att en kurs ska visas.
+const MIN_TOKENS_FOR_STRICT_MATCH = 3;
+
+// Sidan Matchande utbildningar: köparen börjar alltid med en sökning, och den här sidan är
+// träfflistan (med omsökning och filter). Utan sökning och utan filter visas bara sökfältet.
+// På en partnermarknadsplats är det kuraterade urvalet själva butiken och visas alltid.
 export function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
@@ -40,14 +66,18 @@ export function CatalogPage() {
   const [scopedCategoryIds, setScopedCategoryIds] = useState<Set<string> | null>(null);
   const [scopedProviderIds, setScopedProviderIds] = useState<Set<string> | null>(null);
 
-  // Filter states
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(
-    searchParams.get('category') ? [searchParams.get('category')!] : []
-  );
-  const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
-  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState<'popular' | 'newest'>('popular');
+  const [filters, setFilters] = useState<CatalogFilters>(() => ({
+    ...EMPTY_FILTERS,
+    categories: searchParams.get('category')?.split(',').filter(Boolean) ?? [],
+  }));
+  const [sortBy, setSortBy] = useState<SortBy>('relevance');
   const searchQuery = searchParams.get('q') || '';
+  const [queryInput, setQueryInput] = useState(searchQuery);
+  const [upcomingStarts, setUpcomingStarts] = useState<UpcomingStart[] | null>(null);
+
+  useEffect(() => {
+    setQueryInput(searchQuery);
+  }, [searchQuery]);
 
   useEffect(() => {
     (async () => {
@@ -57,6 +87,16 @@ export function CatalogPage() {
     (async () => {
       const { data } = await supabase.from('providers').select('*').eq('is_active', true).order('name');
       if (data) setProviders(data.map(adaptProvider));
+    })();
+    // Kommande starter styr filtren period, lediga platser, ort, språk och kostnad.
+    (async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data } = await supabase
+        .from('scheduled_starts')
+        .select('training_id, start_date, price, available_spots, location, language')
+        .gte('start_date', today)
+        .limit(2000);
+      setUpcomingStarts((data ?? []) as UpcomingStart[]);
     })();
   }, []);
 
@@ -98,6 +138,45 @@ export function CatalogPage() {
     };
   }, [marketplace, marketplaceLoading]);
 
+  const activeFiltersCount = countActiveFilters(filters);
+  const startFilterActive = isStartFilterActive(filters);
+  // Utan sökning och filter visas bara sökfältet (partnermarknadsplatsens urval visas alltid).
+  const searchFirst = !marketplace && !searchQuery && activeFiltersCount === 0;
+
+  // Alternativen för ort och språk kommer från de kommande starterna.
+  const startOptions = useMemo(() => {
+    const uniq = (values: (string | null)[]) =>
+      [...new Set(values.filter((v): v is string => !!v && v.trim().length > 0))].sort((a, b) => a.localeCompare(b, 'sv'));
+    // På en marknadsplats räknas bara starter för det kuraterade urvalet.
+    const relevant =
+      marketplace && scopedTrainingIds
+        ? (upcomingStarts ?? []).filter(s => scopedTrainingIds.includes(s.training_id))
+        : upcomingStarts ?? [];
+    return {
+      locations: uniq(relevant.map(s => s.location)),
+      languages: uniq(relevant.map(s => s.language)),
+    };
+  }, [upcomingStarts, marketplace, scopedTrainingIds]);
+
+  // Kurser som har minst en kommande start som uppfyller alla kursstartsfilter.
+  const startMatchedIds = useMemo<string[] | null>(() => {
+    if (!startFilterActive || upcomingStarts === null) return null;
+    const limit = new Date();
+    if (filters.period !== 'all') limit.setMonth(limit.getMonth() + Number(filters.period));
+    const ids = new Set<string>();
+    for (const s of upcomingStarts) {
+      if (filters.period !== 'all' && new Date(s.start_date) > limit) continue;
+      if (filters.availableSpots && !((s.available_spots ?? 0) > 0)) continue;
+      if (filters.locations.length > 0 && !(s.location && filters.locations.includes(s.location))) continue;
+      if (filters.languages.length > 0 && !(s.language && filters.languages.includes(s.language))) continue;
+      if (filters.maxPrice !== null && !(s.price !== null && Number(s.price) <= filters.maxPrice)) continue;
+      ids.add(s.training_id);
+    }
+    return [...ids];
+  }, [startFilterActive, upcomingStarts, filters]);
+
+  const startsReady = !startFilterActive || upcomingStarts !== null;
+
   const {
     rows: trainingRows,
     loading: trainingsLoading,
@@ -107,32 +186,75 @@ export function CatalogPage() {
     count,
   } = usePaginatedQuery<AdaptedTraining>({
     pageSize: PAGE_SIZE,
-    deps: [selectedCategories, selectedFormats, selectedProviders, searchQuery, sortBy, scopedTrainingIds, scopeLoading],
+    deps: [filters, searchQuery, sortBy, scopedTrainingIds, scopeLoading, startMatchedIds, startsReady, searchFirst],
     queryFn: async ({ from, to }) => {
+      // Ingen sökning ännu: visa bara sökfältet, hämta ingen lista.
+      if (searchFirst) return { data: [], count: 0, error: null };
       // Marknadsplatsen är känd men scopningen (kuraterade/egna kurs-id:n)
       // har inte laddat klart än, eller marknadsplatsen har inget att visa
       // ännu (beslut #10) – visa tomt istället för att köra en okuraterad fråga.
       if (marketplace && (scopeLoading || (scopedTrainingIds && scopedTrainingIds.length === 0))) {
         return { data: [], count: 0, error: null };
       }
+      if (!startsReady) return { data: [], count: 0, error: null };
+
+      // Id-begränsning: marknadsplatsens urval och/eller kurser med matchande kommande start.
+      let allowedIds: string[] | null = null;
+      if (marketplace && scopedTrainingIds && scopedTrainingIds.length > 0) allowedIds = scopedTrainingIds;
+      if (startMatchedIds) {
+        allowedIds = allowedIds ? allowedIds.filter(id => startMatchedIds.includes(id)) : startMatchedIds;
+      }
+      if (allowedIds && allowedIds.length === 0) return { data: [], count: 0, error: null };
 
       let query = supabase
         .from('trainings')
         .select('*, providers(*), categories(*)', { count: 'exact' })
         .eq('is_active', true);
 
-      if (marketplace && scopedTrainingIds && scopedTrainingIds.length > 0) {
-        query = query.in('id', scopedTrainingIds);
-      }
-      if (selectedCategories.length > 0) query = query.in('category_id', selectedCategories);
-      if (selectedFormats.length > 0) query = query.in('format', selectedFormats);
-      if (selectedProviders.length > 0) query = query.in('provider_id', selectedProviders);
+      if (allowedIds) query = query.in('id', allowedIds);
+      if (filters.categories.length > 0) query = query.in('category_id', filters.categories);
+      if (filters.formats.length > 0) query = query.in('format', filters.formats);
+      if (filters.providers.length > 0) query = query.in('provider_id', filters.providers);
+      if (filters.customizable) query = query.in('training_type', ['custom', 'both']);
+      const tokens = searchQuery ? searchTokens(searchQuery) : [];
       if (searchQuery) {
-        const q = searchQuery.replace(/[%,]/g, '');
-        query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%,target_audience.ilike.%${q}%`);
+        // Varje sökord söks för sig (en hel mening matchar sällan som en sammanhängande fras).
+        const words = tokens.length > 0 ? tokens : [searchQuery.replace(/[%,()]/g, '').trim()];
+        const conditions = words
+          .filter(w => w.length > 0)
+          .flatMap(w => [`title.ilike.%${w}%`, `description.ilike.%${w}%`, `target_audience.ilike.%${w}%`]);
+        if (conditions.length > 0) query = query.or(conditions.join(','));
       }
 
-      query = query.order(sortBy === 'popular' ? 'views' : 'leads', { ascending: false });
+      const order = sortBy === 'newest' ? 'created_at' : sortBy === 'leads' ? 'leads' : 'views';
+      query = query.order(order, { ascending: false });
+
+      // Flera sökord: rangordna efter hur många som träffar (titel väger tyngst) och kräv minst två
+      // träffande ord vid längre meningar, så att en enstaka vanlig stam inte matchar hela utbudet.
+      // Urvalet är litet nog att rangordnas här; sidindelningen görs efter rangordningen.
+      if (tokens.length >= 2) {
+        const { data: all, error: allError } = await query.limit(500);
+        if (allError || !all) return { data: null, count: 0, error: allError };
+        const minHits = tokens.length >= MIN_TOKENS_FOR_STRICT_MATCH ? 2 : 1;
+        const scored = (all as any[])
+          .map(row => {
+            const title = String(row.title ?? '').toLowerCase();
+            const body = `${row.description ?? ''} ${row.target_audience ?? ''}`.toLowerCase();
+            let hits = 0;
+            let score = 0;
+            for (const t of tokens) {
+              const inTitle = title.includes(t);
+              const inBody = body.includes(t);
+              if (inTitle || inBody) hits += 1;
+              score += inTitle ? 3 : inBody ? 1 : 0;
+            }
+            return { row, hits, score };
+          })
+          .filter(r => r.hits >= minHits);
+        if (sortBy === 'relevance') scored.sort((a, b) => b.score - a.score);
+        const page = scored.slice(from, to + 1).map(r => adaptTraining(r.row));
+        return { data: page, count: scored.length, error: null };
+      }
 
       const { data, count: total, error } = await query.range(from, to);
       return { data: data ? (data as any[]).map(adaptTraining) : null, count: total, error };
@@ -141,31 +263,18 @@ export function CatalogPage() {
 
   const filteredTrainings = trainingRows;
 
-  const toggleCategory = (id: string) => {
-    setSelectedCategories(prev => 
-      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
-    );
-  };
+  const clearFilters = () => setFilters(EMPTY_FILTERS);
 
-  const toggleFormat = (format: string) => {
-    setSelectedFormats(prev => 
-      prev.includes(format) ? prev.filter(f => f !== format) : [...prev, format]
-    );
+  // Ny sökning (sökfältet eller ett föreslaget behov). Övriga parametrar, som ?via=, behålls.
+  const runSearch = (q: string) => {
+    const trimmed = q.trim();
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (trimmed) next.set('q', trimmed);
+      else next.delete('q');
+      return next;
+    });
   };
-
-  const toggleProvider = (id: string) => {
-    setSelectedProviders(prev => 
-      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
-    );
-  };
-
-  const clearFilters = () => {
-    setSelectedCategories([]);
-    setSelectedFormats([]);
-    setSelectedProviders([]);
-  };
-
-  const activeFiltersCount = selectedCategories.length + selectedFormats.length + selectedProviders.length;
 
   // "Rensa filter" lämnade tidigare kvar sökordet; i tomläget rensas båda.
   const clearSearchAndFilters = () => {
@@ -179,16 +288,16 @@ export function CatalogPage() {
   };
 
   // Sökkontext för "Efterfråga anpassad utbildning" (Paket C → D).
-  const resultsReady = !trainingsLoading && !scopeLoading && !marketplaceLoading;
+  const resultsReady = !searchFirst && !trainingsLoading && !scopeLoading && !marketplaceLoading && startsReady;
   const isSearching = Boolean(searchQuery) || activeFiltersCount > 0;
   const noResults = resultsReady && filteredTrainings.length === 0;
   const weakResults = resultsReady && isSearching && count > 0 && count <= WEAK_RESULTS_THRESHOLD;
   const requestUrl = buildRequestUrl({
     source: noResults ? 'search_no_results' : weakResults ? 'search_weak_results' : 'direct',
     searchQuery,
-    categories: selectedCategories,
-    formats: selectedFormats,
-    providers: selectedProviders,
+    categories: filters.categories,
+    formats: filters.formats,
+    providers: filters.providers,
     marketplaceSlug: marketplace?.slug,
   });
 
@@ -198,33 +307,116 @@ export function CatalogPage() {
   const visibleProviders = scopedProviderIds
     ? providers.filter(p => scopedProviderIds.has(p.id))
     : providers;
+  const activeChips = buildActiveChips(filters, categories, providers);
+
+  const heading = marketplace ? `Kurser hos ${marketplace.name}` : searchFirst ? 'Vad behöver ni utveckla?' : 'Matchande utbildningar';
+  const subheading = marketplace
+    ? `${count} utvalda utbildningsprogram`
+    : searchFirst
+      ? 'Beskriv behovet med egna ord, så visar vi de utbildningar som matchar.'
+      : `${count} ${count === 1 ? 'matchning' : 'matchningar'}${searchQuery ? ` för "${searchQuery}"` : ''}`;
+
+  const filterGroups = (
+    <CatalogFilterGroups
+      filters={filters}
+      onChange={setFilters}
+      categories={visibleCategories}
+      providers={visibleProviders}
+      startOptions={startOptions}
+    />
+  );
 
   return (
-    <div className="bg-slate-50 min-h-screen">
-      {/* Header */}
+    <div className="ub-theme min-h-screen">
+      {/* Sök och rubrik */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            {marketplace ? `Kurser hos ${marketplace.name}` : 'Utbildningskatalog'}
-          </h1>
-          <p className="text-slate-600">
-            {marketplace
-              ? `${count} utvalda utbildningsprogram`
-              : `Bläddra bland ${count} utbildningsprogram från ledande leverantörer`}
-          </p>
-          {searchQuery && (
-            <p className="text-sm text-slate-500 mt-2">
-              Sökresultat för: <span className="font-medium text-slate-900">"{searchQuery}"</span>
-            </p>
+          <h1 className="text-3xl font-bold tracking-[-0.02em] text-slate-900 mb-2">{heading}</h1>
+          <p className="text-slate-600 mb-6">{subheading}</p>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              runSearch(queryInput);
+            }}
+            role="search"
+            className="max-w-3xl"
+          >
+            <div className="flex items-center bg-white border-[1.5px] border-slate-200 rounded-[14px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-[border-color,box-shadow] focus-within:border-[var(--marketplace-primary)] focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--marketplace-primary)_15%,transparent),0_2px_12px_rgba(0,0,0,0.06)]">
+              <Search className="ml-[18px] w-[18px] h-[18px] shrink-0 text-slate-400" aria-hidden="true" />
+              <input
+                type="text"
+                value={queryInput}
+                onChange={(e) => setQueryInput(e.target.value)}
+                placeholder="T.ex. våra chefer behöver leda bättre i förändring"
+                aria-label="Beskriv ert utbildningsbehov"
+                className="flex-1 min-w-0 px-4 py-4 text-base text-slate-900 bg-transparent outline-none placeholder:text-slate-400"
+              />
+              {queryInput && (
+                <button
+                  type="button"
+                  onClick={() => { setQueryInput(''); runSearch(''); }}
+                  aria-label="Rensa sökning"
+                  className="p-2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+              <button
+                type="submit"
+                className="m-1.5 px-3.5 sm:px-[22px] py-3 bg-[var(--marketplace-primary)] hover:brightness-90 text-white text-sm font-semibold rounded-[10px] flex items-center gap-2 whitespace-nowrap shrink-0 transition-colors"
+              >
+                <span className="hidden sm:inline">Hitta utbildning</span>
+                <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                <span className="sr-only sm:hidden">Hitta utbildning</span>
+              </button>
+            </div>
+          </form>
+
+          {(searchFirst || !marketplace) && (
+            <div className={`${searchFirst ? 'flex' : 'hidden sm:flex'} flex-wrap gap-2 mt-4`}>
+              {NEED_CHIPS.map(chip => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => runSearch(chip)}
+                  aria-pressed={searchQuery === chip}
+                  className={`px-4 py-2 rounded-full text-[13px] border-[1.5px] transition-colors ${
+                    searchQuery === chip
+                      ? 'bg-[var(--marketplace-primary)]/10 text-[var(--marketplace-primary)] border-[var(--marketplace-primary)]'
+                      : 'bg-slate-100 text-slate-700 border-transparent hover:bg-slate-200'
+                  }`}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
           )}
         </div>
       </div>
 
+      {searchFirst ? (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-white rounded-xl border border-slate-200 p-8 sm:p-12 text-center max-w-2xl mx-auto">
+            <Sparkles className="w-10 h-10 text-slate-300 mx-auto mb-4" aria-hidden="true" />
+            <h2 className="text-lg font-semibold text-slate-900 mb-2">Börja med att beskriva ert behov</h2>
+            <p className="text-slate-600 mb-6">
+              Skriv vad er organisation behöver utveckla, eller välj ett av förslagen ovan. Därefter kan ni
+              förfina träfflistan med filter och söka om. Hittar vi ingen utbildning som passar kan lärosäten
+              ta fram en anpassad.
+            </p>
+            <Link to={buildRequestUrl({ source: 'direct', searchQuery: '', categories: [], formats: [], providers: [] })} className="inline-flex items-center gap-2 text-[var(--marketplace-primary)] font-medium text-sm hover:underline">
+              Efterfråga anpassad utbildning direkt
+              <ArrowRight className="w-4 h-4" aria-hidden="true" />
+            </Link>
+          </div>
+        </div>
+      ) : (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex gap-8">
           {/* Filters Sidebar - Desktop */}
           <aside className="hidden lg:block w-64 flex-shrink-0">
-            <div className="bg-white rounded-xl border border-slate-200 p-6 sticky top-24">
+            <div className="bg-white rounded-xl border border-slate-200 p-6 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-semibold text-slate-900">Filter</h2>
                 {activeFiltersCount > 0 && (
@@ -236,77 +428,20 @@ export function CatalogPage() {
                   </button>
                 )}
               </div>
-
-              {/* Category Filter */}
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-slate-900 mb-3">Kategori</h3>
-                <div className="space-y-2">
-                  {visibleCategories.map(category => (
-                    <label key={category.id} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedCategories.includes(category.id)}
-                        onChange={() => toggleCategory(category.id)}
-                        className="rounded border-slate-300 text-[var(--marketplace-primary)] focus:ring-[var(--marketplace-primary)]"
-                      />
-                      <span className="text-sm text-slate-700">{category.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Format Filter */}
-              <div className="mb-6 pb-6 border-b border-slate-200">
-                <h3 className="text-sm font-medium text-slate-900 mb-3">Format</h3>
-                <div className="space-y-2">
-                  {[
-                    { value: 'online', label: 'Online' },
-                    { value: 'onsite', label: 'På plats' },
-                    { value: 'hybrid', label: 'Hybrid' }
-                  ].map(format => (
-                    <label key={format.value} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedFormats.includes(format.value)}
-                        onChange={() => toggleFormat(format.value)}
-                        className="rounded border-slate-300 text-[var(--marketplace-primary)] focus:ring-[var(--marketplace-primary)]"
-                      />
-                      <span className="text-sm text-slate-700">{format.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Provider Filter */}
-              <div>
-                <h3 className="text-sm font-medium text-slate-900 mb-3">Leverantör</h3>
-                <div className="space-y-2">
-                  {visibleProviders.slice(0, 6).map(provider => (
-                    <label key={provider.id} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedProviders.includes(provider.id)}
-                        onChange={() => toggleProvider(provider.id)}
-                        className="rounded border-slate-300 text-[var(--marketplace-primary)] focus:ring-[var(--marketplace-primary)]"
-                      />
-                      <span className="text-sm text-slate-700 line-clamp-1">{provider.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              {filterGroups}
             </div>
           </aside>
 
           {/* Main Content */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {/* Mobile Filter Toggle & Sort */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="lg:hidden flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
                 <Filter className="w-4 h-4" />
-                Filters
+                Filter
                 {activeFiltersCount > 0 && (
                   <span className="bg-[var(--marketplace-primary)] text-white text-xs px-2 py-0.5 rounded-full">
                     {activeFiltersCount}
@@ -314,100 +449,67 @@ export function CatalogPage() {
                 )}
               </button>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 ml-auto">
                 <span className="text-sm text-slate-600">
-                  {count} resultat
+                  {count} {count === 1 ? 'träff' : 'träffar'}
                 </span>
                 <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as 'popular' | 'newest')}
+                  value={!searchQuery && sortBy === 'relevance' ? 'popular' : sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortBy)}
+                  aria-label="Sortera"
                   className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[var(--marketplace-primary)]"
                 >
-                  <option value="popular">Mest Populära</option>
-                  <option value="newest">Flest Förfrågningar</option>
+                  {searchQuery && <option value="relevance">Bäst träff</option>}
+                  <option value="popular">Mest populära</option>
+                  <option value="leads">Flest förfrågningar</option>
+                  <option value="newest">Nyast</option>
                 </select>
               </div>
             </div>
+
+            {/* Valda filter */}
+            {activeChips.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 mb-6" aria-label="Valda filter">
+                {activeChips.map(chip => (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => setFilters(chip.remove(filters))}
+                    className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-[var(--marketplace-primary)]/10 text-[var(--marketplace-primary)] text-xs font-medium hover:bg-[var(--marketplace-primary)]/20 transition-colors"
+                    aria-label={`Ta bort filter ${chip.label}`}
+                  >
+                    {chip.label}
+                    <X className="w-3.5 h-3.5" aria-hidden="true" />
+                  </button>
+                ))}
+                <button type="button" onClick={clearFilters} className="text-xs text-slate-500 hover:text-slate-800 underline ml-1">
+                  Rensa alla
+                </button>
+              </div>
+            )}
 
             {/* Mobile Filters */}
             {showFilters && (
               <div className="lg:hidden bg-white rounded-xl border border-slate-200 p-6 mb-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="font-semibold text-slate-900">Filters</h2>
+                  <h2 className="font-semibold text-slate-900">Filter</h2>
                   <button
                     onClick={() => setShowFilters(false)}
                     className="p-1 hover:bg-slate-100 rounded"
+                    aria-label="Stäng filter"
                   >
                     <X className="w-5 h-5 text-slate-500" />
                   </button>
                 </div>
-
-                {/* Same filter content as desktop */}
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-sm font-medium text-slate-900 mb-3">Kategori</h3>
-                    <div className="space-y-2">
-                      {visibleCategories.map(category => (
-                        <label key={category.id} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={selectedCategories.includes(category.id)}
-                            onChange={() => toggleCategory(category.id)}
-                            className="rounded border-slate-300 text-[var(--marketplace-primary)] focus:ring-[var(--marketplace-primary)]"
-                          />
-                          <span className="text-sm text-slate-700">{category.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-medium text-slate-900 mb-3">Format</h3>
-                    <div className="space-y-2">
-                      {[
-                        { value: 'online', label: 'Online' },
-                        { value: 'onsite', label: 'På plats' },
-                        { value: 'hybrid', label: 'Hybrid' }
-                      ].map(format => (
-                        <label key={format.value} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={selectedFormats.includes(format.value)}
-                            onChange={() => toggleFormat(format.value)}
-                            className="rounded border-slate-300 text-[var(--marketplace-primary)] focus:ring-[var(--marketplace-primary)]"
-                          />
-                          <span className="text-sm text-slate-700">{format.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-medium text-slate-900 mb-3">Leverantör</h3>
-                    <div className="space-y-2">
-                      {visibleProviders.slice(0, 6).map(provider => (
-                        <label key={provider.id} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={selectedProviders.includes(provider.id)}
-                            onChange={() => toggleProvider(provider.id)}
-                            className="rounded border-slate-300 text-[var(--marketplace-primary)] focus:ring-[var(--marketplace-primary)]"
-                          />
-                          <span className="text-sm text-slate-700">{provider.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {activeFiltersCount > 0 && (
-                    <button
-                      onClick={clearFilters}
-                      className="w-full px-4 py-2 text-[var(--marketplace-primary)] hover:bg-[var(--marketplace-primary)]/10 rounded-lg font-medium text-sm transition-colors"
-                    >
-                      Rensa alla filter
-                    </button>
-                  )}
-                </div>
+                {filterGroups}
+                {activeFiltersCount > 0 && (
+                  <button
+                    onClick={clearFilters}
+                    className="w-full mt-6 px-4 py-2 text-[var(--marketplace-primary)] hover:bg-[var(--marketplace-primary)]/10 rounded-lg font-medium text-sm transition-colors"
+                  >
+                    Rensa alla filter
+                  </button>
+                )}
               </div>
             )}
 
@@ -561,6 +663,7 @@ export function CatalogPage() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

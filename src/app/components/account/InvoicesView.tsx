@@ -93,7 +93,7 @@ export function InvoicesView() {
           <p className="text-[15px] font-medium text-[var(--fg)] mb-1">Inga fakturor ännu</p>
           <p className="text-sm text-[var(--fg-muted)] mb-5">När ni bokar en utbildning skapas ett underlag som följs upp här.</p>
           <Link to="/catalog" className="text-sm text-[var(--accent)] hover:underline">
-            Utforska utbildningar
+            Sök utbildning
           </Link>
         </div>
       )}

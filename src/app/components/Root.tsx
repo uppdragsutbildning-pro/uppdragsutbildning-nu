@@ -91,16 +91,6 @@ export function Root() {
                     Om tjänsten
                   </Link>
                   <Link
-                    to="/catalog"
-                    className={`text-sm transition-colors ${
-                      location.pathname === '/catalog'
-                        ? 'text-[var(--marketplace-primary)] font-medium'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Bläddra Utbildningar
-                  </Link>
-                  <Link
                     to="/kompetensanalys"
                     className={`text-sm transition-colors ${
                       location.pathname === '/kompetensanalys'
@@ -178,17 +168,6 @@ export function Root() {
                       className="px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100 transition-colors"
                     >
                       Om tjänsten
-                    </Link>
-                    <Link
-                      to="/catalog"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                        location.pathname === '/catalog'
-                          ? 'bg-[var(--marketplace-primary)]/10 text-[var(--marketplace-primary)] font-medium'
-                          : 'text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      Bläddra Utbildningar
                     </Link>
                     <Link
                       to="/kompetensanalys"
@@ -291,7 +270,6 @@ export function Root() {
               <div>
                 <h3 className="font-medium text-white mb-3">Plattform</h3>
                 <ul className="space-y-2 text-sm">
-                  <li><Link to="/catalog" className="hover:text-white transition-colors">Bläddra Utbildningar</Link></li>
                   {!showBranding && (
                     <li><Link to="/provider" className="hover:text-white transition-colors">För Leverantörer</Link></li>
                   )}
