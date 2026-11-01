@@ -30,7 +30,10 @@ export function CasesView() {
           'id, course_topic, description, status, budget, timeline, participants_count, response, submitted_at, trainings(title, slug)'
         )
         .order('submitted_at', { ascending: false }),
-      supabase.from('training_requests').select('*').order('submitted_at', { ascending: false }),
+      supabase
+        .from('training_requests')
+        .select('*, related_training:trainings!related_training_id(title, slug)')
+        .order('submitted_at', { ascending: false }),
       supabase
         .from('training_request_events')
         .select('id, request_id, event_type, payload, created_at')
@@ -131,7 +134,7 @@ export function CasesView() {
             open={expanded === c.id}
             onToggle={() => toggle(c)}
             onChanged={load}
-            typeLabel="Anpassad utbildning"
+            typeLabel={c.data.related_training ? `Anpassad utbildning · ${c.data.related_training.title}` : 'Anpassad utbildning'}
           />
         )
       )}

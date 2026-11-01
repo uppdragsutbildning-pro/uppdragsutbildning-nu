@@ -53,7 +53,8 @@ function initDraft(params: URLSearchParams): TrainingRequestDraft {
   // Från en kurssida ("Begär anpassad utbildning"): kursen och lärosätet är utgångspunkten.
   const course = params.get('course')?.trim() ?? '';
   const courseProvider = params.get('courseProvider')?.trim() ?? '';
-  const contextKey = course ? `course:${course}` : q || sourceParam ? `${q}|${source}` : '';
+  const courseId = params.get('courseId')?.trim() ?? '';
+  const contextKey = course ? `course:${courseId || course}` : q || sourceParam ? `${q}|${source}` : '';
 
   const stored = loadDraft();
   if (stored && (contextKey === '' || stored.contextKey === contextKey)) return stored;
@@ -66,6 +67,7 @@ function initDraft(params: URLSearchParams): TrainingRequestDraft {
     searchQuery: q,
     contextKey,
     step: 1,
+    course: course && courseId ? { id: courseId, title: course, providerName: courseProvider } : null,
     form: course
       ? {
           ...EMPTY_FORM,
@@ -282,12 +284,19 @@ function OrganizationPanel({ onDone }: { onDone: () => void }) {
   );
 }
 
-function Confirmation() {
-  const steps = [
-    { title: 'Granskning', text: 'Vi går igenom din efterfrågan och förtydligar vid behov.' },
-    { title: 'Skickas till lärosäten', text: 'Vi väljer ut lärosäten som passar och skickar vidare.' },
-    { title: 'Offerter', text: 'Lärosätena svarar med offerter som du följer under Mitt konto.' },
-  ];
+function Confirmation({ course }: { course: TrainingRequestDraft['course'] }) {
+  const provider = course?.providerName || 'lärosätet';
+  const steps = course
+    ? [
+        { title: `Skickad till ${provider}`, text: `Din efterfrågan har gått direkt till ${provider}, som håller kursen.` },
+        { title: 'Lärosätet svarar', text: 'Lärosätet förtydligar vid behov och tar fram ett förslag.' },
+        { title: 'Offert', text: 'Offerten följer du under Mitt konto, där du också kan acceptera den.' },
+      ]
+    : [
+        { title: 'Granskning', text: 'Vi går igenom din efterfrågan och förtydligar vid behov.' },
+        { title: 'Skickas till lärosäten', text: 'Vi väljer ut lärosäten som passar och skickar vidare.' },
+        { title: 'Offerter', text: 'Lärosätena svarar med offerter som du följer under Mitt konto.' },
+      ];
   return (
     <Shell>
       <Card>
@@ -400,6 +409,7 @@ export function RequestCustomTrainingPage() {
         p_budget_range: f.budgetRange || null,
         p_ssyk_skills: draft.skills.map(s => ({ id: s.id, title: s.label })),
         p_marketplace_id: forceNoMarketplace ? null : marketplace?.id ?? null,
+        p_related_training_id: draft.course?.id ?? null,
       });
       if (error) throw error;
 
@@ -445,7 +455,7 @@ export function RequestCustomTrainingPage() {
     submit();
   }
 
-  if (view === 'done') return <Confirmation />;
+  if (view === 'done') return <Confirmation course={draft.course} />;
 
   const f = draft.form;
   const err = (key: keyof RequestFormValues) => errors[key];
@@ -483,6 +493,12 @@ export function RequestCustomTrainingPage() {
 
       {view === 'form' && (
         <>
+          {draft.course && (
+            <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+              Skickas direkt till <strong>{draft.course.providerName || 'kursens lärosäte'}</strong>, som håller kursen{' '}
+              <strong>{draft.course.title}</strong>.
+            </div>
+          )}
           <ol className="flex items-center gap-3 mb-6 text-sm" aria-label="Steg">
             {STEP_TITLES.map((t, i) => {
               const n = (i + 1) as 1 | 2 | 3;

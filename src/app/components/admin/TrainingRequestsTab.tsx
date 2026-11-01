@@ -24,6 +24,8 @@ interface Req {
   status: RequestStatus;
   submitted_at: string;
   organizations: { name: string } | null;
+  related_training: { title: string } | null;
+  preferred_provider: { name: string } | null;
 }
 
 interface Asg {
@@ -159,7 +161,10 @@ export function TrainingRequestsTab() {
 
   const load = useCallback(async () => {
     const [r, a] = await Promise.all([
-      supabase.from('training_requests').select('*, organizations(name)').order('submitted_at', { ascending: true }),
+      supabase
+        .from('training_requests')
+        .select('*, organizations(name), related_training:trainings!related_training_id(title), preferred_provider:providers!preferred_provider_id(name)')
+        .order('submitted_at', { ascending: true }),
       supabase.from('training_request_assignments').select('*, providers(name)'),
     ]);
     if (r.error || a.error) {
@@ -448,6 +453,9 @@ function RequestDetail({ request, assignments, onBack, onChanged }: {
             <p className="text-sm text-slate-600">
               {request.organizations?.name ?? 'Okänd organisation'} · skickad {fmtDate(request.submitted_at)}
               {request.search_query && <> · sökte på "{request.search_query}" ({request.source})</>}
+              {request.related_training && (
+                <> · från kursen "{request.related_training.title}"{request.preferred_provider && <> ({request.preferred_provider.name}, skickad direkt)</>}</>
+              )}
             </p>
           </div>
           {!terminal && (

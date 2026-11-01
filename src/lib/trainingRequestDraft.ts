@@ -4,7 +4,7 @@
 const STORAGE_KEY = 'ub.trainingRequestDraft.v1';
 
 export type DeliveryFormat = 'on_site' | 'remote' | 'hybrid' | 'flexible';
-export type RequestSource = 'search_no_results' | 'search_weak_results' | 'direct';
+export type RequestSource = 'search_no_results' | 'search_weak_results' | 'direct' | 'course_customization';
 
 export interface RequestFormValues {
   title: string;
@@ -31,6 +31,8 @@ export interface TrainingRequestDraft {
   // Identifierar sökkontexten utkastet startade i ("q|source"). Tom = öppnat utan sökning.
   contextKey: string;
   step: 1 | 2 | 3;
+  // Satt när efterfrågan startade från en kurssida: skickas direkt till kursens lärosäte.
+  course: { id: string; title: string; providerName: string } | null;
   form: RequestFormValues;
   skills: SkillChip[];
   // Satt när köparen tryckte Skicka utan inloggning: skickas automatiskt efter inloggning.
@@ -59,7 +61,7 @@ export function loadDraft(): TrainingRequestDraft | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as TrainingRequestDraft;
     if (!parsed || typeof parsed.clientRequestId !== 'string' || !parsed.form) return null;
-    return { ...parsed, form: { ...EMPTY_FORM, ...parsed.form }, skills: parsed.skills ?? [] };
+    return { ...parsed, course: parsed.course ?? null, form: { ...EMPTY_FORM, ...parsed.form }, skills: parsed.skills ?? [] };
   } catch {
     return null;
   }

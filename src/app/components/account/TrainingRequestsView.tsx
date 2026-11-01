@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import { ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabase';
@@ -24,6 +25,7 @@ export interface TrainingRequest {
   status: RequestStatus;
   submitted_at: string;
   buyer_org_id: string | null;
+  related_training: { title: string; slug: string } | null;
 }
 
 export interface RequestEvent {
@@ -407,6 +409,14 @@ export function TrainingRequestItem({
             <div>
               <p className="text-[11px] font-medium tracking-[0.1em] uppercase text-[var(--fg-subtle)] mb-1">Ert behov</p>
               <p className="text-sm text-[var(--fg)] leading-relaxed whitespace-pre-line">{r.description}</p>
+              {r.related_training && (
+                <Link
+                  to={`/kurs/${r.related_training.slug}`}
+                  className="inline-block mt-2 text-sm text-[var(--accent)] hover:underline"
+                >
+                  Gäller kursen {r.related_training.title}
+                </Link>
+              )}
             </div>
             <dl className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <DetailRow label="Mål" value={r.learning_goals} />

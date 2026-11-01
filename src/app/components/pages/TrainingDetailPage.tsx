@@ -144,7 +144,7 @@ export function TrainingDetailPage() {
   function goToRequest() {
     if (!training) return;
     const forceNoMarketplace = !!marketplace && inMarketplaceScope === false;
-    const params = new URLSearchParams({ course: training.title, courseProvider: training.provider.name });
+    const params = new URLSearchParams({ courseId: training.id, course: training.title, courseProvider: training.provider.name });
     if (marketplace?.slug && !forceNoMarketplace) params.set('via', marketplace.slug);
     navigate(`/efterfraga?${params.toString()}`, { state: { forceNoMarketplace } });
   }
