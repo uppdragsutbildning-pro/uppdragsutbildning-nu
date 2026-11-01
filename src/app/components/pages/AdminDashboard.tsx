@@ -4,7 +4,7 @@ import { Check, X, Eye, TrendingUp, Users, Building, GraduationCap, Mail, Sparkl
 import { trainings, leads, providers, categories, getTrainingById, getProviderById, getCategoryById } from '../../data/mockData';
 import { toast } from 'sonner';
 import { exportLeadsToCSV, exportTrainingsToCSV } from '../../utils/exportUtils';
-import type { CustomRequest, Profile, Provider } from '../../../lib/supabase';
+import type { Profile, Provider } from '../../../lib/supabase';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import { MarketplacesTab } from '../admin/MarketplacesTab';
@@ -22,7 +22,7 @@ import {
   PaginationEllipsis,
 } from '../ui/pagination';
 
-type Tab = 'overview' | 'trainings' | 'leads' | 'efterfragningar' | 'fakturering' | 'providers' | 'marketplaces' | 'users' | 'kompetensindex';
+type Tab = 'overview' | 'trainings' | 'efterfragningar' | 'fakturering' | 'providers' | 'marketplaces' | 'users' | 'kompetensindex';
 
 export interface CpiRecord {
   id: string;
@@ -43,7 +43,10 @@ export interface CpiRecord {
 export function AdminDashboard() {
   const { signOut } = useAuth();
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<Tab>(searchParams.get('tab') === 'fakturering' ? 'fakturering' : 'overview');
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<Tab>(
+    tabParam === 'fakturering' || tabParam === 'efterfragningar' ? tabParam : 'overview'
+  );
   const openTrainingRequests = useOpenTrainingRequestsCount();
   const billingAttention = useBillingAttentionCount();
   const [users, setUsers] = useState<(Profile & { provider_name?: string })[]>([]);
@@ -61,9 +64,6 @@ export function AdminDashboard() {
   const [cpiPage, setCpiPage] = useState(1);
   const [cpiDetailRecord, setCpiDetailRecord] = useState<CpiRecord | null>(null);
   const CPI_PAGE_SIZE = 20;
-  const [customRequests, setCustomRequests] = useState<CustomRequest[]>([]);
-  const [requestsLoading, setRequestsLoading] = useState(false);
-  const [leadsFilter, setLeadsFilter] = useState<'all' | 'general'>('all');
 
   // Form state for creating new provider
   const [newProvider, setNewProvider] = useState({
@@ -104,25 +104,11 @@ export function AdminDashboard() {
     if (activeTab === 'kompetensindex') {
       loadCpiRecords();
     }
-    if (activeTab === 'leads') {
-      loadCustomRequests();
-    }
   }, [activeTab]);
 
   useEffect(() => {
     setCpiPage(1);
   }, [cpiSearch, cpiIndustryFilter, cpiSizeFilter, cpiRoleFilter]);
-
-  async function loadCustomRequests() {
-    setRequestsLoading(true);
-    const { data, error } = await supabase
-      .from('custom_requests')
-      .select('*')
-      .order('has_provider_match', { ascending: true })
-      .order('submitted_at', { ascending: false });
-    if (!error && data) setCustomRequests(data as CustomRequest[]);
-    setRequestsLoading(false);
-  }
 
   async function loadCpiRecords() {
     setCpiLoading(true);
@@ -422,16 +408,6 @@ export function AdminDashboard() {
               Utbildningar
             </button>
             <button
-              onClick={() => setActiveTab('leads')}
-              className={`pb-3 border-b-2 transition-colors ${
-                activeTab === 'leads'
-                  ? 'border-blue-600 text-blue-600 font-medium'
-                  : 'border-transparent text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Alla Förfrågningar
-            </button>
-            <button
               onClick={() => setActiveTab('efterfragningar')}
               className={`pb-3 border-b-2 transition-colors ${
                 activeTab === 'efterfragningar'
@@ -707,117 +683,6 @@ export function AdminDashboard() {
                 Exportera Utbildningar
               </button>
             </div>
-          </div>
-        )}
-
-        {/* Leads Tab */}
-        {activeTab === 'leads' && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900 mb-1">
-                  Alla Förfrågningar
-                </h2>
-                <p className="text-sm text-slate-600">
-                  Övervaka och hantera alla utbildningsförfrågningar
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setLeadsFilter('all')}
-                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${leadsFilter === 'all' ? 'bg-blue-600 text-white' : 'border border-slate-200 text-slate-700 hover:bg-slate-50'}`}
-                >
-                  Alla
-                </button>
-                <button
-                  onClick={() => setLeadsFilter('general')}
-                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors ${leadsFilter === 'general' ? 'bg-red-600 text-white' : 'border border-slate-200 text-slate-700 hover:bg-slate-50'}`}
-                >
-                  Allmänna
-                </button>
-              </div>
-            </div>
-
-            {requestsLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {customRequests
-                  .filter(req => leadsFilter === 'general' ? !req.training_id : true)
-                  .map(req => (
-                  <div key={req.id} className="bg-white rounded-xl border border-slate-200 p-6">
-                    <div className="flex items-start justify-between gap-4 mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2 flex-wrap">
-                          <h3 className="font-semibold text-slate-900">{req.company}</h3>
-                          {!req.training_id && (
-                            <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700 font-medium">
-                              Allmän förfrågan
-                            </span>
-                          )}
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            req.ai_score === 'high' ? 'bg-green-100 text-green-700' :
-                            req.ai_score === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-slate-100 text-slate-700'
-                          }`}>
-                            {req.ai_score === 'high' ? 'HÖG' : req.ai_score === 'medium' ? 'MEDEL' : 'LÅG'}
-                          </span>
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            req.status === 'new' ? 'bg-blue-100 text-blue-700' :
-                            req.status === 'responded' ? 'bg-amber-100 text-amber-700' :
-                            req.status === 'accepted' ? 'bg-green-100 text-green-700' :
-                            'bg-slate-100 text-slate-700'
-                          }`}>
-                            {req.status === 'new' ? 'Ny' :
-                             req.status === 'responded' ? 'Besvarad' :
-                             req.status === 'negotiating' ? 'Förhandling' :
-                             req.status === 'accepted' ? 'Accepterad' :
-                             req.status === 'not_selected' ? 'Ej vald' : 'Avböjd'}
-                          </span>
-                        </div>
-
-                        <p className="text-sm font-medium text-slate-800 mb-1">{req.course_topic}</p>
-                        <p className="text-sm text-slate-600 mb-3 line-clamp-2">{req.description}</p>
-
-                        {req.recommended_categories && req.recommended_categories.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mb-3">
-                            {req.recommended_categories.map((cat, i) => (
-                              <span key={i} className="px-2 py-0.5 text-xs bg-blue-50 text-blue-700 rounded-full border border-blue-100">
-                                {cat}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        <div className="flex flex-wrap gap-4 text-xs text-slate-600">
-                          <span>Kontakt: {req.contact_name}</span>
-                          <span>•</span>
-                          <span>{req.contact_email}</span>
-                          <span>•</span>
-                          <span>Tidsplan: {req.timeline}</span>
-                          {req.budget && (
-                            <>
-                              <span>•</span>
-                              <span>Budget: {req.budget}</span>
-                            </>
-                          )}
-                          <span>•</span>
-                          <span>{new Date(req.submitted_at).toLocaleDateString('sv-SE')}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {customRequests.filter(req => leadsFilter === 'general' ? !req.training_id : true).length === 0 && (
-                  <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-                    <Mail className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                    <p className="text-slate-500">Inga förfrågningar hittades</p>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         )}
 

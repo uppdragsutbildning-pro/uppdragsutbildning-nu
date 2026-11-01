@@ -80,7 +80,7 @@ async function handleTrainingRequestEvent(ev: TrainingRequestEvent) {
 
   if (ev.event_type === 'submitted') {
     if (!ADMIN_EMAIL) return;
-    const content = trainingRequestSubmitted({ title: req.title, organizationName, linkUrl: APP_URL ? `${APP_URL}/admin` : undefined });
+    const content = trainingRequestSubmitted({ title: req.title, organizationName, linkUrl: APP_URL ? `${APP_URL}/admin?tab=efterfragningar` : undefined });
     await sendEmail({ to: ADMIN_EMAIL, ...content, messageType: 'training_request_submitted', ...mail });
   } else if (ev.event_type === 'assigned' && ev.visible_to_buyer) {
     const content = trainingRequestAssignedBuyer({ title: req.title, count: Number(payload.count ?? 0), linkUrl: accountLink });

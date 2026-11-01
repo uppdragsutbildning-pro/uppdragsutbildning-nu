@@ -3,6 +3,7 @@ import { AlertTriangle, ArrowLeft, Building2, Clock, Inbox, Search, Sparkles } f
 import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabaseClient';
 import { matchProviders, type CourseForMatching } from '../../../lib/trainingRequestMatching';
+import { LegacyRequestsSection } from './LegacyRequestsSection';
 
 type RequestStatus = 'submitted' | 'in_review' | 'assigned' | 'offers_received' | 'closed' | 'cancelled' | 'no_match';
 type AssignmentStatus = 'assigned' | 'viewed' | 'declined' | 'quoted' | 'withdrawn';
@@ -292,6 +293,8 @@ export function TrainingRequestsTab() {
           })}
         </ul>
       )}
+
+      <LegacyRequestsSection />
     </div>
   );
 }
