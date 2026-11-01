@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { Filter, X, GraduationCap, TrendingUp, ArrowRight, BookOpen, Sparkles, Search } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
@@ -7,7 +7,10 @@ import { providerLogos } from '../../data/providerLogos';
 import { usePaginatedQuery, getPaginationRange } from '../../../hooks/usePaginatedQuery';
 import { useMarketplace } from '../../../lib/marketplaceContext';
 import { getMarketplaceTrainingIds } from '../../../lib/marketplaces';
-import { NEED_CHIPS, searchTokens } from '../../../lib/searchSuggestions';
+import { searchTokens } from '../../../lib/searchSuggestions';
+import { logSearchQuery } from '../../../lib/searchLog';
+import { useSearchSuggestions } from '../../../hooks/useSearchSuggestions';
+import { SearchSuggestionChips } from './SearchSuggestionChips';
 import {
   WEAK_RESULTS_THRESHOLD,
   buildRequestUrl,
@@ -46,7 +49,8 @@ interface UpcomingStart {
 
 type SortBy = 'relevance' | 'popular' | 'leads' | 'newest';
 
-// Antal sökord (efter rensning av småord) vid vilket fler än ett måste träffa för att en kurs ska visas.
+// Vid två sökord måste båda träffa. Från så här många sökord räcker det att två träffar, så att en
+// längre mening inte kräver att varje ord finns i kursen.
 const MIN_TOKENS_FOR_STRICT_MATCH = 3;
 
 // Sidan Matchande utbildningar: köparen börjar alltid med en sökning, och den här sidan är
@@ -73,11 +77,18 @@ export function CatalogPage() {
   const [sortBy, setSortBy] = useState<SortBy>('relevance');
   const searchQuery = searchParams.get('q') || '';
   const [queryInput, setQueryInput] = useState(searchQuery);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const suggestions = useSearchSuggestions();
   const [upcomingStarts, setUpcomingStarts] = useState<UpcomingStart[] | null>(null);
 
   useEffect(() => {
     setQueryInput(searchQuery);
   }, [searchQuery]);
+
+  // Spara sökningen för förslagen under sökfältet (databasen avgör vad som sparas).
+  useEffect(() => {
+    if (searchQuery && !marketplaceLoading) logSearchQuery(searchQuery, marketplace?.id ?? null);
+  }, [searchQuery, marketplace?.id, marketplaceLoading]);
 
   useEffect(() => {
     (async () => {
@@ -235,7 +246,7 @@ export function CatalogPage() {
       if (tokens.length >= 2) {
         const { data: all, error: allError } = await query.limit(500);
         if (allError || !all) return { data: null, count: 0, error: allError };
-        const minHits = tokens.length >= MIN_TOKENS_FOR_STRICT_MATCH ? 2 : 1;
+        const minHits = tokens.length >= MIN_TOKENS_FOR_STRICT_MATCH ? 2 : tokens.length;
         const scored = (all as any[])
           .map(row => {
             const title = String(row.title ?? '').toLowerCase();
@@ -345,6 +356,7 @@ export function CatalogPage() {
             <div data-search-field className="flex items-center bg-white border-[1.5px] border-slate-200 rounded-[14px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-[border-color,box-shadow] focus-within:border-[var(--marketplace-primary)] focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--marketplace-primary)_15%,transparent),0_2px_12px_rgba(0,0,0,0.06)]">
               <Search className="ml-[18px] w-[18px] h-[18px] shrink-0 text-slate-400" aria-hidden="true" />
               <input
+                ref={searchInputRef}
                 type="text"
                 value={queryInput}
                 onChange={(e) => setQueryInput(e.target.value)}
@@ -373,25 +385,21 @@ export function CatalogPage() {
             </div>
           </form>
 
-          {(searchFirst || !marketplace) && (
-            <div className={`${searchFirst ? 'flex' : 'hidden sm:flex'} flex-wrap gap-2 mt-4`}>
-              {NEED_CHIPS.map(chip => (
-                <button
-                  key={chip}
-                  type="button"
-                  onClick={() => runSearch(chip)}
-                  aria-pressed={searchQuery === chip}
-                  className={`px-4 py-2 rounded-full text-[13px] border-[1.5px] transition-colors ${
-                    searchQuery === chip
-                      ? 'bg-[var(--marketplace-primary)]/10 text-[var(--marketplace-primary)] border-[var(--marketplace-primary)]'
-                      : 'bg-slate-100 text-slate-700 border-transparent hover:bg-slate-200'
-                  }`}
-                >
-                  {chip}
-                </button>
-              ))}
-            </div>
-          )}
+          <SearchSuggestionChips
+            suggestions={suggestions}
+            value={queryInput}
+            onPick={(text) => {
+              // Lägg förslaget i sökfältet (klick på det valda rensar). Sökningen görs med knappen eller Enter.
+              if (queryInput.trim().toLowerCase() === text.toLowerCase()) {
+                setQueryInput('');
+              } else {
+                setQueryInput(text);
+                searchInputRef.current?.focus();
+              }
+            }}
+            accent="var(--marketplace-primary)"
+            className={`${searchFirst ? 'flex' : 'hidden sm:flex'} mt-4`}
+          />
         </div>
       </div>
 

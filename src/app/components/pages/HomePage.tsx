@@ -4,7 +4,8 @@ import { useRef, useState, type CSSProperties } from 'react';
 import { universityPartners } from '../../data/providerLogos';
 import { useMarketplace } from '../../../lib/marketplaceContext';
 import { Button } from '../ui/button';
-import { NEED_CHIPS } from '../../../lib/searchSuggestions';
+import { useSearchSuggestions } from '../../../hooks/useSearchSuggestions';
+import { SearchSuggestionChips } from './SearchSuggestionChips';
 
 const STEPS = [
   'Beskriv vad er organisation behöver utveckla — med egna ord eller via ett av våra förslag.',
@@ -22,8 +23,8 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 
 export function HomePage() {
   const [query, setQuery] = useState('');
-  const [activeChip, setActiveChip] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const suggestions = useSearchSuggestions();
   const navigate = useNavigate();
   const location = useLocation();
   const { marketplace, branding } = useMarketplace();
@@ -40,13 +41,13 @@ export function HomePage() {
     navigate(trimmed ? `/catalog?q=${encodeURIComponent(trimmed)}` : '/catalog');
   }
 
-  function selectChip(chip: string) {
-    if (activeChip === chip) {
-      setActiveChip(null);
+  // Klick på ett förslag lägger det i sökfältet så att man kan justera det eller söka direkt;
+  // klick på det som redan står där rensar fältet.
+  function pickSuggestion(text: string) {
+    if (query.trim().toLowerCase() === text.toLowerCase()) {
       setQuery('');
     } else {
-      setActiveChip(chip);
-      setQuery(chip);
+      setQuery(text);
       inputRef.current?.focus();
     }
   }
@@ -90,10 +91,7 @@ export function HomePage() {
                   ref={inputRef}
                   type="text"
                   value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    setActiveChip(null);
-                  }}
+                  onChange={(e) => setQuery(e.target.value)}
                   placeholder="T.ex. våra chefer behöver leda bättre i förändring"
                   aria-label="Beskriv ert utbildningsbehov"
                   className="flex-1 min-w-0 px-4 py-[18px] text-base text-[var(--fg)] bg-transparent outline-none placeholder:text-[var(--fg-subtle)]"
@@ -109,26 +107,12 @@ export function HomePage() {
               </div>
             </form>
 
-            <div className="flex flex-wrap justify-center min-[900px]:justify-start gap-2 mb-8">
-              {NEED_CHIPS.map((chip) => {
-                const active = activeChip === chip;
-                return (
-                  <button
-                    key={chip}
-                    type="button"
-                    onClick={() => selectChip(chip)}
-                    aria-pressed={active}
-                    className={`px-4 py-2 rounded-full text-[13px] font-normal border-[1.5px] transition-colors ${
-                      active
-                        ? 'bg-[var(--accent-dim)] text-[var(--accent)] border-[var(--accent)]'
-                        : 'bg-[var(--chip-bg)] text-[var(--chip-fg)] border-transparent hover:bg-[var(--chip-hover)]'
-                    }`}
-                  >
-                    {chip}
-                  </button>
-                );
-              })}
-            </div>
+            <SearchSuggestionChips
+              suggestions={suggestions}
+              value={query}
+              onPick={pickSuggestion}
+              className="flex justify-center min-[900px]:justify-start mb-8"
+            />
 
             <div className="flex items-center gap-3 mt-1 mb-3.5">
               <div className="flex-1 h-px bg-[var(--border-light)]" />
