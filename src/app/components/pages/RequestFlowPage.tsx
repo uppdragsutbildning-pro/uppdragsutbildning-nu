@@ -1,10 +1,13 @@
-import { useRef, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router';
 import { Sparkles, Send, CheckCircle, ArrowRight, Loader2, User, Building, Mail, Phone, Calendar, DollarSign } from 'lucide-react';
 import { getTrainingById } from '../../data/mockData';
 import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabase';
 import { useMarketplace } from '../../../lib/marketplaceContext';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useEmailCodeLogin } from '../../../hooks/useEmailCodeLogin';
+import { clearRequestDraft, loadRequestDraft, saveRequestDraft } from '../../../lib/requestDraft';
 
 type Step = 'describe' | 'ai-analysis' | 'form' | 'confirmation';
 
@@ -44,6 +47,34 @@ export function RequestFlowPage() {
     timeline: ''
   });
 
+  // Köparen måste vara inloggad för att skicka: koden skickas vid "Skicka förfrågan" och
+  // förfrågan kopplas till köparens organisation (skapas av formuläret vid första gången).
+  const { user: authUser } = useAuth();
+  const [searchParams] = useSearchParams();
+  const [awaitingCode, setAwaitingCode] = useState(false);
+  const [code, setCode] = useState('');
+  const login = useEmailCodeLogin(`${location.pathname}?resume=1`);
+
+  // Tillbaka från länken i mejlet: återställ utkastet. Användaren trycker själv på Skicka.
+  useEffect(() => {
+    if (searchParams.get('resume') !== '1') return;
+    const draft = loadRequestDraft(trainingId ?? null);
+    if (!draft) return;
+    setDescription(draft.description);
+    setAiSummary(draft.aiSummary);
+    setRecommendedCategories(draft.recommendedCategories);
+    setSuggestedFormat(draft.suggestedFormat);
+    setFormData(draft.formData);
+    setStep('form');
+    toast.success('Du är inloggad. Kontrollera uppgifterna och skicka förfrågan.');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Inloggad köpare: förifyll e-post.
+  useEffect(() => {
+    if (authUser?.email) setFormData(prev => (prev.email ? prev : { ...prev, email: authUser.email! }));
+  }, [authUser]);
+
   const handleDescriptionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim()) return;
@@ -62,7 +93,39 @@ export function RequestFlowPage() {
     setIsAnalyzing(false);
   };
 
-  const submitRequest = async () => {
+  // Skickar förfrågan som inloggad köpare. Returnerar true när den är sparad.
+  const submitRequest = async (buyerId: string): Promise<boolean> => {
+    // Leverantörer och administratörer har egna portaler; förfrågan är för köpare.
+    const { data: profileRow } = await supabase.from('profiles').select('id').eq('id', buyerId).maybeSingle();
+    if (profileRow) {
+      toast.error('Du är inloggad som leverantör eller administratör', {
+        description: 'Logga ut och försök igen med en köparadress.',
+      });
+      return false;
+    }
+
+    // Organisationen skapas av formulärets uppgifter första gången köparen skickar något.
+    let orgId: string | null = null;
+    const { data: membership } = await supabase
+      .from('organization_members')
+      .select('organization_id')
+      .eq('user_id', buyerId)
+      .maybeSingle();
+    orgId = membership?.organization_id ?? null;
+    if (!orgId) {
+      const { data: newOrg, error: orgError } = await supabase.rpc('create_my_organization', {
+        p_name: formData.companyName,
+        p_organization_number: '',
+        p_display_name: formData.contactName,
+      });
+      if (orgError) {
+        console.error('create_my_organization error:', orgError);
+        toast.error('Kunde inte skapa kontot. Försök igen.', { description: orgError.message });
+        return false;
+      }
+      orgId = newOrg as string;
+    }
+
     // Resolve category names → IDs, then check if any active training matches
     let hasMatch = false;
     try {
@@ -101,6 +164,7 @@ export function RequestFlowPage() {
       recommended_categories: recommendedCategories,
       has_provider_match: hasMatch,
       marketplace_id: effectiveMarketplaceId,
+      organization_id: orgId,
       submitted_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
@@ -108,24 +172,58 @@ export function RequestFlowPage() {
     if (error) {
       console.error('Supabase insert error:', error);
       toast.error('Något gick fel. Försök igen.');
-      return;
+      return false;
     }
 
+    clearRequestDraft();
+    setAwaitingCode(false);
+    setCode('');
     setStep('confirmation');
     toast.success('Förfrågan skickad!');
+    return true;
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Dubbelklicksskydd för allt som slutar i ett inskick.
+  const withSubmitLock = async (fn: () => Promise<unknown>) => {
     if (submitLockRef.current) return;
     submitLockRef.current = true;
     setIsSubmitting(true);
     try {
-      await submitRequest();
+      await fn();
     } finally {
       submitLockRef.current = false;
       setIsSubmitting(false);
     }
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    return withSubmitLock(async () => {
+      const { data } = await supabase.auth.getSession();
+      const sessionUser = data.session?.user;
+      if (sessionUser) {
+        await submitRequest(sessionUser.id);
+        return;
+      }
+      // Ingen inloggning än: spara utkastet och skicka en kod till e-postadressen i formuläret.
+      saveRequestDraft({
+        trainingId: trainingId ?? null,
+        description,
+        aiSummary,
+        recommendedCategories,
+        suggestedFormat,
+        formData,
+      });
+      if (await login.sendCode(formData.email)) setAwaitingCode(true);
+    });
+  };
+
+  const handleCodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    return withSubmitLock(async () => {
+      const verified = await login.verify(formData.email, code);
+      if (verified) await submitRequest(verified.id);
+    });
   };
 
   const updateFormData = (field: string, value: string) => {
@@ -318,6 +416,82 @@ export function RequestFlowPage() {
                 </p>
               </div>
 
+              {awaitingCode ? (
+                <form onSubmit={handleCodeSubmit} className="max-w-md mx-auto space-y-5">
+                  <div className="text-center">
+                    <h3 className="text-xl font-bold text-slate-900 mb-2">Bekräfta din e-post</h3>
+                    <p className="text-slate-600 text-sm">
+                      Vi har skickat en kod till <strong>{formData.email}</strong>. Skriv in den så skickas förfrågan,
+                      och du kan följa svaret i Mitt konto. Du kan också klicka på länken i mejlet.
+                    </p>
+                  </div>
+                  <div>
+                    <label htmlFor="request-code" className="block text-sm font-medium text-slate-900 mb-2">
+                      Kod
+                    </label>
+                    <input
+                      id="request-code"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      autoFocus
+                      required
+                      pattern="[0-9]{6,10}"
+                      maxLength={10}
+                      value={code}
+                      onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="123456"
+                      aria-invalid={login.error ? true : undefined}
+                      aria-describedby={login.error ? 'request-code-error' : undefined}
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--marketplace-primary)]/20 focus:border-[var(--marketplace-primary)] outline-none tracking-[0.3em] text-lg"
+                    />
+                    {login.error && (
+                      <p id="request-code-error" role="alert" className="text-sm text-red-700 mt-2">
+                        {login.error}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || login.verifying || code.length < 6}
+                    className="w-full flex items-center justify-center gap-2 bg-[var(--marketplace-primary)] hover:brightness-90 text-white px-6 py-4 rounded-lg font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting || login.verifying ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Skickar…
+                      </>
+                    ) : (
+                      <>
+                        Bekräfta och skicka förfrågan
+                        <ArrowRight className="w-5 h-5" />
+                      </>
+                    )}
+                  </button>
+                  <div className="flex items-center justify-between text-sm">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setCode('');
+                        if (await login.sendCode(formData.email)) toast.success('Vi har skickat en ny kod');
+                      }}
+                      disabled={login.sending || login.cooldown > 0}
+                      className="text-[var(--marketplace-primary)] hover:underline disabled:opacity-60 disabled:no-underline"
+                    >
+                      {login.cooldown > 0 ? `Skicka ny kod (${login.cooldown} s)` : 'Skicka ny kod'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAwaitingCode(false);
+                        setCode('');
+                      }}
+                      className="text-slate-600 hover:underline"
+                    >
+                      Ändra uppgifter
+                    </button>
+                  </div>
+                </form>
+              ) : (
               <form onSubmit={handleFormSubmit} className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
@@ -430,7 +604,14 @@ export function RequestFlowPage() {
                     </>
                   )}
                 </button>
+                {!authUser && (
+                  <p className="text-xs text-slate-500 text-center">
+                    Vi skickar en engångskod till din e-post för att bekräfta förfrågan. Då skapas ett konto där du
+                    kan följa svar och offerter. Inget lösenord behövs.
+                  </p>
+                )}
               </form>
+              )}
             </div>
           )}
 
@@ -466,8 +647,14 @@ export function RequestFlowPage() {
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate('/konto?tab=arenden')}
                   className="px-6 py-3 bg-[var(--marketplace-primary)] text-white rounded-lg hover:brightness-90 transition-colors font-medium"
+                >
+                  Följ din förfrågan i Mitt konto
+                </button>
+                <button
+                  onClick={() => navigate('/')}
+                  className="px-6 py-3 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium"
                 >
                   Tillbaka till Start
                 </button>
