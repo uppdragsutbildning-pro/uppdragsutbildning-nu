@@ -43,12 +43,21 @@ function Card({ children, narrow }: { children: React.ReactNode; narrow?: boolea
 
 function SignInForm() {
   const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
   const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [sent, setSent] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!email.trim()) return;
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  // Samma anrop för nya och befintliga användare. Mejlet innehåller både en kod och en länk.
+  async function sendCode() {
     setSending(true);
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
@@ -56,10 +65,43 @@ function SignInForm() {
     });
     setSending(false);
     if (error) {
-      toast.error('Kunde inte skicka inloggningslänk', { description: error.message });
-      return;
+      toast.error('Kunde inte skicka koden', { description: error.message });
+      return false;
     }
-    setSent(true);
+    setCooldown(60);
+    return true;
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    if (await sendCode()) setSent(true);
+  }
+
+  async function handleVerify(e: FormEvent) {
+    e.preventDefault();
+    setCodeError(null);
+    setVerifying(true);
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: code.trim(),
+      type: 'email',
+    });
+    setVerifying(false);
+    // Vid lyckad kontroll får AuthContext en ny session och sidan byter vy av sig själv.
+    if (error) setCodeError('Koden stämmer inte eller har gått ut. Kontrollera koden eller skicka en ny.');
+  }
+
+  async function handleResend() {
+    setCode('');
+    setCodeError(null);
+    if (await sendCode()) toast.success('Vi har skickat en ny kod');
+  }
+
+  function changeEmail() {
+    setSent(false);
+    setCode('');
+    setCodeError(null);
   }
 
   return (
@@ -69,26 +111,57 @@ function SignInForm() {
           <Mail className="w-5 h-5" aria-hidden="true" />
         </div>
         {sent ? (
-          <>
-            <h1 className="text-xl font-bold text-[var(--fg)] mb-2">Kolla din e-post</h1>
-            <p className="text-sm text-[var(--fg-muted)] leading-relaxed">
-              Vi har skickat en inloggningslänk till <strong>{email}</strong>. Länken fungerar en gång och
-              tar dig direkt till Mitt konto.
+          <form onSubmit={handleVerify}>
+            <h1 className="text-xl font-bold text-[var(--fg)] mb-2">Ange koden från mejlet</h1>
+            <p className="text-sm text-[var(--fg-muted)] leading-relaxed mb-6">
+              Vi har skickat en kod till <strong>{email}</strong>. Skriv in den här, eller klicka på länken i mejlet.
             </p>
-            <button
-              type="button"
-              onClick={() => setSent(false)}
-              className="mt-5 text-sm text-[var(--accent)] hover:underline"
-            >
-              Använd en annan e-postadress
+            <label htmlFor="account-code" className="block text-[13px] font-medium text-[var(--fg)] mb-1.5">
+              Kod
+            </label>
+            <input
+              id="account-code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              autoFocus
+              required
+              pattern="[0-9]{6,10}"
+              maxLength={10}
+              value={code}
+              onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="123456"
+              aria-invalid={codeError ? true : undefined}
+              aria-describedby={codeError ? 'account-code-error' : undefined}
+              className={`${inputClass} mb-2 tracking-[0.3em] text-lg`}
+            />
+            {codeError && (
+              <p id="account-code-error" role="alert" className="text-sm text-red-700 mb-3">
+                {codeError}
+              </p>
+            )}
+            <button type="submit" disabled={verifying || code.length < 6} className={`${primaryButton} w-full mt-2`}>
+              {verifying ? 'Kontrollerar…' : 'Logga in'}
             </button>
-          </>
+            <div className="mt-4 flex items-center justify-between text-sm">
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={sending || cooldown > 0}
+                className="text-[var(--accent)] hover:underline disabled:opacity-60 disabled:no-underline"
+              >
+                {cooldown > 0 ? `Skicka ny kod (${cooldown} s)` : 'Skicka ny kod'}
+              </button>
+              <button type="button" onClick={changeEmail} className="text-[var(--fg-muted)] hover:underline">
+                Annan e-postadress
+              </button>
+            </div>
+          </form>
         ) : (
           <form onSubmit={handleSubmit}>
             <h1 className="text-xl font-bold text-[var(--fg)] mb-2">Mitt konto</h1>
             <p className="text-sm text-[var(--fg-muted)] leading-relaxed mb-6">
-              Följ era förfrågningar till lärosäten. Ange er arbetsmejl så skickar vi en inloggningslänk —
-              inget lösenord behövs.
+              Följ era förfrågningar till lärosäten. Ange er arbetsmejl så skickar vi en engångskod — inget
+              lösenord behövs, och nytt konto skapas automatiskt.
             </p>
             <label htmlFor="account-email" className="block text-[13px] font-medium text-[var(--fg)] mb-1.5">
               E-postadress
@@ -104,7 +177,7 @@ function SignInForm() {
               className={`${inputClass} mb-4`}
             />
             <button type="submit" disabled={sending} className={`${primaryButton} w-full`}>
-              {sending ? 'Skickar…' : 'Skicka inloggningslänk'}
+              {sending ? 'Skickar…' : 'Skicka kod'}
             </button>
             <p className="mt-4 text-xs text-[var(--fg-subtle)]">
               Leverantör eller administratör?{' '}
