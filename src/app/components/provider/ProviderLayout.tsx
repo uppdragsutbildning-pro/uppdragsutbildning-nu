@@ -20,6 +20,7 @@ import { supabase } from '../../../lib/supabaseClient';
 import { ProviderProvider } from '../../../contexts/ProviderContext';
 import { ASSIGNMENTS_CHANGED_EVENT } from './ProviderTrainingRequestsPage';
 import { useInvoiceUnreadCount } from '../../../hooks/useInvoiceUpdates';
+import { Logo } from '../Logo';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Översikt', path: '/provider/dashboard' },
@@ -42,6 +43,7 @@ export function ProviderLayout() {
   const [allProviders, setAllProviders] = useState<Provider[]>([]);
   const [selectedProviderId, setSelectedProviderId] = useState<string>('');
   const [newAssignments, setNewAssignments] = useState(0);
+  const [newRequests, setNewRequests] = useState(0);
   const newInvoices = useInvoiceUnreadCount('provider', selectedProviderId || undefined);
 
   const isAdmin = profile?.role === 'admin';
@@ -86,6 +88,44 @@ export function ProviderLayout() {
       window.removeEventListener('focus', refresh);
     };
   }, [selectedProviderId]);
+
+  // Antal nya förfrågningar (status "new") för märket i menyn. Samma urval som sidan Förfrågningar:
+  // förfrågningar på leverantörens kurser samt offertrader från tilldelade efterfrågningar.
+  useEffect(() => {
+    if (!selectedProviderId) {
+      setNewRequests(0);
+      return;
+    }
+    let active = true;
+    const refresh = async () => {
+      const { data: courses } = await supabase.from('trainings').select('id').eq('provider_id', selectedProviderId);
+      const filters = [`provider_id.eq.${selectedProviderId}`];
+      const ids = (courses ?? []).map(c => c.id);
+      if (ids.length > 0) filters.push(`training_id.in.(${ids.join(',')})`);
+      const { count } = await supabase
+        .from('custom_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'new')
+        .or(filters.join(','));
+      if (active) setNewRequests(count ?? 0);
+    };
+    refresh();
+    window.addEventListener(ASSIGNMENTS_CHANGED_EVENT, refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      active = false;
+      window.removeEventListener(ASSIGNMENTS_CHANGED_EVENT, refresh);
+      window.removeEventListener('focus', refresh);
+    };
+    // location.pathname: räkna om när leverantören byter sida (t.ex. efter att ha svarat på en förfrågan).
+  }, [selectedProviderId, location.pathname]);
+
+  // Siffran i det runda märket per menyval.
+  const badgeCount = (path: string) =>
+    path === '/provider/efterfragningar' ? newAssignments
+    : path === '/provider/requests' ? newRequests
+    : path === '/provider/fakturering' ? newInvoices
+    : 0;
 
   async function loadAllProviders() {
     try {
@@ -144,12 +184,7 @@ export function ProviderLayout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <Link to="/" className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">U</span>
-                </div>
-                <span className="font-bold text-slate-900">Uppdragsutbildning.nu</span>
-              </Link>
+              <Logo />
               <span className="hidden sm:inline-block px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100 font-medium">
                 {isAdmin ? 'Admin → Leverantörsportal' : 'Leverantörsportal'}
               </span>
@@ -225,14 +260,9 @@ export function ProviderLayout() {
                 >
                   <Icon className="w-5 h-5" />
                   {item.label}
-                  {item.path === '/provider/efterfragningar' && newAssignments > 0 && (
+                  {badgeCount(item.path) > 0 && (
                     <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-green-600 text-white text-xs font-medium">
-                      {newAssignments}
-                    </span>
-                  )}
-                  {item.path === '/provider/fakturering' && newInvoices > 0 && (
-                    <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-green-600 text-white text-xs font-medium">
-                      {newInvoices}
+                      {badgeCount(item.path)}
                     </span>
                   )}
                 </Link>
@@ -263,16 +293,11 @@ export function ProviderLayout() {
                     >
                       <Icon className="w-5 h-5" />
                       {item.label}
-                      {item.path === '/provider/efterfragningar' && newAssignments > 0 && (
-                        <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-green-600 text-white text-xs font-medium">
-                          {newAssignments}
-                        </span>
-                      )}
-                      {item.path === '/provider/fakturering' && newInvoices > 0 && (
-                        <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-green-600 text-white text-xs font-medium">
-                          {newInvoices}
-                        </span>
-                      )}
+                  {badgeCount(item.path) > 0 && (
+                    <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-green-600 text-white text-xs font-medium">
+                      {badgeCount(item.path)}
+                    </span>
+                  )}
                     </Link>
                   );
                 })}
