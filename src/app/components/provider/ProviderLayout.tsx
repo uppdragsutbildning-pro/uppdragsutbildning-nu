@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import {
   LayoutDashboard, BookOpen, Users, MessageSquare,
-  History, LogOut, Menu, X, Globe, FileText, Sparkles, Receipt
+  History, LogOut, Menu, X, Globe, FileText, Receipt
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -22,13 +22,13 @@ import { ASSIGNMENTS_CHANGED_EVENT } from './ProviderTrainingRequestsPage';
 import { useInvoiceUnreadCount } from '../../../hooks/useInvoiceUpdates';
 import { Logo } from '../Logo';
 
-const navItems = [
+const navItems: { icon: typeof LayoutDashboard; label: string; path: string; alsoActiveOn?: string[] }[] = [
   { icon: LayoutDashboard, label: 'Översikt', path: '/provider/dashboard' },
   { icon: BookOpen, label: 'Mina kurser', path: '/provider/courses' },
   { icon: Globe, label: 'Var visas mina kurser', path: '/provider/marketplaces' },
   { icon: Users, label: 'Kursanmälningar', path: '/provider/applications' },
-  { icon: Sparkles, label: 'Efterfrågningar', path: '/provider/efterfragningar' },
-  { icon: MessageSquare, label: 'Förfrågningar', path: '/provider/requests' },
+  // Förfrågningar samlar nya efterfrågningar och offerter som två flikar (se ProviderRequestsTabs).
+  { icon: MessageSquare, label: 'Förfrågningar', path: '/provider/requests', alsoActiveOn: ['/provider/efterfragningar'] },
   { icon: History, label: 'Historik', path: '/provider/history' },
   { icon: Receipt, label: 'Fakturering', path: '/provider/fakturering' },
   { icon: FileText, label: 'Villkor', path: '/provider/villkor' },
@@ -122,8 +122,7 @@ export function ProviderLayout() {
 
   // Siffran i det runda märket per menyval.
   const badgeCount = (path: string) =>
-    path === '/provider/efterfragningar' ? newAssignments
-    : path === '/provider/requests' ? newRequests
+    path === '/provider/requests' ? newAssignments + newRequests
     : path === '/provider/fakturering' ? newInvoices
     : 0;
 
@@ -246,7 +245,7 @@ export function ProviderLayout() {
           <nav className="px-4 py-3 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = location.pathname === item.path;
+              const isActive = location.pathname === item.path || !!item.alsoActiveOn?.includes(location.pathname);
               return (
                 <Link
                   key={item.path}
@@ -280,7 +279,7 @@ export function ProviderLayout() {
               <nav className="space-y-1">
                 {navItems.map((item) => {
                   const Icon = item.icon;
-                  const isActive = location.pathname === item.path;
+                  const isActive = location.pathname === item.path || !!item.alsoActiveOn?.includes(location.pathname);
                   return (
                     <Link
                       key={item.path}
@@ -307,7 +306,7 @@ export function ProviderLayout() {
 
           {/* Main content */}
           <main className="lg:col-span-9">
-            <ProviderProvider selectedProviderId={selectedProviderId} isAdmin={isAdmin}>
+            <ProviderProvider selectedProviderId={selectedProviderId} isAdmin={isAdmin} newAssignments={newAssignments} newRequests={newRequests}>
               <Outlet />
             </ProviderProvider>
           </main>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
+import { ProviderRequestsTabs } from './ProviderRequestsTabs';
 import { ArrowLeft, Building2, Calendar, Clock, Inbox, Sparkles, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProviderContext } from '../../../contexts/ProviderContext';
@@ -342,8 +343,9 @@ export function ProviderTrainingRequestsPage() {
 
   return (
     <div className="space-y-6">
+      <ProviderRequestsTabs />
       <div>
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Efterfrågningar</h1>
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">Nya efterfrågningar</h1>
         <p className="text-slate-600">Anpassade utbildningar som vi har skickat till er. {newCount > 0 && <strong>{newCount} nya.</strong>}</p>
       </div>
 

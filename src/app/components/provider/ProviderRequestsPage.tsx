@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router';
+import { ProviderRequestsTabs } from './ProviderRequestsTabs';
 import {
   Search, MessageSquare, Eye, Send, Clock, CheckCircle,
   X, Briefcase, Users, Calendar, DollarSign, FileText, Globe, Sparkles
@@ -228,9 +229,10 @@ export function ProviderRequestsPage() {
 
   return (
     <div className="space-y-6">
+      <ProviderRequestsTabs />
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Förfrågningar om anpassade utbildningar</h1>
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">Offerter och förfrågningar</h1>
         <p className="text-slate-600">Granska och svara på förfrågningar från företag</p>
       </div>
 
