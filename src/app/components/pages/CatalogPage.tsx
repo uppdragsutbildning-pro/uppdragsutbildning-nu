@@ -342,7 +342,7 @@ export function CatalogPage() {
             role="search"
             className="max-w-3xl"
           >
-            <div className="flex items-center bg-white border-[1.5px] border-slate-200 rounded-[14px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-[border-color,box-shadow] focus-within:border-[var(--marketplace-primary)] focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--marketplace-primary)_15%,transparent),0_2px_12px_rgba(0,0,0,0.06)]">
+            <div data-search-field className="flex items-center bg-white border-[1.5px] border-slate-200 rounded-[14px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-[border-color,box-shadow] focus-within:border-[var(--marketplace-primary)] focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--marketplace-primary)_15%,transparent),0_2px_12px_rgba(0,0,0,0.06)]">
               <Search className="ml-[18px] w-[18px] h-[18px] shrink-0 text-slate-400" aria-hidden="true" />
               <input
                 type="text"

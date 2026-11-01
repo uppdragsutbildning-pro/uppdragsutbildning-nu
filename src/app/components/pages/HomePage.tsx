@@ -84,7 +84,7 @@ export function HomePage() {
               }}
               className="mb-5"
             >
-              <div className="flex items-center bg-[var(--bg-raised)] border-[1.5px] border-[var(--border)] rounded-[14px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-dim),0_2px_12px_rgba(0,0,0,0.06)]">
+              <div data-search-field className="flex items-center bg-[var(--bg-raised)] border-[1.5px] border-[var(--border)] rounded-[14px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-dim),0_2px_12px_rgba(0,0,0,0.06)]">
                 <Search className="ml-[18px] w-[18px] h-[18px] shrink-0 text-[var(--fg-subtle)]" aria-hidden="true" />
                 <input
                   ref={inputRef}

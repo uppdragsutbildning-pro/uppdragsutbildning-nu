@@ -35,6 +35,12 @@
   outline-offset: 3px;
 }
 
+/* Sökrutor markerar fokus på hela rutan (focus-within). Ramen runt själva fältet klipps av rutans
+   overflow och syns annars som två lodräta streck. Knapparna i rutan behåller sin fokusram. */
+.ub-theme [data-search-field] input:focus-visible {
+  outline: none;
+}
+
 .ub-theme ::selection {
   background: var(--accent-dim);
   color: var(--fg);
