@@ -3,7 +3,8 @@
 -- create_my_organization() tog tidigare emot ett tomt organisationsnummer (fältet var valfritt i
 -- formulären), och numret krävdes först vid bokning via fakturauppgifterna. Nu krävs ett svenskt
 -- organisationsnummer med 10 siffror redan när organisationen skapas, och det sparas på formen
--- NNNNNN-NNNN. Kontrollsiffran (Luhn) valideras i klienten.
+-- NNNNNN-NNNN. Personnummer (tredje och fjärde siffran under 20) avvisas. Kontrollsiffran (Luhn)
+-- valideras i klienten.
 --
 -- Befintliga organisationer utan nummer påverkas inte (ingen NOT NULL-constraint på kolumnen);
 -- de får fortfarande fylla i numret via fakturauppgifterna innan bokning.
@@ -33,6 +34,12 @@ BEGIN
 
   IF length(org_digits) <> 10 THEN
     RAISE EXCEPTION 'Organisationsnummer krävs (10 siffror)' USING ERRCODE = '22023';
+  END IF;
+
+  -- Tredje och fjärde siffran är minst 20 för juridiska personer. Lägre värden är en månad,
+  -- alltså ett personnummer (enskild firma), som är en personuppgift och inte ska sparas här.
+  IF substr(org_digits, 3, 2)::int < 20 THEN
+    RAISE EXCEPTION 'Ange organisationsnummer, inte personnummer' USING ERRCODE = '22023';
   END IF;
 
   -- En organisation per användare i v1.

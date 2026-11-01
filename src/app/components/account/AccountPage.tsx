@@ -9,7 +9,7 @@ import { CasesView } from './CasesView';
 import { BookingsView } from './BookingsView';
 import { InvoicesView } from './InvoicesView';
 import { useInvoiceUnreadCount } from '../../../hooks/useInvoiceUpdates';
-import { ORGANIZATION_NUMBER_ERROR, normalizeOrganizationNumber } from '../../../lib/organizationNumber';
+import { normalizeOrganizationNumber, organizationNumberError } from '../../../lib/organizationNumber';
 
 interface Membership {
   display_name: string;
@@ -205,7 +205,7 @@ function OnboardingForm({ onDone }: { onDone: () => void }) {
     e.preventDefault();
     const normalizedOrgNumber = normalizeOrganizationNumber(orgNumber);
     if (!normalizedOrgNumber) {
-      setOrgNumberError(ORGANIZATION_NUMBER_ERROR);
+      setOrgNumberError(organizationNumberError(orgNumber));
       return;
     }
     setOrgNumberError(null);

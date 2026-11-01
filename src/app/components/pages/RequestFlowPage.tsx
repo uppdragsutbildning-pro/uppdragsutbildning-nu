@@ -8,7 +8,7 @@ import { useMarketplace } from '../../../lib/marketplaceContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useEmailCodeLogin } from '../../../hooks/useEmailCodeLogin';
 import { clearRequestDraft, loadRequestDraft, saveRequestDraft } from '../../../lib/requestDraft';
-import { ORGANIZATION_NUMBER_ERROR, normalizeOrganizationNumber } from '../../../lib/organizationNumber';
+import { normalizeOrganizationNumber, organizationNumberError } from '../../../lib/organizationNumber';
 
 type Step = 'describe' | 'ai-analysis' | 'form' | 'confirmation';
 
@@ -136,7 +136,7 @@ export function RequestFlowPage() {
     if (!orgId) {
       const normalizedOrgNumber = normalizeOrganizationNumber(formData.organizationNumber);
       if (!normalizedOrgNumber) {
-        setOrgNumberError(ORGANIZATION_NUMBER_ERROR);
+        setOrgNumberError(organizationNumberError(formData.organizationNumber));
         setAwaitingCode(false);
         toast.error('Organisationsnummer saknas eller är ogiltigt');
         return false;
@@ -236,7 +236,7 @@ export function RequestFlowPage() {
       // Ingen inloggning än: kräv ett giltigt organisationsnummer, spara utkastet och skicka en kod
       // till e-postadressen i formuläret.
       if (!hasOrganization && !normalizeOrganizationNumber(formData.organizationNumber)) {
-        setOrgNumberError(ORGANIZATION_NUMBER_ERROR);
+        setOrgNumberError(organizationNumberError(formData.organizationNumber));
         return;
       }
       setOrgNumberError(null);

@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
 import { supabase } from '../../../lib/supabase';
 import { useMarketplace } from '../../../lib/marketplaceContext';
-import { ORGANIZATION_NUMBER_ERROR, normalizeOrganizationNumber } from '../../../lib/organizationNumber';
+import { normalizeOrganizationNumber, organizationNumberError } from '../../../lib/organizationNumber';
 import {
   EMPTY_FORM,
   clearDraft,
@@ -197,7 +197,7 @@ function OrganizationPanel({ onDone }: { onDone: () => void }) {
     e.preventDefault();
     const normalizedOrgNumber = normalizeOrganizationNumber(orgNumber);
     if (!normalizedOrgNumber) {
-      setOrgNumberError(ORGANIZATION_NUMBER_ERROR);
+      setOrgNumberError(organizationNumberError(orgNumber));
       return;
     }
     setOrgNumberError(null);
