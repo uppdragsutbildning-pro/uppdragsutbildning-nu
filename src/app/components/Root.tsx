@@ -90,6 +90,18 @@ export function Root() {
                   >
                     Om tjänsten
                   </Link>
+                  {showBranding && (
+                    <Link
+                      to="/catalog"
+                      className={`text-sm transition-colors ${
+                        location.pathname === '/catalog'
+                          ? 'text-[var(--marketplace-primary)] font-medium'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Bläddra utbildningar
+                    </Link>
+                  )}
                   <Link
                     to="/kompetensanalys"
                     className={`text-sm transition-colors ${
@@ -169,6 +181,19 @@ export function Root() {
                     >
                       Om tjänsten
                     </Link>
+                    {showBranding && (
+                      <Link
+                        to="/catalog"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                          location.pathname === '/catalog'
+                            ? 'bg-[var(--marketplace-primary)]/10 text-[var(--marketplace-primary)] font-medium'
+                            : 'text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        Bläddra utbildningar
+                      </Link>
+                    )}
                     <Link
                       to="/kompetensanalys"
                       onClick={() => setMobileMenuOpen(false)}
