@@ -391,6 +391,45 @@ export type Database = {
           },
         ]
       }
+      marketplace_providers: {
+        Row: {
+          added_at: string | null
+          added_by: string | null
+          id: string
+          marketplace_id: string
+          provider_id: string
+        }
+        Insert: {
+          added_at?: string | null
+          added_by?: string | null
+          id?: string
+          marketplace_id: string
+          provider_id: string
+        }
+        Update: {
+          added_at?: string | null
+          added_by?: string | null
+          id?: string
+          marketplace_id?: string
+          provider_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_providers_marketplace_id_fkey"
+            columns: ["marketplace_id"]
+            isOneToOne: false
+            referencedRelation: "marketplaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_providers_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_trainings: {
         Row: {
           added_at: string | null

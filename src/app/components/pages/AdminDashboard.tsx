@@ -8,6 +8,7 @@ import type { Profile, Provider } from '../../../lib/supabase';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import { MarketplacesTab } from '../admin/MarketplacesTab';
+import { ProviderMarketplacesDialog } from '../admin/ProviderMarketplacesDialog';
 import { TrainingRequestsTab, useOpenTrainingRequestsCount } from '../admin/TrainingRequestsTab';
 import { BillingTab, useBillingAttentionCount } from '../admin/BillingTab';
 import { CpiRecordDrawer } from '../admin/CpiRecordDrawer';
@@ -55,6 +56,7 @@ export function AdminDashboard() {
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
   const [showCreateProvider, setShowCreateProvider] = useState(false);
+  const [marketplaceDialogProvider, setMarketplaceDialogProvider] = useState<Provider | null>(null);
   const [cpiRecords, setCpiRecords] = useState<CpiRecord[]>([]);
   const [cpiLoading, setCpiLoading] = useState(false);
   const [cpiSearch, setCpiSearch] = useState('');
@@ -899,10 +901,24 @@ export function AdminDashboard() {
                       >
                         {provider.is_active ? 'Inaktivera' : 'Aktivera'}
                       </button>
+                      <button
+                        onClick={() => setMarketplaceDialogProvider(provider)}
+                        className="flex-1 px-4 py-2 rounded-lg font-medium transition-colors text-sm border border-slate-200 text-slate-700 hover:bg-slate-50"
+                      >
+                        Marknadsplatser
+                      </button>
                     </div>
                   </div>
                 );
               })}
+
+              {marketplaceDialogProvider && (
+                <ProviderMarketplacesDialog
+                  providerId={marketplaceDialogProvider.id}
+                  providerName={marketplaceDialogProvider.name}
+                  onClose={() => setMarketplaceDialogProvider(null)}
+                />
+              )}
 
               {supabaseProviders.length === 0 && !showCreateProvider && (
                 <div className="col-span-2 text-center py-12 bg-white rounded-xl border border-slate-200">
