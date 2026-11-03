@@ -17,6 +17,27 @@ export default async function handler(req: Request) {
     return new Response(JSON.stringify({ error: "Service role key saknas" }), { status: 500 });
   }
 
+  // Bara inloggade, aktiva administratörer får skapa användare.
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!token) {
+    return new Response(JSON.stringify({ error: "Inte inloggad" }), { status: 401 });
+  }
+  const whoRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    headers: { "apikey": serviceRoleKey, "Authorization": `Bearer ${token}` },
+  });
+  if (!whoRes.ok) {
+    return new Response(JSON.stringify({ error: "Inte inloggad" }), { status: 401 });
+  }
+  const caller = await whoRes.json();
+  const callerRes = await fetch(
+    `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(caller.id)}&select=role,is_active`,
+    { headers: { "apikey": serviceRoleKey, "Authorization": `Bearer ${serviceRoleKey}` } }
+  );
+  const callerProfile = callerRes.ok ? (await callerRes.json())[0] : null;
+  if (!callerProfile || callerProfile.role !== "admin" || callerProfile.is_active === false) {
+    return new Response(JSON.stringify({ error: "Endast administratörer kan skapa användare" }), { status: 403 });
+  }
+
   const { email, password, full_name, role, provider_id, phone } = await req.json();
 
   if (!email || !password || !full_name || !role) {
@@ -40,7 +61,7 @@ export default async function handler(req: Request) {
 
   if (!authRes.ok) {
     const err = await authRes.json();
-    return new Response(JSON.stringify({ error: err.message || "Kunde inte skapa auth-användare" }), { status: 400 });
+    return new Response(JSON.stringify({ error: err.msg || err.message || err.error_description || "Kunde inte skapa auth-användare" }), { status: 400 });
   }
 
   const authData = await authRes.json();
@@ -76,7 +97,7 @@ export default async function handler(req: Request) {
         "Authorization": `Bearer ${serviceRoleKey}`,
       },
     });
-    return new Response(JSON.stringify({ error: err.message || "Kunde inte skapa profil" }), { status: 400 });
+    return new Response(JSON.stringify({ error: err.message || err.msg || "Kunde inte skapa profil" }), { status: 400 });
   }
 
   return new Response(JSON.stringify({ success: true, userId }), {
