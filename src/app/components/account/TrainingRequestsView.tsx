@@ -7,6 +7,8 @@ import { markRequestSeen } from '../../../hooks/useTrainingRequestUpdates';
 import { NOT_SELECTED_REASONS, formatSek, quoteStatusLabel } from '../../../lib/invoiceStatus';
 import { policySummary } from '../training/BookingDialog';
 import { BillingDetailsForm, fetchBillingDetails, isBillingComplete } from './BillingDetailsForm';
+import { OfferComparison, type OfferRow } from './OfferComparison';
+import { DELIVERY_FORMAT_LABEL, NEED_LABEL, totalModuleHours } from '../../../lib/offerProposal';
 
 type RequestStatus = 'submitted' | 'in_review' | 'assigned' | 'offers_received' | 'closed' | 'cancelled' | 'no_match';
 
@@ -40,22 +42,6 @@ interface AssignmentRow {
   provider_id: string;
   provider_name: string;
   simple_status: 'waiting' | 'offer_received';
-}
-
-interface OfferRow {
-  quote_id: string;
-  provider_id: string;
-  provider_name: string;
-  status: string;
-  response: string | null;
-  responded_at: string;
-  offer_total_ex_vat: number | null;
-  offer_participants: number | null;
-  offer_start_date: string | null;
-  offer_end_date: string | null;
-  offer_valid_until: string | null;
-  offer_location: string | null;
-  offer_terms: string | null;
 }
 
 interface Detail {
@@ -129,12 +115,16 @@ function OfferCard({
   orgId,
   canAccept,
   onAccepted,
+  chooseSignal,
 }: {
   offer: OfferRow;
   orgId: string | null;
   canAccept: boolean;
   onAccepted: () => void;
+  // Sätts när köparen väljer offerten i jämförelsevyn: öppnar acceptsteget.
+  chooseSignal: { id: string; nonce: number } | null;
 }) {
+  const cardRef = useRef<HTMLLIElement>(null);
   const [accepting, setAccepting] = useState(false);
   const [billingOk, setBillingOk] = useState<boolean | null>(null);
   const [policy, setPolicy] = useState<{ free_until_days_before_start?: number; late_fee_percent?: number; text?: string } | null>(null);
@@ -168,6 +158,14 @@ function OfferCard({
     setPolicy((data?.cancellation_policy as typeof policy) ?? null);
   }
 
+  useEffect(() => {
+    if (chooseSignal?.id === offer.quote_id && acceptable) {
+      openAccept();
+      cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chooseSignal?.nonce]);
+
   async function accept() {
     setBusy(true);
     const { error: rpcError } = await supabase.rpc('buyer_accept_quote', {
@@ -188,7 +186,7 @@ function OfferCard({
   }
 
   return (
-    <li className="rounded-xl bg-[var(--accent-dim)] p-4">
+    <li ref={cardRef} className="rounded-xl bg-[var(--accent-dim)] p-4">
       <div className="flex items-center justify-between gap-3 mb-1">
         <p className="text-sm font-semibold text-[var(--fg)]">{offer.provider_name}</p>
         <span className="text-xs text-[var(--fg-muted)]">{quoteStatusLabel(offer.status)}</span>
@@ -203,6 +201,41 @@ function OfferCard({
           <DetailRow label="Ort" value={offer.offer_location} />
           <DetailRow label="Offerten gäller till" value={formatDate(offer.offer_valid_until)} />
         </dl>
+      )}
+      {(offer.offer_delivery_format || offer.offer_duration_hours || (offer.offer_modules?.length ?? 0) > 0) && (
+        <div className="mb-3">
+          <p className="text-xs text-[var(--fg-subtle)] mb-1">
+            Föreslaget upplägg
+            {offer.offer_delivery_format && ` · ${DELIVERY_FORMAT_LABEL[offer.offer_delivery_format]}`}
+            {(offer.offer_duration_hours ?? totalModuleHours(offer.offer_modules)) > 0 &&
+              ` · ${offer.offer_duration_hours ?? totalModuleHours(offer.offer_modules)} timmar`}
+          </p>
+          {offer.offer_modules && offer.offer_modules.length > 0 && (
+            <ol className="list-decimal pl-5 space-y-1 text-sm text-[var(--fg)]">
+              {offer.offer_modules.map((m, i) => (
+                <li key={i}>
+                  <span className="font-medium">{m.title}</span>
+                  {m.hours ? <span className="text-[var(--fg-subtle)]"> ({m.hours} tim)</span> : null}
+                  {m.description && <span className="block text-[var(--fg-muted)]">{m.description}</span>}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
+      {offer.offer_fit_comment && (
+        <p className="text-sm text-[var(--fg)] leading-relaxed whitespace-pre-line mb-2">{offer.offer_fit_comment}</p>
+      )}
+      {offer.offer_needs_check?.some(c => c.status === 'deviates') && (
+        <ul className="text-sm text-amber-800 space-y-0.5 mb-2">
+          {offer.offer_needs_check
+            .filter(c => c.status === 'deviates')
+            .map(c => (
+              <li key={c.key}>
+                <span className="font-medium">Avviker, {NEED_LABEL[c.key].toLowerCase()}:</span> {c.comment}
+              </li>
+            ))}
+        </ul>
       )}
       {offer.offer_terms && (
         <p className="text-sm text-[var(--fg-muted)] leading-relaxed whitespace-pre-line mb-2">{offer.offer_terms}</p>
@@ -331,6 +364,7 @@ export function TrainingRequestItem({
 }) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [chooseSignal, setChooseSignal] = useState<{ id: string; nonce: number } | null>(null);
   const status = TRAINING_STATUS[r.status] ?? TRAINING_STATUS.submitted;
   const offerCount = evs.filter(e => e.event_type === 'quoted').length;
 
@@ -464,6 +498,18 @@ export function TrainingRequestItem({
             {detail && detail.offers.length > 0 && (
               <div>
                 <p className="text-[11px] font-medium tracking-[0.1em] uppercase text-[var(--fg-subtle)] mb-2">Offerter</p>
+                {detail.offers.length > 1 && (
+                  <div className="mb-4">
+                    <OfferComparison
+                      offers={detail.offers}
+                      canChoose={r.status === 'offers_received'}
+                      onChoose={id => setChooseSignal(prev => ({ id, nonce: (prev?.nonce ?? 0) + 1 }))}
+                    />
+                    <p className="text-xs text-[var(--fg-subtle)] mt-2">
+                      Detaljer per offert och acceptsteget finns nedan.
+                    </p>
+                  </div>
+                )}
                 <ul className="space-y-3">
                   {detail.offers.map(o => (
                     <OfferCard
@@ -471,6 +517,7 @@ export function TrainingRequestItem({
                       offer={o}
                       orgId={r.buyer_org_id}
                       canAccept={r.status === 'offers_received'}
+                      chooseSignal={chooseSignal}
                       onAccepted={async () => {
                         await onChanged();
                         loadDetail();

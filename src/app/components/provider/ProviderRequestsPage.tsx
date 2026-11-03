@@ -10,6 +10,11 @@ import { useProviderContext } from '../../../contexts/ProviderContext';
 import { NOT_SELECTED_REASONS, formatSek } from '../../../lib/invoiceStatus';
 import type { CustomRequest } from '../../../lib/supabase';
 import { supabase } from '../../../lib/supabaseClient';
+import type { BuyerNeed } from '../../../lib/offerProposal';
+import {
+  OfferProposalFields, emptyProposal, proposalFromRequest, proposalToRpc, proposalValid,
+  type ProposalState,
+} from './OfferProposalFields';
 
 export function ProviderRequestsPage() {
   const { selectedProviderId } = useProviderContext();
@@ -22,6 +27,9 @@ export function ProviderRequestsPage() {
   const [offerForm, setOfferForm] = useState({
     total: '', participants: '', startDate: '', endDate: '', validUntil: '', location: '', terms: '',
   });
+  const [proposal, setProposal] = useState<ProposalState>(emptyProposal);
+  const [need, setNeed] = useState<BuyerNeed | null>(null);
+  const [needLoaded, setNeedLoaded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [requests, setRequests] = useState<CustomRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +43,7 @@ export function ProviderRequestsPage() {
   useEffect(() => {
     if (!openId || loading) return;
     const match = requests.find((r) => r.id === openId);
-    if (match) setSelectedRequest(match);
+    if (match) openRequest(match);
     setSearchParams({}, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openId, loading, requests]);
@@ -132,6 +140,22 @@ export function ProviderRequestsPage() {
 
   function openRequest(req: CustomRequest) {
     setSelectedRequest(req);
+    setProposal(proposalFromRequest(req));
+    setNeed(null);
+    setNeedLoaded(false);
+    if (req.training_request_assignment_id) {
+      const assignmentId = req.training_request_assignment_id;
+      supabase
+        .from('training_request_assignments')
+        .select('training_requests(learning_goals, target_group, participant_count, delivery_format, location, desired_start, budget_range)')
+        .eq('id', assignmentId)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (error) toast.error('Kunde inte hämta köparens behov', { description: error.message });
+          setNeed((data?.training_requests as unknown as BuyerNeed) ?? null);
+          setNeedLoaded(true);
+        });
+    }
     setResponseText(req.response || '');
     setOfferForm({
       total: req.offer_total_ex_vat != null ? String(req.offer_total_ex_vat) : '',
@@ -159,6 +183,7 @@ export function ProviderRequestsPage() {
       p_location: offerForm.location || null,
       p_terms: offerForm.terms || null,
       p_message: responseText || null,
+      ...proposalToRpc(proposal, need),
     });
     setSubmitting(false);
     if (error) {
@@ -174,7 +199,9 @@ export function ProviderRequestsPage() {
     Number(offerForm.total.replace(',', '.')) > 0 &&
     Number(offerForm.participants) > 0 &&
     !!offerForm.startDate &&
-    !!offerForm.validUntil;
+    !!offerForm.validUntil &&
+    needLoaded &&
+    proposalValid(proposal, need);
 
   async function handleStatusChange(id: string, newStatus: CustomRequest['status']) {
     try {
@@ -601,6 +628,12 @@ export function ProviderRequestsPage() {
                         className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                       />
                     </label>
+                    <OfferProposalFields
+                      assignmentId={selectedRequest.training_request_assignment_id}
+                      need={need}
+                      value={proposal}
+                      onChange={setProposal}
+                    />
                     <label className="block text-sm text-slate-700">
                       Meddelande till köparen
                       <textarea

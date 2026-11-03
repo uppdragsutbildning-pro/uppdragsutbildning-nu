@@ -201,6 +201,12 @@ export type Database = {
           offer_participants: number | null
           offer_start_date: string | null
           offer_terms: string | null
+          offer_delivery_format: string | null
+          offer_duration_hours: number | null
+          offer_modules: Json | null
+          offer_fit_comment: string | null
+          offer_needs_check: Json | null
+          offer_reviewed_at: string | null
           offer_total_ex_vat: number | null
           offer_valid_until: string | null
           ai_score: string
@@ -233,6 +239,12 @@ export type Database = {
           offer_participants?: number | null
           offer_start_date?: string | null
           offer_terms?: string | null
+          offer_delivery_format?: string | null
+          offer_duration_hours?: number | null
+          offer_modules?: Json | null
+          offer_fit_comment?: string | null
+          offer_needs_check?: Json | null
+          offer_reviewed_at?: string | null
           offer_total_ex_vat?: number | null
           offer_valid_until?: string | null
           ai_score?: string
@@ -265,6 +277,12 @@ export type Database = {
           offer_participants?: number | null
           offer_start_date?: string | null
           offer_terms?: string | null
+          offer_delivery_format?: string | null
+          offer_duration_hours?: number | null
+          offer_modules?: Json | null
+          offer_fit_comment?: string | null
+          offer_needs_check?: Json | null
+          offer_reviewed_at?: string | null
           offer_total_ex_vat?: number | null
           offer_valid_until?: string | null
           ai_score?: string

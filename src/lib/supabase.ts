@@ -97,6 +97,8 @@ export interface Application {
   updated_at: string;
 }
 
+import type { OfferModule, NeedCheck } from './offerProposal';
+
 export interface CustomRequest {
   id: string;
   training_id?: string;
@@ -124,6 +126,12 @@ export interface CustomRequest {
   offer_valid_until?: string | null;
   offer_location?: string | null;
   offer_terms?: string | null;
+  offer_delivery_format?: string | null;
+  offer_duration_hours?: number | null;
+  offer_modules?: OfferModule[] | null;
+  offer_fit_comment?: string | null;
+  offer_needs_check?: NeedCheck[] | null;
+  offer_reviewed_at?: string | null;
   not_selected_reason_code?: string | null;
   not_selected_reason_text?: string | null;
   submitted_at: string;
