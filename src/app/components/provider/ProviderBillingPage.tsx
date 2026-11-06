@@ -5,12 +5,14 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useProviderContext } from '../../../contexts/ProviderContext';
 import { formatSek, invoiceStatusBadge, invoiceStatusLabel } from '../../../lib/invoiceStatus';
 import { isInvoiceUnread, markInvoiceSeen, readInvoiceSeen } from '../../../hooks/useInvoiceUpdates';
+import { ContractPanel } from '../contracts/ContractPanel';
 
 // Lärosätets Fakturering: skrivskyddad. Läser via provider_list_invoicing, som exponerar bara
 // de kolumner lärosätet får se. Status, etiketter och belopp kommer från samma källa som Admin.
 
 interface Row {
   basis_id: string;
+  booking_id: string;
   number: string;
   status: string;
   booking_status: string;
@@ -190,6 +192,7 @@ export function ProviderBillingPage() {
                       Underlaget har justerats av plattformen. Beloppen ovan är de gällande.
                     </p>
                   )}
+                  {r.booking_status !== 'cancelled' && <ContractPanel bookingId={r.booking_id} canEdit />}
                   <div>
                     <p className="text-xs font-medium text-slate-500 mb-3">Förlopp</p>
                     <ol className="space-y-3 border-l border-slate-200 ml-1.5">
