@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import {
   Plus, Search, Filter, Eye, Users, Edit, Trash2,
   MoreVertical, Copy, TrendingUp, Calendar, BookOpen,
-  FileSpreadsheet, FileText, ChevronDown
+  FileSpreadsheet, FileText, ChevronDown, Link2
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -127,6 +127,12 @@ export function ProviderCoursesPage() {
                 <Link to="/provider/courses/import-pdf" className="flex items-center gap-2 cursor-pointer">
                   <FileText className="w-4 h-4" />
                   Importera från PDF
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/provider/courses/import-url" className="flex items-center gap-2 cursor-pointer">
+                  <Link2 className="w-4 h-4" />
+                  Importera från länk
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
