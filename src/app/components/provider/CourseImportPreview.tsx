@@ -43,6 +43,16 @@ export function CourseImportPreview({ rows, categories, onRowsChange, onDone }: 
     );
   }
 
+  function updateField(id: string, patch: Partial<Pick<ParsedCourseRow, 'format' | 'trainingType'>>) {
+    onRowsChange(
+      rows.map((r) => {
+        if (r._id !== id) return r;
+        const updated = revalidateRow({ ...r, ...patch });
+        return { ...updated, _include: updated._errors.length === 0 };
+      })
+    );
+  }
+
   async function handleImport() {
     if (!profile?.provider_id) {
       toast.error('Inget provider-konto kopplat till din profil');
@@ -140,8 +150,34 @@ export function CourseImportPreview({ rows, categories, onRowsChange, onDone }: 
                     </select>
                   )}
                 </td>
-                <td className="px-3 py-3 text-slate-600">{formatLabel[row.format] || <span className="text-red-500">Ogiltigt</span>}</td>
-                <td className="px-3 py-3 text-slate-600">{trainingTypeLabel[row.trainingType] || <span className="text-red-500">Ogiltig</span>}</td>
+                <td className="px-3 py-3 text-slate-600">
+                  {formatLabel[row.format] || (
+                    <select
+                      defaultValue=""
+                      onChange={(e) => updateField(row._id, { format: e.target.value as ParsedCourseRow['format'] })}
+                      className="border border-red-300 rounded px-2 py-1 text-xs"
+                    >
+                      <option value="" disabled>Välj format</option>
+                      {Object.entries(formatLabel).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+                  )}
+                </td>
+                <td className="px-3 py-3 text-slate-600">
+                  {trainingTypeLabel[row.trainingType] || (
+                    <select
+                      defaultValue=""
+                      onChange={(e) => updateField(row._id, { trainingType: e.target.value as ParsedCourseRow['trainingType'] })}
+                      className="border border-red-300 rounded px-2 py-1 text-xs"
+                    >
+                      <option value="" disabled>Välj typ</option>
+                      {Object.entries(trainingTypeLabel).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+                  )}
+                </td>
                 <td className="px-3 py-3 text-slate-600">{row.credits}</td>
                 <td className="px-3 py-3">
                   {row._errors.length === 0 ? (

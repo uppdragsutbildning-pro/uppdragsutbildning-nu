@@ -83,9 +83,11 @@ export function fromExtractedCourse(row: Record<string, unknown>): RawCourseInpu
 
 function normalizeFormat(value?: string): 'online' | 'onsite' | 'hybrid' | '' {
   const v = (value || '').trim().toLowerCase();
-  if (v === 'online') return 'online';
-  if (v === 'onsite' || v === 'på plats') return 'onsite';
-  if (v === 'hybrid') return 'hybrid';
+  // AI-extraktionen från PDF kan svara på svenska eller med synonymer
+  // (t.ex. "distans", "campus") trots att prompten ber om online/onsite/hybrid.
+  if (['online', 'distans', 'digital', 'webb', 'på distans', 'distansutbildning'].includes(v)) return 'online';
+  if (['onsite', 'på plats', 'campus', 'på campus', 'närstudier', 'klassrum', 'fysisk'].includes(v)) return 'onsite';
+  if (['hybrid', 'blended', 'blandad', 'flexibel'].includes(v)) return 'hybrid';
   return '';
 }
 
