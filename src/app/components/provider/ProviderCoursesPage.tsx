@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import {
   Plus, Search, Filter, Eye, Users, Edit, Trash2,
   MoreVertical, Copy, TrendingUp, Calendar, BookOpen,
-  FileSpreadsheet, FileText
+  FileSpreadsheet, FileText, ChevronDown
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -100,28 +100,37 @@ export function ProviderCoursesPage() {
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Mina kurser</h1>
           <p className="text-slate-600">Hantera och publicera dina uppdragsutbildningar</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            to="/provider/courses/import-excel"
-            className="inline-flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-3 rounded-xl font-medium transition-colors"
-          >
-            <FileSpreadsheet className="w-5 h-5" />
-            Importera från Excel
-          </Link>
-          <Link
-            to="/provider/courses/import-pdf"
-            className="inline-flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-3 rounded-xl font-medium transition-colors"
-          >
-            <FileText className="w-5 h-5" />
-            Importera från PDF
-          </Link>
+        {/* Delad knapp: huvudval "Skapa ny kurs", importval i menyn bredvid */}
+        <div className="inline-flex shadow-sm rounded-xl">
           <Link
             to="/provider/courses/new"
-            className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-medium transition-colors shadow-sm"
+            className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white pl-5 pr-4 py-3 rounded-l-xl font-medium transition-colors"
           >
             <Plus className="w-5 h-5" />
             Skapa ny kurs
           </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              aria-label="Fler sätt att lägga till kurser"
+              className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-3 rounded-r-xl border-l border-blue-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+            >
+              <ChevronDown className="w-5 h-5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-56">
+              <DropdownMenuItem asChild>
+                <Link to="/provider/courses/import-excel" className="flex items-center gap-2 cursor-pointer">
+                  <FileSpreadsheet className="w-4 h-4" />
+                  Importera från Excel
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/provider/courses/import-pdf" className="flex items-center gap-2 cursor-pointer">
+                  <FileText className="w-4 h-4" />
+                  Importera från PDF
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
