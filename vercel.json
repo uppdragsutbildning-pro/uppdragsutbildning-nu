@@ -1,6 +1,9 @@
 {
   "buildCommand": "pnpm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/extract-course-from-pdf.ts": { "maxDuration": 60 }
+  },
   "routes": [
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }

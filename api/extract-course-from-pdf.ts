@@ -62,11 +62,11 @@ Svara ENBART med en JSON-array (ingen markdown, inga förklaringar utanför JSON
 Om broschyren bara beskriver EN kurs, returnera en array med ett element. Gissa inte fält som inte finns i dokumentet — sätt null istället.`;
 
   const controller = new AbortController();
-  // 9s — nästan hela Vercel Hobby-planens 10s-tak. PDF-multimodal-analys tar
-  // längre tid än den rena textanalysen i analyze-cpi.ts, så marginalen är
-  // snävare här. Om detta fortfarande timar ut för större broschyrer krävs
-  // en Vercel Pro-uppgradering (konfigurerbar maxDuration) för en riktig fix.
-  const timeoutId = setTimeout(() => controller.abort(), 9000);
+  // 55s — funktionens maxDuration är 60s i vercel.json (Fluid compute gör det
+  // konfigurerbart även på Hobby). PDF-multimodal-analys tar längre tid än den
+  // rena textanalysen i analyze-cpi.ts. Håll abort-gränsen under maxDuration
+  // så att klienten får ett tydligt 504-fel istället för en Vercel-timeout.
+  const timeoutId = setTimeout(() => controller.abort(), 55000);
 
   try {
     const geminiRes = await fetch(
