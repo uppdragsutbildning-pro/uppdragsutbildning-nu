@@ -16,6 +16,8 @@ import { ProviderLayout } from "./components/provider/ProviderLayout";
 import { ProviderDashboard } from "./components/provider/ProviderDashboard";
 import { ProviderCoursesPage } from "./components/provider/ProviderCoursesPage";
 import { ProviderMarketplacesPage } from "./components/provider/ProviderMarketplacesPage";
+import { ProviderCourseExcelImportPage } from "./components/provider/ProviderCourseExcelImportPage";
+import { ProviderCoursePdfImportPage } from "./components/provider/ProviderCoursePdfImportPage";
 import { ProviderCourseFormPage } from "./components/provider/ProviderCourseFormPage";
 import { ProviderApplicationsPage } from "./components/provider/ProviderApplicationsPage";
 import { ProviderRequestsPage } from "./components/provider/ProviderRequestsPage";
@@ -117,6 +119,8 @@ export const router = createBrowserRouter([
       { path: "dashboard", Component: ProviderDashboard },
       { path: "courses", Component: ProviderCoursesPage },
       { path: "courses/new", Component: ProviderCourseFormPage },
+      { path: "courses/import-excel", Component: ProviderCourseExcelImportPage },
+      { path: "courses/import-pdf", Component: ProviderCoursePdfImportPage },
       { path: "courses/:id/edit", Component: ProviderCourseFormPage },
       { path: "marketplaces", Component: ProviderMarketplacesPage },
       { path: "applications", Component: ProviderApplicationsPage },
