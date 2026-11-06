@@ -62,7 +62,7 @@ function Item({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export function ProviderBillingPage() {
-  const { selectedProviderId } = useProviderContext();
+  const { selectedProviderId, isAdmin } = useProviderContext();
   const { user } = useAuth();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -192,7 +192,7 @@ export function ProviderBillingPage() {
                       Underlaget har justerats av plattformen. Beloppen ovan är de gällande.
                     </p>
                   )}
-                  {r.booking_status !== 'cancelled' && <ContractPanel bookingId={r.booking_id} canEdit />}
+                  {r.booking_status !== 'cancelled' && <ContractPanel bookingId={r.booking_id} role={isAdmin ? 'admin' : 'provider'} canEdit />}
                   <div>
                     <p className="text-xs font-medium text-slate-500 mb-3">Förlopp</p>
                     <ol className="space-y-3 border-l border-slate-200 ml-1.5">

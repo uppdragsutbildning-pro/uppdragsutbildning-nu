@@ -433,3 +433,81 @@ export function payoutReminderAdmin(params: { items: PayoutReminderItem[]; linkU
     `),
   };
 }
+
+// ── Avtal: förhandling, godkännande och påminnelser ──────────────────────
+
+export function contractNewVersion(params: { title: string; fromParty: string; versionNo: number; comment?: string | null; linkUrl?: string }): EmailContent {
+  const { title, fromParty, versionNo, comment, linkUrl } = params;
+  const note = comment
+    ? `<p style="color:#334155;line-height:1.6;">Kommentar: ${esc(comment)}</p>`
+    : '';
+  return {
+    subject: `Ny version av avtalet: ${title}`,
+    html: wrapEmail('Det är er tur att granska avtalet', `
+      <h1 style="font-size:20px;color:#0f172a;">Ny version av avtalet</h1>
+      <p style="color:#334155;line-height:1.6;">
+        ${esc(fromParty)} har laddat upp version ${versionNo} av avtalet för <strong>${esc(title)}</strong>.
+        Det är nu er tur: ladda ner versionen, granska den och godkänn den eller ladda upp en justerad version.
+      </p>
+      ${note}
+      ${ctaButton(linkUrl, 'Öppna avtalet')}
+    `),
+  };
+}
+
+export function contractAgreed(params: { title: string; versionNo: number; linkUrl?: string }): EmailContent {
+  const { title, versionNo, linkUrl } = params;
+  return {
+    subject: `Avtalet är godkänt av båda parter: ${title}`,
+    html: wrapEmail('Avtalet kan signeras', `
+      <h1 style="font-size:20px;color:#0f172a;">Avtalet är godkänt av båda parter</h1>
+      <p style="color:#334155;line-height:1.6;">
+        Båda parter har godkänt version ${versionNo} av avtalet för <strong>${esc(title)}</strong>.
+        Nästa steg är att signera avtalet utanför plattformen och ladda upp den signerade PDF-filen.
+      </p>
+      ${ctaButton(linkUrl, 'Öppna avtalet')}
+    `),
+  };
+}
+
+export function contractSignedRegistered(params: { title: string; byParty: string; linkUrl?: string }): EmailContent {
+  const { title, byParty, linkUrl } = params;
+  return {
+    subject: `Signerat avtal registrerat: ${title}`,
+    html: wrapEmail('Det signerade avtalet är uppladdat', `
+      <h1 style="font-size:20px;color:#0f172a;">Signerat avtal registrerat</h1>
+      <p style="color:#334155;line-height:1.6;">
+        ${esc(byParty)} har laddat upp det signerade avtalet för <strong>${esc(title)}</strong>.
+      </p>
+      ${ctaButton(linkUrl, 'Öppna avtalet')}
+    `),
+  };
+}
+
+export function contractAmendmentRegistered(params: { title: string; byParty: string; linkUrl?: string }): EmailContent {
+  const { title, byParty, linkUrl } = params;
+  return {
+    subject: `Tillägg registrerat: ${title}`,
+    html: wrapEmail('Ett tillägg till avtalet har registrerats', `
+      <h1 style="font-size:20px;color:#0f172a;">Tillägg till avtalet</h1>
+      <p style="color:#334155;line-height:1.6;">
+        ${esc(byParty)} har registrerat ett signerat tillägg till avtalet för <strong>${esc(title)}</strong>.
+      </p>
+      ${ctaButton(linkUrl, 'Öppna avtalet')}
+    `),
+  };
+}
+
+export function contractReminder(params: { title: string; waitingFor: string; daysWaiting: number; linkUrl?: string }): EmailContent {
+  const { title, waitingFor, daysWaiting, linkUrl } = params;
+  return {
+    subject: `Påminnelse om avtalet: ${title}`,
+    html: wrapEmail('Avtalet väntar på er', `
+      <h1 style="font-size:20px;color:#0f172a;">Avtalet väntar på er</h1>
+      <p style="color:#334155;line-height:1.6;">
+        Avtalet för <strong>${esc(title)}</strong> har väntat i ${daysWaiting} dagar på ${esc(waitingFor)}.
+      </p>
+      ${ctaButton(linkUrl, 'Öppna avtalet')}
+    `),
+  };
+}

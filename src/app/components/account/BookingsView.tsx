@@ -232,7 +232,7 @@ export function BookingsView({
                     <p className="text-[11px] font-medium tracking-[0.1em] uppercase text-[var(--fg-subtle)] mb-1">Avbokningsvillkor</p>
                     <p className="text-sm text-[var(--fg-muted)]">{policySummary(b.cancellation_policy)}</p>
                   </div>
-                  {b.status !== 'cancelled' && <ContractPanel bookingId={b.booking_id} canEdit={canBook} />}
+                  {b.status !== 'cancelled' && <ContractPanel bookingId={b.booking_id} role="buyer" canEdit={canBook} />}
                   {canBook && b.status === 'confirmed' && <CancelPanel booking={b} onDone={load} />}
                 </div>
               )}

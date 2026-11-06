@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from './_lib/supabaseAdmin.js';
 import { sendEmail } from './_lib/sendEmail.js';
-import { rfpEscalated, trainingAssignmentOverdue, invoiceBasesReady, payoutReminderAdmin, type ReadyBasisItem, type PayoutReminderItem } from './_lib/emailTemplates.js';
+import { rfpEscalated, trainingAssignmentOverdue, invoiceBasesReady, payoutReminderAdmin, contractReminder, type ReadyBasisItem, type PayoutReminderItem } from './_lib/emailTemplates.js';
+import { getBuyerRecipients, getProviderEmails } from './_lib/contractRecipients.js';
 
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
 const APP_URL = process.env.APP_URL;
@@ -55,6 +56,66 @@ async function processPayoutReminders(): Promise<{ notified: number }> {
     .in('id', rows.map(r => r.id));
   if (markError) throw markError;
   return { notified: rows.length };
+}
+
+// Avtal som väntar på någon part: första påminnelsen efter 3 dagar, därefter var 5:e dag, högst
+// 3 påminnelser. Räknaren och tidpunkten sätts först när minst ett mejl har gått iväg, och
+// nollställs av databasen när avtalet byter läge (ny version, godkännande, signering).
+const CONTRACT_REMIND_AFTER_DAYS = 3;
+const CONTRACT_REMIND_EVERY_DAYS = 5;
+const CONTRACT_MAX_REMINDERS = 3;
+
+async function processContractReminders(): Promise<{ reminded: number }> {
+  const now = Date.now();
+  const firstCutoff = new Date(now - CONTRACT_REMIND_AFTER_DAYS * 86400000).toISOString();
+  const repeatCutoff = new Date(now - CONTRACT_REMIND_EVERY_DAYS * 86400000).toISOString();
+  const { data, error } = await supabaseAdmin
+    .from('contracts')
+    .select('id, awaiting_party, awaiting_since, reminder_count, bookings(title, provider_id, buyer_org_id, buyer_user_id)')
+    .not('awaiting_party', 'is', null)
+    .lt('awaiting_since', firstCutoff)
+    .lt('reminder_count', CONTRACT_MAX_REMINDERS)
+    .or(`last_reminder_at.is.null,last_reminder_at.lt.${repeatCutoff}`)
+    .limit(BATCH_SIZE);
+  if (error) throw error;
+
+  let reminded = 0;
+  for (const row of data ?? []) {
+    const booking = one<any>(row.bookings);
+    if (!booking) continue;
+    const parties: ('buyer' | 'provider')[] = row.awaiting_party === 'both' ? ['buyer', 'provider'] : [row.awaiting_party as 'buyer' | 'provider'];
+    const days = Math.floor((now - new Date(row.awaiting_since as string).getTime()) / 86400000);
+    let anySent = false;
+    for (const party of parties) {
+      const content = contractReminder({
+        title: booking.title,
+        waitingFor: row.awaiting_party === 'both' ? 'signering av båda parter' : party === 'buyer' ? 'köparen' : 'lärosätet',
+        daysWaiting: days,
+        linkUrl: APP_URL ? (party === 'buyer' ? `${APP_URL}/konto?tab=bokningar` : `${APP_URL}/provider/fakturering`) : undefined,
+      });
+      const recipients =
+        party === 'buyer'
+          ? await getBuyerRecipients(booking.buyer_org_id, booking.buyer_user_id)
+          : await getProviderEmails(booking.provider_id);
+      for (const to of recipients.length > 0 ? recipients : [null]) {
+        const result = await sendEmail({ to, ...content, messageType: 'contract_reminder', relatedTable: 'contracts', relatedId: row.id as string });
+        if (result.success) anySent = true;
+      }
+    }
+    if (!anySent) continue;
+    await supabaseAdmin
+      .from('contracts')
+      .update({ last_reminder_at: new Date().toISOString(), reminder_count: (row.reminder_count as number) + 1 })
+      .eq('id', row.id);
+    await supabaseAdmin.from('contract_events').insert({
+      contract_id: row.id,
+      actor_role: 'system',
+      event_type: 'reminder_sent',
+      payload: { awaiting_party: row.awaiting_party, days_waiting: days },
+    });
+    reminded++;
+  }
+  return { reminded };
 }
 
 async function processInvoiceBasesReady(): Promise<{ moved: number; notified: number }> {
@@ -195,5 +256,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('check-overdue-requests payout reminders error:', err);
   }
 
-  return res.status(200).json({ escalated, assignmentsEscalated, invoiceBases, payoutReminders });
+  let contractReminders = { reminded: 0 };
+  try {
+    contractReminders = await processContractReminders();
+  } catch (err) {
+    console.error('check-overdue-requests contract reminders error:', err);
+  }
+
+  return res.status(200).json({ escalated, assignmentsEscalated, invoiceBases, payoutReminders, contractReminders });
 }

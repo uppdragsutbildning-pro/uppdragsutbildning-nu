@@ -11,6 +11,7 @@ import { MarketplacesTab } from '../admin/MarketplacesTab';
 import { ProviderMarketplacesDialog } from '../admin/ProviderMarketplacesDialog';
 import { TrainingRequestsTab, useOpenTrainingRequestsCount } from '../admin/TrainingRequestsTab';
 import { BillingTab, useBillingAttentionCount } from '../admin/BillingTab';
+import { ContractsTab, useContractsAttentionCount } from '../admin/ContractsTab';
 import { CpiRecordDrawer } from '../admin/CpiRecordDrawer';
 import { getPaginationRange } from '../../../hooks/usePaginatedQuery';
 import {
@@ -23,7 +24,7 @@ import {
   PaginationEllipsis,
 } from '../ui/pagination';
 
-type Tab = 'overview' | 'trainings' | 'efterfragningar' | 'fakturering' | 'providers' | 'marketplaces' | 'users' | 'kompetensindex';
+type Tab = 'overview' | 'trainings' | 'efterfragningar' | 'fakturering' | 'avtal' | 'providers' | 'marketplaces' | 'users' | 'kompetensindex';
 
 export interface CpiRecord {
   id: string;
@@ -46,10 +47,11 @@ export function AdminDashboard() {
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState<Tab>(
-    tabParam === 'fakturering' || tabParam === 'efterfragningar' ? tabParam : 'overview'
+    tabParam === 'fakturering' || tabParam === 'efterfragningar' || tabParam === 'avtal' ? tabParam : 'overview'
   );
   const openTrainingRequests = useOpenTrainingRequestsCount();
   const billingAttention = useBillingAttentionCount();
+  const contractsAttention = useContractsAttentionCount();
   const [users, setUsers] = useState<(Profile & { provider_name?: string })[]>([]);
   const [supabaseProviders, setSupabaseProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(false);
@@ -440,6 +442,21 @@ export function AdminDashboard() {
               {billingAttention > 0 && (
                 <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-green-600 text-white text-xs font-medium">
                   {billingAttention}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('avtal')}
+              className={`pb-3 border-b-2 transition-colors ${
+                activeTab === 'avtal'
+                  ? 'border-blue-600 text-blue-600 font-medium'
+                  : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Avtal
+              {contractsAttention > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-green-600 text-white text-xs font-medium">
+                  {contractsAttention}
                 </span>
               )}
             </button>
@@ -944,6 +961,8 @@ export function AdminDashboard() {
         {activeTab === 'efterfragningar' && <TrainingRequestsTab />}
 
         {activeTab === 'fakturering' && <BillingTab />}
+
+        {activeTab === 'avtal' && <ContractsTab />}
 
         {activeTab === 'marketplaces' && <MarketplacesTab />}
 

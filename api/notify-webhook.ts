@@ -19,7 +19,12 @@ import {
   requestClosedForProvider,
   payoutMade,
   cancellationRequestedAdmin,
+  contractNewVersion,
+  contractAgreed,
+  contractSignedRegistered,
+  contractAmendmentRegistered,
 } from './_lib/emailTemplates.js';
+import { getBuyerRecipients, getProviderEmails } from './_lib/contractRecipients.js';
 
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
 const APP_URL = process.env.APP_URL;
@@ -212,6 +217,66 @@ async function handleInvoiceBasisEvent(record: Record<string, any>) {
   }
 }
 
+// Avtal: mejla motparten (eller båda) när en version laddas upp, avtalet godkänns av båda,
+// ett signerat avtal registreras eller ett tillägg läggs till. Aldrig den som själv gjorde det.
+async function handleContractEvent(record: Record<string, any>) {
+  const { data: contract } = await supabaseAdmin
+    .from('contracts')
+    .select('id, bookings(title, provider_id, buyer_org_id, buyer_user_id)')
+    .eq('id', record.contract_id)
+    .single();
+  const booking = one<any>(contract?.bookings);
+  if (!contract || !booking) return;
+
+  const payload = (record.payload ?? {}) as Record<string, unknown>;
+  const actor = record.actor_role as string;
+  const buyerLink = APP_URL ? `${APP_URL}/konto?tab=bokningar` : undefined;
+  const providerLink = APP_URL ? `${APP_URL}/provider/fakturering` : undefined;
+  const mail = { relatedTable: 'contracts', relatedId: contract.id as string };
+  const versionNo = Number(payload.version_no ?? 0);
+
+  // Vilka parter som ska få mejl.
+  const parties: ('buyer' | 'provider')[] =
+    record.event_type === 'agreed' || actor === 'admin'
+      ? ['buyer', 'provider']
+      : [actor === 'buyer' ? 'provider' : 'buyer'];
+
+  const actorLabel = actor === 'buyer' ? 'Köparen' : actor === 'provider' ? 'Lärosätet' : 'Plattformen';
+
+  for (const party of parties) {
+    const linkUrl = party === 'buyer' ? buyerLink : providerLink;
+    let content;
+    let messageType: string;
+    if (record.event_type === 'version_uploaded') {
+      content = contractNewVersion({
+        title: booking.title,
+        fromParty: actorLabel,
+        versionNo,
+        comment: typeof payload.comment === 'string' ? payload.comment : null,
+        linkUrl,
+      });
+      messageType = 'contract_new_version';
+    } else if (record.event_type === 'agreed') {
+      content = contractAgreed({ title: booking.title, versionNo, linkUrl });
+      messageType = 'contract_agreed';
+    } else if (record.event_type === 'amendment_registered') {
+      content = contractAmendmentRegistered({ title: booking.title, byParty: actorLabel, linkUrl });
+      messageType = 'contract_amendment';
+    } else {
+      content = contractSignedRegistered({ title: booking.title, byParty: actorLabel, linkUrl });
+      messageType = 'contract_signed';
+    }
+    const recipients =
+      party === 'buyer'
+        ? await getBuyerRecipients(booking.buyer_org_id, booking.buyer_user_id)
+        : await getProviderEmails(booking.provider_id);
+    // Ingen mottagare: logga ett misslyckat utskick (jfr sendEmail) i stället för att hoppa över tyst.
+    for (const to of recipients.length > 0 ? recipients : [null]) {
+      await sendEmail({ to, ...content, messageType, ...mail });
+    }
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -273,6 +338,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await handleBooking(record);
     } else if (table === 'invoice_basis_events' && operation === 'INSERT') {
       await handleInvoiceBasisEvent(record);
+    } else if (table === 'contract_events' && operation === 'INSERT') {
+      await handleContractEvent(record);
     } else if (table === 'applications' && operation === 'INSERT') {
       if (record.training_id) {
         const { email, title } = await getProviderContactEmail(record.training_id);
