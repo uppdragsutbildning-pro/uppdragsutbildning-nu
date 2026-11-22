@@ -6,7 +6,7 @@ import {
   type Analysis, type Finding, type Recommendation,
 } from '../../../../lib/kompetensindexReport';
 import { ADVISORY_BOOKING_URL, ADVISORY_LABEL } from '../../../../lib/advisory';
-import type { ReportCourse } from '../../../../lib/reportCourseMatching';
+import type { MatchedCourse } from '../../../../lib/reportCourseMatching';
 import type { CPIResult } from '../../pages/KompetensindexPage';
 import { ScaleBar } from './ReportCharts';
 
@@ -237,7 +237,7 @@ export function RecommendationCard({
 }: {
   index: number;
   rec: Recommendation;
-  courses: ReportCourse[];
+  courses: MatchedCourse[];
   coursesLoading: boolean;
   via: string | null;
   showAdvisory: boolean;
@@ -274,6 +274,16 @@ export function RecommendationCard({
                         <span className="flex-1 min-w-0">
                           <span className="block text-sm font-semibold text-[var(--fg)] truncate group-hover:text-[var(--accent)]">{c.title}</span>
                           {c.providerName && <span className="block text-xs text-[var(--fg-muted)] truncate">{c.providerName}</span>}
+                          {c.matchedTags.length > 0 && (
+                            <span className="mt-1.5 flex flex-wrap gap-1.5">
+                              {c.matchedTags.map((t) => (
+                                <span key={t.id} className="inline-flex items-center gap-1 rounded-full bg-[var(--chip-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--chip-fg)]">
+                                  {t.title}
+                                  <span className="text-[9px] font-semibold uppercase tracking-wide text-[var(--fg-subtle)]">{t.source}</span>
+                                </span>
+                              ))}
+                            </span>
+                          )}
                         </span>
                         <ArrowRight className="w-4 h-4 text-[var(--fg-subtle)] group-hover:text-[var(--accent)] shrink-0" aria-hidden="true" />
                       </Link>

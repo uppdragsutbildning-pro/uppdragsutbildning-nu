@@ -13,7 +13,7 @@ export interface ReportCourse {
   title: string;
   description: string;
   target_audience: string | null;
-  ssyk_skills: { id: string; title?: string }[] | null;
+  ssyk_skills: { id: string; title?: string; source?: 'ssyk' | 'esco' }[] | null;
   categoryName: string | null;
   providerName: string | null;
 }
@@ -44,6 +44,22 @@ export async function loadCoursesForReport(marketplace: Marketplace | null): Pro
   }));
 }
 
+// Kurs med de taggar som motiverar träffen (visas under kursnamnet i rapporten).
+export interface MatchedCourse extends ReportCourse {
+  matchedTags: { id: string; title: string; source: 'ssyk' | 'esco' }[];
+}
+
+function pickMatchedTags(course: ReportCourse, terms: Set<string>, tagSet: Set<string>) {
+  const tags = (course.ssyk_skills ?? [])
+    .filter((t): t is { id: string; title: string; source?: 'ssyk' | 'esco' } => typeof t.title === 'string' && t.title.length > 0)
+    .map((t) => ({ id: t.id, title: t.title, source: t.source === 'esco' ? ('esco' as const) : ('ssyk' as const) }));
+  const byId = tags.filter((t) => tagSet.has(t.id));
+  const byTerm = tags.filter((t) => !tagSet.has(t.id) && [...tokenize(t.title)].some((w) => [...terms].some((term) => wordsMatch(term, w))));
+  const picked = [...byId, ...byTerm];
+  // Inga taggar matchade själva (träffen kom från titel/kategori): visa kursens första taggar.
+  return (picked.length > 0 ? picked : tags).slice(0, 3);
+}
+
 const THRESHOLD = 3;
 
 // Breda ord som förekommer i många kurser. De ger bara en svag träff, annars matchar till exempel
@@ -60,8 +76,8 @@ export function matchRecommendations(
   courses: ReportCourse[],
   tagIds: string[],
   perRec = 2
-): Map<number, ReportCourse[]> {
-  const result = new Map<number, ReportCourse[]>();
+): Map<number, MatchedCourse[]> {
+  const result = new Map<number, MatchedCourse[]>();
   const used = new Set<string>();
   const tagSet = new Set(tagIds);
 
@@ -98,7 +114,7 @@ export function matchRecommendations(
 
     if (scored.length > 0) {
       scored.forEach((x) => used.add(x.c.id));
-      result.set(i, scored.map((x) => x.c));
+      result.set(i, scored.map((x) => ({ ...x.c, matchedTags: pickMatchedTags(x.c, terms, tagSet) })));
     }
   });
 
