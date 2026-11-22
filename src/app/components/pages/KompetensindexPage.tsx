@@ -6,6 +6,7 @@ import { ScaleButtons } from '../kompetensindex/ScaleButtons';
 import { MultiSelectChips } from '../kompetensindex/MultiSelectChips';
 import { OccupationPicker } from '../kompetensindex/OccupationPicker';
 import { QuestionCard } from '../kompetensindex/QuestionCard';
+import { FreetextAssist } from '../kompetensindex/FreetextAssist';
 import { ResultsView } from '../kompetensindex/ResultsView';
 import { supabase } from '../../../lib/supabaseClient';
 import { fetchOccupationDetails, type OccupationDetails, type OccupationName, type OccupationSkill } from '../../../lib/jobtechTaxonomy';
@@ -53,6 +54,14 @@ const initialAnswers: Answers = {
   si1: 0, si2: 0, si3: 0, si4: 0,
   li1: [], li2: [], li3: [],
 };
+
+// Grov nivå (låg/måttlig/hög) på de skalfrågor som är besvarade, som sammanhang för formuleringshjälpen.
+function scaleLevelOf(vals: number[]): 'low' | 'medium' | 'high' | undefined {
+  const filled = vals.filter((v) => v > 0);
+  if (!filled.length) return undefined;
+  const avg = filled.reduce((a, b) => a + b, 0) / filled.length;
+  return avg >= 3.7 ? 'high' : avg >= 2.3 ? 'medium' : 'low';
+}
 
 function dimScore(vals: number[], reversed: boolean): number {
   const filled = vals.filter((v) => v > 0);
@@ -619,6 +628,7 @@ export function KompetensindexPage() {
                 className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm min-h-[100px] resize-y focus:outline-none focus:border-[var(--marketplace-primary)] focus:ring-2 focus:ring-[var(--marketplace-primary)]/20"
               />
               <HintBox field="af4" />
+              <FreetextAssist field="af4" value={answers.af4} onChange={(v) => set('af4', v)} scaleLevel={scaleLevelOf([answers.af1, answers.af2, answers.af3])} />
             </QuestionCard>
           </div>
         )}
@@ -650,6 +660,7 @@ export function KompetensindexPage() {
                 className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm min-h-[100px] resize-y focus:outline-none focus:border-[var(--marketplace-primary)] focus:ring-2 focus:ring-[var(--marketplace-primary)]/20"
               />
               <HintBox field="pf5" />
+              <FreetextAssist field="pf5" value={answers.pf5} onChange={(v) => set('pf5', v)} scaleLevel={scaleLevelOf([answers.pf1, answers.pf2, answers.pf3, answers.pf4])} />
             </QuestionCard>
           </div>
         )}
@@ -700,6 +711,7 @@ export function KompetensindexPage() {
                 className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm min-h-[100px] resize-y focus:outline-none focus:border-[var(--marketplace-primary)] focus:ring-2 focus:ring-[var(--marketplace-primary)]/20"
               />
               <HintBox field="tr4" />
+              <FreetextAssist field="tr4" value={answers.tr4} onChange={(v) => set('tr4', v)} scaleLevel={scaleLevelOf([answers.tr1, answers.tr2, answers.tr3])} />
             </QuestionCard>
           </div>
         )}
