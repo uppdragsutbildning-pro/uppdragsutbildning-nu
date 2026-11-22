@@ -99,25 +99,46 @@ ${rules}
 Svara med JSON: {"suggestions": ["förslag 1", "förslag 2", "förslag 3", "förslag 4"]}`;
 
   try {
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: text ? 0.3 : 0.6, maxOutputTokens: 700, responseMimeType: 'application/json' },
-        }),
-        signal: AbortSignal.timeout(15000),
+    // Modellen "tänker" innan den svarar och de tokens räknas in i gränsen, så en låg gräns ger avkapade
+    // JSON-svar. Gränsen är därför generös, och ett misslyckat försök provas en gång till.
+    let parsed: any = null;
+    let lastError = '';
+    for (const maxOutputTokens of [3000, 6000]) {
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: text ? 0.3 : 0.6, maxOutputTokens, responseMimeType: 'application/json' },
+          }),
+          signal: AbortSignal.timeout(12000),
+        }
+      );
+      if (!geminiRes.ok) {
+        lastError = await geminiRes.text();
+        console.error('improve-freetext Gemini error:', lastError);
+        continue;
       }
-    );
-    if (!geminiRes.ok) {
-      console.error('improve-freetext Gemini error:', await geminiRes.text());
-      return res.status(502).json({ error: 'AI-tjänsten svarade inte, försök igen' });
+      const data = await geminiRes.json();
+      const out: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+      try {
+        parsed = JSON.parse(out.trim());
+        break;
+      } catch {
+        // Ta ut JSON-objektet om modellen la text runt det.
+        const m = out.match(/\{[\s\S]*\}/);
+        try {
+          if (m) { parsed = JSON.parse(m[0]); break; }
+        } catch {
+          // faller igenom till nytt försök
+        }
+        lastError = `ogiltig JSON (finishReason=${data.candidates?.[0]?.finishReason})`;
+        console.error('improve-freetext parse error:', lastError, out.slice(0, 120));
+      }
     }
-    const data = await geminiRes.json();
-    const out: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    const parsed = JSON.parse(out.trim());
+    if (!parsed) return res.status(502).json({ error: 'Fick inget förslag just nu, försök igen' });
 
     if (text) {
       const improved = typeof parsed?.text === 'string' ? redact(parsed.text.trim()).slice(0, 600) : '';

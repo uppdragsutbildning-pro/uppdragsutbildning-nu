@@ -87,7 +87,7 @@ Svara ENBART med JSON: {"phrases": ["fras 1", "fras 2"]}`;
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 600, responseMimeType: 'application/json' },
+          generationConfig: { temperature: 0.2, maxOutputTokens: 3000, responseMimeType: 'application/json' },
         }),
         signal: AbortSignal.timeout(15000),
       }
