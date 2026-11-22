@@ -36,7 +36,7 @@ const STOPWORDS = new Set([
   'organisation', 'organisationen', 'verksamhet', 'verksamheten', 'under', 'över', 'efter', 'mellan', 'alla',
 ]);
 
-function tokenize(text: string): Set<string> {
+export function tokenize(text: string): Set<string> {
   const tokens = new Set<string>();
   for (const raw of text.toLowerCase().split(/[^a-zåäö0-9]+/)) {
     if (raw.length >= 4 && !STOPWORDS.has(raw)) tokens.add(raw);
@@ -45,7 +45,7 @@ function tokenize(text: string): Set<string> {
 }
 
 // Enkel stamjämförelse: "ledarskap" matchar "ledarskapsprogram" (gemensamt prefix ≥ 6 tecken).
-function wordsMatch(a: string, b: string): boolean {
+export function wordsMatch(a: string, b: string): boolean {
   if (a === b) return true;
   const [short, long] = a.length <= b.length ? [a, b] : [b, a];
   return short.length >= 6 && long.startsWith(short);

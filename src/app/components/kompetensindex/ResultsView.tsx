@@ -1,167 +1,24 @@
 import { useNavigate } from 'react-router';
-import { useEffect, useState } from 'react';
-import { Sparkles, Pencil, X, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
-import { CPIResult } from '../pages/KompetensindexPage';
-
-const cpiLevel = (score: number) => {
-  if (score < 25) return { label: 'Lågt tryck', bg: '#F0FDF4', border: '#86EFAC', text: '#16A34A', desc: 'Er verksamhet upplever lågt kompetensstryck. Det finns goda förutsättningar att arbeta proaktivt med kompetensutveckling.' };
-  if (score < 50) return { label: 'Måttligt tryck', bg: '#EFF6FF', border: '#93C5FD', text: '#2563EB', desc: 'Er verksamhet upplever ett måttligt kompetensstryck. Det finns tydliga områden att stärka för att möta framtida behov.' };
-  if (score < 75) return { label: 'Högt tryck', bg: '#FFFBEB', border: '#FCD34D', text: '#D97706', desc: 'Er verksamhet upplever högt kompetensstryck. Riktade insatser rekommenderas för att undvika att kompetensgapet ökar.' };
-  return { label: 'Kritiskt tryck', bg: '#FEF2F2', border: '#FCA5A5', text: '#DC2626', desc: 'Er verksamhet upplever kritiskt kompetensstryck. Omedelbara och strategiska insatser behövs för att hantera situationen.' };
-};
-
-const DIM_COLORS: Record<string, string> = {
-  AF: 'bg-blue-500', LF: 'bg-red-500', OK: 'bg-green-500', TR: 'bg-amber-500',
-};
-const DIM_ABBR: Record<string, string> = { AF: 'AF', LF: 'KP', OK: 'OK', TR: 'SR' };
-const DIM_LABELS: Record<string, string> = {
-  AF: 'Arbetsförändring', LF: 'Kompetenspåverkan', OK: 'Omställningskapacitet', TR: 'Strategisk riktning',
-};
-const DIM_DESCRIPTIONS: Record<string, string> = {
-  AF: 'Mäter hur snabbt och djupt arbetsuppgifter, roller och processer förändras i er verksamhet — drivet av teknik, marknad eller omvärldsförändringar.',
-  LF: 'Mäter i vilken grad kompetensbrist skapar friktion, förseningar och ineffektivitet i det dagliga arbetet och påverkar leveransförmågan.',
-  OK: 'Mäter organisationens förmåga att anpassa sig, lära nytt och ställa om när verksamhetens krav förändras.',
-  TR: 'Mäter hur tydlig riktning och strategi ni har för hur kompetens ska förnyas, rekryteras och utvecklas på 1–3 års sikt.',
-};
-const SI_LABELS = ['Rekrytering', 'Kompetensväxling', 'Kompetensutveckling', 'Nya arbetssätt'];
-const PRIORITY_COLORS: Record<string, string> = {
-  high: 'bg-red-100 text-red-700',
-  medium: 'bg-amber-100 text-amber-700',
-  low: 'bg-green-100 text-green-700',
-};
-const PRIORITY_LABELS: Record<string, string> = { high: 'Hög', medium: 'Medel', low: 'Låg' };
-
-interface AnalysisResult {
-  overallAssessment: string;
-  topRisk: string;
-  topAction: string;
-  orgVoice: string;
-  recommendations: { title: string; body: string; priority: 'high' | 'medium' | 'low' }[];
-}
+import { useEffect, useMemo, useState } from 'react';
+import { Pencil, X, ChevronDown, ChevronUp, RefreshCw, Download } from 'lucide-react';
+import type { CPIResult } from '../pages/KompetensindexPage';
+import { useMarketplace } from '../../../lib/marketplaceContext';
+import {
+  DIMS, TOTAL_BAND_TEXT, bandFor, buildRuleAnalysis, computeFindings, mergeAnalysis,
+  recommendedStart, selectInitiatives, zoneFor, DIM_KEYS, type Analysis,
+} from '../../../lib/kompetensindexReport';
+import { loadCoursesForReport, matchRecommendations, type ReportCourse } from '../../../lib/reportCourseMatching';
+import { DimensionRadar, PressureQuadrant, PriorityMatrix, ScoreGauge } from './report/ReportCharts';
+import {
+  Card, DimensionCards, FindingsList, FocusQuestion, InitiativeNeedBars, KeyFacts, MessageGrid,
+  RecommendationCard, Roadmap, ScaleLegend, Section, VoiceCards,
+} from './report/ReportSections';
 
 interface ResultsViewProps {
   result: CPIResult;
   onReset: () => void;
   onEditStep?: (step: number) => void;
   onReanalyze?: () => void;
-}
-
-function buildAnalysis(result: CPIResult): AnalysisResult {
-  const { scores, siScores, answers } = result;
-  const { AF, LF, OK, TR, total } = scores;
-
-  const dims = ['AF', 'LF', 'OK', 'TR'] as const;
-  const weakest = dims.reduce((a, b) => (scores[a] < scores[b] ? a : b));
-  const strongest = dims.reduce((a, b) => (scores[a] > scores[b] ? a : b));
-
-  const dimName: Record<string, string> = {
-    AF: 'arbetsförändring', LF: 'kompetenspåverkan', OK: 'omställningskapacitet', TR: 'strategisk riktning',
-  };
-  const dimNameCap: Record<string, string> = {
-    AF: 'Arbetsförändring', LF: 'Kompetenspåverkan', OK: 'Omställningskapacitet', TR: 'Strategisk riktning',
-  };
-
-  const pressureDesc = total < 25 ? 'lågt' : total < 50 ? 'måttligt' : total < 75 ? 'högt' : 'kritiskt';
-  const pressureLevel = total < 25 ? 'low' : total < 50 ? 'medium' : 'high';
-
-  const overallAssessment =
-    `${answers.companyName} visar ett ${pressureDesc} kompetensstryck (${total}/100) inom ${answers.industry}. ` +
-    `Starkast inom ${dimName[strongest]} (${scores[strongest]}p) — er tydligaste tillgång i kompetensarbetet. ` +
-    `Svagast inom ${dimName[weakest]} (${scores[weakest]}p), vilket är det område som kräver mest uppmärksamhet framåt.`;
-
-  const riskMap: Record<string, string> = {
-    AF: `Arbetsförändringen går snabbt och riskerar att lämna medarbetare utan rätt förutsättningar. Om roller och processer förändras utan att kompetensen hänger med ökar prestationsgapet successivt.`,
-    LF: `Kompetenspåverkan är hög — kompetensbrist skapar redan märkbara hinder i det dagliga arbetet. Utan riktade insatser riskerar leveransförmågan att försämras ytterligare.`,
-    OK: `Omställningskapaciteten är låg, vilket gör organisationen sårbar när förutsättningarna ändras. Bristen på adaptiv förmåga kan fördröja nödvändiga omställningar och öka omställningskostnaden.`,
-    TR: `Den strategiska riktningen är otydlig — det saknas en sammanhållen strategi för hur kompetens ska förnyas. Utan tydlig riktning riskerar insatser att bli fragmenterade och ge begränsad effekt.`,
-  };
-  const topRisk = riskMap[weakest] ?? `${dimNameCap[weakest]}-dimensionen (${scores[weakest]}p) utgör den viktigaste risken och bör adresseras skyndsamt.`;
-
-  const actionMap: Record<string, string> = {
-    AF: `Genomför en strukturerad analys av vilka roller och kompetenser som förändras mest. Inled riktade insatser inom förändringsledning och digital kompetens för berörda team.`,
-    LF: `Kartlägg de arbetsuppgifter som stannar upp eller tar längre tid på grund av kompetensbrist. Prioritera snabba kompetensinsatser — korta kurser eller workshops — inom de mest kritiska processerna.`,
-    OK: `Bygg lärande strukturer in i vardagen: lärcirklar, intern mentoring och korta intensivutbildningar. Mät och följ upp omställningsförmågan regelbundet för att synliggöra framsteg.`,
-    TR: `Ta fram en kompetensförsörjningsplan på 1–3 år som kopplar lärande direkt till verksamhetsmålen. Definiera tydliga prioriteringar kring rekrytering, kompetensväxling och kompetensutveckling.`,
-  };
-  const topAction = actionMap[weakest] ?? `Fokusera insatser på att stärka ${dimName[weakest]} — detta ger störst effekt på det totala kompetensindexet.`;
-
-  const freetextParts: string[] = [];
-  if (answers.af4) freetextParts.push(`Förändringsdrivkrafter: "${answers.af4}"`);
-  if (answers.pf5) freetextParts.push(`Kompetensbristens effekt: "${answers.pf5}"`);
-  if (answers.tr4) freetextParts.push(`Kritiska förmågor framåt: "${answers.tr4}"`);
-
-  let orgVoice = '';
-  if (freetextParts.length > 0) {
-    orgVoice =
-      freetextParts.join('. ') + '. ' +
-      (answers.af4 && answers.af4.toLowerCase().includes('ai')
-        ? 'AI och automatisering är centralt i er omställning — satsa på att bygga AI-litteracitet brett i organisationen. '
-        : '') +
-      `Sammantaget visar era svar på en organisation med ${pressureLevel === 'high' ? 'högt förändringstempo och tydliga kompetensgap' : 'medvetna kompetensbehov och god självkännedom'}. ` +
-      `Ambitionsnivån indikerar att ni är redo för ${pressureLevel === 'high' ? 'riktade och skyndsamma' : 'proaktiva och strategiska'} kompetensinsatser.`;
-  } else {
-    orgVoice = 'Inga fritextsvar registrerades. Fyll i frågorna AF4, KP5 och SR4 för en mer personaliserad analys av organisationens röst och behov.';
-  }
-
-  const recommendations: AnalysisResult['recommendations'] = [];
-
-  if (LF >= 50) {
-    recommendations.push({
-      title: 'Minska kompetensbristens påverkan med riktad kompetensutveckling',
-      body: `Med ett KP-värde på ${LF} finns tydliga hinder för effektiv prestation. Strukturerade kompetensprogram inom kärnprocesser kan snabbt minska friktion och förbättra leveransförmågan.`,
-      priority: LF >= 70 ? 'high' : 'medium',
-    });
-  }
-
-  if (AF >= 50) {
-    recommendations.push({
-      title: 'Stärk förändringsförmågan inför framtida omställning',
-      body: `Arbetsförändringsdimensionen (${AF}p) signalerar att era roller och processer förändras snabbt. Utbildning i förändringsledning och digitala verktyg bör prioriteras för berörda team.`,
-      priority: AF >= 70 ? 'high' : 'medium',
-    });
-  }
-
-  if (OK < 50) {
-    recommendations.push({
-      title: 'Bygg intern omställningskapacitet',
-      body: `Omställningskapaciteten på ${OK}p är lägre än önskat. Investera i lärande strukturer — t.ex. lärande i arbetet, mentorskap och korta intensivutbildningar — för att höja organisationens adaptiva förmåga.`,
-      priority: OK < 30 ? 'high' : 'medium',
-    });
-  }
-
-  if (TR < 60) {
-    recommendations.push({
-      title: 'Tydliggör den strategiska riktningen',
-      body: `Med SR-värde ${TR}p saknas delvis tydlig färdriktning för kompetensförsörjningen. Ta fram en kompetensförsörjningsplan som kopplar lärande till verksamhetsmålen på 1–3 års sikt.`,
-      priority: TR < 40 ? 'high' : 'medium',
-    });
-  }
-
-  if (siScores.si2 >= 4) {
-    recommendations.push({
-      title: 'Prioritera kompetensväxling framför rekrytering',
-      body: 'Era svar indikerar högt behov av kompetensväxling. Att vidareutbilda befintlig personal är ofta snabbare och mer kostnadseffektivt än extern rekrytering, särskilt i ett tight kompetensläge.',
-      priority: 'medium',
-    });
-  }
-
-  if (siScores.si4 >= 4) {
-    recommendations.push({
-      title: 'Implementera nya arbetssätt och agila metoder',
-      body: 'Behovet av nya arbetssätt är markant. Satsa på tvärfunktionella team, snabbare beslutscykler och kontinuerligt lärande som en del av det dagliga arbetet.',
-      priority: 'medium',
-    });
-  }
-
-  if (recommendations.length === 0) {
-    recommendations.push({
-      title: 'Fortsätt det goda arbetet med kompetensutveckling',
-      body: `${answers.companyName} visar balanserade kompetensindexvärden. Fokusera på att upprätthålla nuvarande insatser och följa upp kompetensgapen kontinuerligt.`,
-      priority: 'low',
-    });
-  }
-
-  return { overallAssessment, topRisk, topAction, orgVoice, recommendations };
 }
 
 function AnswerSummaryDrawer({
@@ -295,27 +152,31 @@ function AnswerSummaryDrawer({
 
 export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
   const navigate = useNavigate();
+  const { marketplace, loading: marketplaceLoading } = useMarketplace();
   const { scores, siScores, ssykSkills, occupations, answers } = result;
-  const level = cpiLevel(scores.total);
-  const siVals = [siScores.si1, siScores.si2, siScores.si3, siScores.si4];
   const [showDrawer, setShowDrawer] = useState(false);
 
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [loading, setLoading] = useState(true);
+  const ruleAnalysis = useMemo(() => buildRuleAnalysis(result), [result]);
+  const [analysis, setAnalysis] = useState<Analysis>(ruleAnalysis);
+  const [aiLoading, setAiLoading] = useState(true);
+  const [aiFailed, setAiFailed] = useState(false);
+
+  const [courses, setCourses] = useState<ReportCourse[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(true);
 
   const runAnalysis = async () => {
-    setLoading(true);
-    setAnalysis(null);
+    setAiLoading(true);
+    setAiFailed(false);
     try {
       const res = await fetch('/api/analyze-cpi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          companyName: result.answers?.companyName,
-          industry: result.answers?.industry,
-          companySize: result.answers?.companySize,
+          companyName: answers?.companyName,
+          industry: answers?.industry,
+          companySize: answers?.companySize,
           scores,
-          freetext: result.answers,
+          freetext: { af4: answers.af4, pf5: answers.pf5, tr4: answers.tr4, li1: answers.li1, li2: answers.li2 },
           siScores,
           occupations: occupations.map((occ) => ({
             label: occ.label,
@@ -326,13 +187,13 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
         }),
       });
       if (!res.ok) throw new Error('API error');
-      const data = await res.json();
-      setAnalysis(data);
+      setAnalysis(mergeAnalysis(ruleAnalysis, await res.json()));
     } catch (err) {
-      console.error('Gemini-fel:', err);
-      setAnalysis(buildAnalysis(result));
+      console.error('Analysfel:', err);
+      setAnalysis(ruleAnalysis);
+      setAiFailed(true);
     } finally {
-      setLoading(false);
+      setAiLoading(false);
     }
   };
 
@@ -340,249 +201,239 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
     runAnalysis();
   }, []);
 
+  // Kurser hämtas när marknadsplatskontexten är känd, så att urvalet följer en partners kuraterade kurser.
+  useEffect(() => {
+    if (marketplaceLoading) return;
+    let active = true;
+    setCoursesLoading(true);
+    loadCoursesForReport(marketplace)
+      .then((c) => active && setCourses(c))
+      .catch((e) => { console.error('Kunde inte hämta kurser:', e); if (active) setCourses([]); })
+      .finally(() => active && setCoursesLoading(false));
+    return () => { active = false; };
+  }, [marketplace?.id, marketplaceLoading]);
+
+  const total = bandFor(scores.total);
+  const zone = zoneFor(scores.AF, scores.OK);
+  const { strengths, risks } = computeFindings(scores);
+  const strongest = DIM_KEYS.reduce((a, b) => (scores[a] <= scores[b] ? a : b));
+  const weakest = DIM_KEYS.reduce((a, b) => (scores[a] >= scores[b] ? a : b));
+  const initiatives = useMemo(() => selectInitiatives(result), [result]);
+  const startHere = recommendedStart(initiatives);
+
+  const courseMap = useMemo(
+    () => matchRecommendations(analysis.recommendations, courses, ssykSkills.map((s) => s.id)),
+    [analysis.recommendations, courses, ssykSkills]
+  );
+
+  const via = marketplace?.slug ?? null;
+  // Partnermarknadsplatser är helt vitmärkta: CTC Nordics rådgivning visas bara på den öppna plattformen.
+  const showAdvisory = !marketplace;
+
   return (
-    <div className="min-h-screen bg-slate-50 py-10">
-      {showDrawer && (
-        <AnswerSummaryDrawer
-          result={result}
-          onClose={() => setShowDrawer(false)}
-          onEditStep={onEditStep}
-        />
-      )}
+    <div className="ub-theme min-h-screen">
+      {showDrawer && <AnswerSummaryDrawer result={result} onClose={() => setShowDrawer(false)} onEditStep={onEditStep} />}
 
-      <div className="max-w-3xl mx-auto px-6 space-y-6">
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 py-10 space-y-14">
 
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4">
+        {/* Rubrik */}
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Strategisk kompetensindex ®</h1>
-            <p className="text-slate-500 text-sm mt-1">
-              {answers.companyName} · <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">SNI</span> {answers.industry}
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--accent)] mb-1.5">Strategiskt kompetensindex</p>
+            <h1 className="text-[clamp(1.6rem,3.5vw,2.2rem)] font-bold leading-[1.15] tracking-[-0.025em] text-[var(--fg)]">{answers.companyName}</h1>
+            <p className="text-sm text-[var(--fg-muted)] mt-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--fg-subtle)]">SNI</span> {answers.industry}
+              {answers.companySize ? ` · ${answers.companySize} medarbetare` : ''}
             </p>
           </div>
-          <button
-            onClick={() => setShowDrawer(true)}
-            className="shrink-0 flex items-center gap-1.5 border border-blue-300 text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            <Pencil className="w-3.5 h-3.5" />
-            Ändra svar
-          </button>
-        </div>
-
-        {/* CPI Score card */}
-        <div className="bg-white rounded-xl border shadow-sm p-8 text-center"
-          style={{ borderColor: level.border, backgroundColor: level.bg }}>
-          <div className="text-7xl font-bold mb-2" style={{ color: level.text }}>
-            {scores.total}<span className="text-3xl text-slate-400 font-normal"> / 100</span>
-          </div>
-          <span className="inline-block px-4 py-1.5 rounded-full text-sm font-semibold mb-3"
-            style={{ backgroundColor: level.bg, color: level.text, border: `1px solid ${level.border}` }}>
-            {level.label}
-          </span>
-          <p className="text-slate-600 text-sm max-w-md mx-auto">{level.desc}</p>
-        </div>
-
-        {/* Dimension scores */}
-        <div className="grid grid-cols-2 gap-4">
-          {(['AF', 'LF', 'OK', 'TR'] as const).map((dim) => {
-            const s = scores[dim];
-            const dimLevel = cpiLevel(s);
-            return (
-              <div key={dim} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-                <div className="flex items-start justify-between mb-1">
-                  <div>
-                    <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full mb-1">{DIM_ABBR[dim]}</span>
-                    <p className="text-sm font-semibold text-slate-900">{DIM_LABELS[dim]}</p>
-                  </div>
-                  <span className="text-2xl font-bold" style={{ color: dimLevel.text }}>{s}</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-slate-200 mt-3 mb-3">
-                  <div className={`h-1.5 rounded-full ${DIM_COLORS[dim]}`} style={{ width: `${s}%` }} />
-                </div>
-                <p className="text-xs text-slate-500 leading-relaxed">{DIM_DESCRIPTIONS[dim]}</p>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Strategic profile */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-          <h3 className="font-semibold text-slate-900 mb-4">Prioriterade kompetensinsatser</h3>
-          <div className="space-y-3">
-            {SI_LABELS.map((label, i) => {
-              const val = siVals[i];
-              const pct = Math.round(((val - 1) / 4) * 100);
-              return (
-                <div key={label} className="flex items-center gap-3">
-                  <span className="text-sm text-slate-600 w-40 shrink-0">{label}</span>
-                  <div className="flex-1 h-1.5 rounded-full bg-slate-200">
-                    <div className="h-1.5 rounded-full bg-blue-500" style={{ width: `${pct}%` }} />
-                  </div>
-                  <span className="text-sm font-medium text-slate-700 w-6 text-right">{val}</span>
-                </div>
-              );
-            })}
+          <div className="flex flex-wrap gap-2">
+            <button disabled title="PDF-rapporten kommer i nästa version"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] border border-[var(--border)] text-[var(--fg-subtle)] text-sm font-medium cursor-not-allowed">
+              <Download className="w-3.5 h-3.5" aria-hidden="true" />PDF kommer snart
+            </button>
+            <button onClick={() => setShowDrawer(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] border border-[var(--border)] bg-[var(--bg-raised)] hover:bg-[var(--chip-bg)] text-[var(--fg)] text-sm font-medium transition-colors">
+              <Pencil className="w-3.5 h-3.5" aria-hidden="true" />Ändra svar
+            </button>
           </div>
         </div>
 
-        {/* AI-analys */}
-        <div className="bg-white rounded-xl border-l-4 border-blue-600 border border-slate-200 shadow-sm p-6">
-          <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-blue-600" />
-            AI-analys
-          </h3>
-          {loading ? (
-            <div className="animate-pulse space-y-4">
-              <div className="bg-slate-50 rounded-lg px-4 py-3 border border-slate-100">
-                <div className="h-3 bg-gray-200 rounded w-40 mb-2" />
-                <div className="h-5 bg-gray-200 rounded w-[90%]" />
-              </div>
-              <div className="space-y-2">
-                <div className="h-[14px] bg-gray-200 rounded w-full" />
-                <div className="h-[14px] bg-gray-200 rounded w-[95%]" />
-                <div className="h-[14px] bg-gray-200 rounded w-[70%]" />
-              </div>
+        {/* 1. Sammanfattning */}
+        <Section eyebrow="01 / Sammanfattning" title="Ledningsöversikt" intro="Det viktigaste på en skärm: var ni står, vad som är starkast och vad som behöver prioriteras.">
+          <div className="grid md:grid-cols-[320px_1fr] gap-4 items-stretch">
+            <Card className="flex flex-col items-center justify-center text-center">
+              <ScoreGauge score={scores.total} />
+              <span className="inline-block px-3.5 py-1 rounded-full text-sm font-semibold border mt-1"
+                style={{ color: total.color, backgroundColor: total.bg, borderColor: total.border }}>
+                {total.label} kompetenstryck
+              </span>
+              <p className="text-sm text-[var(--fg-muted)] leading-relaxed mt-3">{TOTAL_BAND_TEXT[total.index]}</p>
+            </Card>
+            <div className="space-y-4">
+              <KeyFacts items={[
+                { label: 'Index', value: `${scores.total}/100`, color: total.color },
+                { label: 'Nivå', value: total.label, color: total.color },
+                { label: 'Starkast', value: DIMS[strongest].label },
+                { label: 'Prioritet', value: DIMS[weakest].label },
+              ]} />
+              <Card>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--accent)] mb-2">Övergripande bedömning</p>
+                {aiLoading ? <SkeletonLines /> : <p className="text-[15px] text-[var(--fg)] leading-relaxed">{analysis.overallAssessment}</p>}
+                {!aiLoading && (
+                  <div className="grid sm:grid-cols-2 gap-3 mt-4">
+                    <div className="rounded-[10px] bg-[#FEF2F2] px-4 py-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B91C1C] mb-1">Viktigaste risk</p>
+                      <p className="text-sm text-[var(--fg)] leading-snug">{analysis.topRisk}</p>
+                    </div>
+                    <div className="rounded-[10px] bg-[var(--accent-dim)] px-4 py-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--accent)] mb-1">Högst prioriterade åtgärd</p>
+                      <p className="text-sm text-[var(--fg)] leading-snug">{analysis.topAction}</p>
+                    </div>
+                  </div>
+                )}
+                {aiFailed && (
+                  <button onClick={runAnalysis} className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--accent)] hover:underline">
+                    <RefreshCw className="w-3 h-3" aria-hidden="true" />Texten är en standardanalys. Försök hämta AI-analysen igen
+                  </button>
+                )}
+              </Card>
             </div>
-          ) : analysis ? (
-            <div style={{ animation: 'fadeIn 300ms ease-in' }} className="space-y-4">
+          </div>
+          <FindingsList strengths={strengths} risks={risks} />
+          <ScaleLegend />
+        </Section>
 
-              {/* Chefssammanfattning */}
-              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Chefssammanfattning</p>
+        {/* 2. Profil */}
+        <Section eyebrow="02 / Profil" title="Era fyra dimensioner" intro="Varje dimension visas på skalan 0–100. Markören visar var ni ligger.">
+          <Card className="!py-4"><DimensionRadar scores={scores} /></Card>
+          <DimensionCards scores={scores} />
+          <FocusQuestion>{analysis.focus.profile}</FocusQuestion>
+        </Section>
 
-              <div className="space-y-3">
-                {/* 1. Övergripande bedömning */}
-                <div className="bg-slate-50 rounded-lg px-4 py-3 border border-slate-100">
-                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Övergripande bedömning</p>
-                  <p className="text-slate-800 text-sm leading-relaxed">{analysis.overallAssessment}</p>
-                </div>
-
-                {/* 2. Viktigaste risk */}
-                <div className="bg-red-50 rounded-lg px-4 py-3 border border-red-100">
-                  <p className="text-xs text-red-500 font-semibold uppercase tracking-wide mb-1">Viktigaste risk</p>
-                  <p className="text-slate-800 text-sm leading-relaxed">{analysis.topRisk}</p>
-                </div>
-
-                {/* 3. Högst prioriterade åtgärd */}
-                <div className="bg-amber-50 rounded-lg px-4 py-3 border border-amber-100">
-                  <p className="text-xs text-amber-600 font-semibold uppercase tracking-wide mb-1">Högst prioriterade åtgärd</p>
-                  <p className="text-slate-800 text-sm leading-relaxed">{analysis.topAction}</p>
-                </div>
-
-                {/* 4. Organisationens röst */}
-                <div className="bg-blue-50 rounded-lg px-4 py-3 border border-blue-100">
-                  <p className="text-xs text-blue-600 font-semibold uppercase tracking-wide mb-1">Organisationens röst</p>
-                  <p className="text-slate-800 text-sm leading-relaxed">{analysis.orgVoice}</p>
-                </div>
-              </div>
+        {/* 3. Tryck mot kapacitet */}
+        <Section eyebrow="03 / Förändringstryck" title="Tryck mot omställningskapacitet"
+          intro="Visar var genomförandeovisshet uppstår: hur snabbt arbetet förändras (AF) mot hur begränsad organisationens förmåga att ställa om är (OK).">
+          <Card>
+            <PressureQuadrant AF={scores.AF} OK={scores.OK} zone={zone} />
+            <div className="mt-4 rounded-[12px] px-4 py-3.5 border" style={{ borderColor: zone.color + '55', backgroundColor: zone.color + '10' }}>
+              <p className="text-sm font-semibold mb-0.5" style={{ color: zone.color }}>Er zon: {zone.label}</p>
+              <p className="text-sm text-[var(--fg-muted)] leading-relaxed">{zone.text}</p>
             </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-slate-600 text-sm">Analysen kunde inte genereras.</p>
-              <button
-                onClick={runAnalysis}
-                className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                Försök igen
-              </button>
-            </div>
-          )}
-        </div>
+          </Card>
+          <FocusQuestion>{analysis.focus.quadrant}</FocusQuestion>
+        </Section>
 
-        {/* SSYK skills */}
+        {/* 4. Budskap */}
+        <Section eyebrow="04 / Viktigaste insikterna" title="Fyra budskap att ta vidare" intro="Styrka, svaghet, risk och möjlighet sammanfattar vad resultaten betyder.">
+          {aiLoading ? <SkeletonGrid /> : <MessageGrid messages={analysis.messages} />}
+          <FocusQuestion>{analysis.focus.messages}</FocusQuestion>
+        </Section>
+
+        {/* 5. Röst */}
+        <Section eyebrow="05 / Organisationens röst" title="Era egna ord"
+          intro="Svaren på de öppna frågorna och era val av insatser, sammanfattade. Underlaget är en respondents svar.">
+          {aiLoading ? <SkeletonGrid /> : <VoiceCards voice={analysis.voice} />}
+        </Section>
+
+        {/* 6. Prioritering */}
+        <Section eyebrow="06 / Prioritering" title="Effekt mot genomförandeinsats"
+          intro="Insatserna är valda utifrån er profil och placerade efter förväntad effekt och hur mycket arbete de kräver.">
+          <div className="grid lg:grid-cols-[1fr_300px] gap-4 items-start">
+            <Card><PriorityMatrix items={initiatives} /></Card>
+            <InitiativeNeedBars siScores={siScores} />
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="bg-[var(--bg-raised)] border border-[var(--border)] rounded-[14px] p-5 border-l-[5px] border-l-[#15803D]">
+              <p className="font-semibold text-[var(--fg)] mb-1">Rekommenderad start</p>
+              <p className="text-sm text-[var(--fg-muted)] leading-relaxed">
+                {startHere.map((i) => i.label).join(', ')} ger hög effekt med rimlig insats och skapar förutsättningar för mer träffsäkra satsningar.
+              </p>
+            </div>
+            <div className="bg-[var(--bg-raised)] border border-[var(--border)] rounded-[14px] p-5 border-l-[5px] border-l-[#C2410C]">
+              <p className="font-semibold text-[var(--fg)] mb-1">Beslutsprincip</p>
+              <p className="text-sm text-[var(--fg-muted)] leading-relaxed">
+                Börja med hög effekt och låg till måttlig insats. Starta större program först när målgrupp, behov och effektmått är tydliga.
+              </p>
+            </div>
+          </div>
+          <FocusQuestion>{analysis.focus.priority}</FocusQuestion>
+        </Section>
+
+        {/* 7. Kompetenser (SSYK) */}
         {ssykSkills.length > 0 && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            <h3 className="font-semibold text-slate-900 mb-1 flex items-center gap-2">
-              <span>🎯</span> Kompetenser kopplade till valda yrkesroller (SSYK)
-            </h3>
-            <p className="text-xs text-slate-500 mb-3">Enligt Arbetsförmedlingens yrkestaxonomi SSYK 2012</p>
-            <div className="flex flex-wrap gap-2">
-              {ssykSkills.map((item) => (
-                <span key={item.id} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
-                  {item.title}
-                </span>
-              ))}
-            </div>
-          </div>
+          <Section eyebrow="07 / Kompetensfokus" title="Kompetenser kopplade till era yrkesroller"
+            intro="Enligt Arbetsförmedlingens yrkestaxonomi SSYK 2012. Kompetenserna används för att matcha rekommendationerna mot utbildningar.">
+            <Card>
+              <div className="flex flex-wrap gap-2">
+                {ssykSkills.map((item) => (
+                  <span key={item.id} className="px-3 py-1 rounded-full text-sm bg-[var(--accent-dim)] text-[var(--accent)] font-medium">{item.title}</span>
+                ))}
+              </div>
+            </Card>
+          </Section>
         )}
 
-        {/* Recommendations */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-          <h3 className="font-semibold text-slate-900 mb-4">Rekommendationer</h3>
-          {loading ? (
-            <div className="animate-pulse space-y-5">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex gap-4 pb-5 border-b border-slate-100 last:border-0 last:pb-0">
-                  <div className="w-10 h-10 rounded-full bg-gray-200 shrink-0 mt-0.5" />
-                  <div className="flex-1 space-y-2 pt-1">
-                    <div className="h-[14px] bg-gray-200 rounded w-2/3" />
-                    <div className="h-[14px] bg-gray-200 rounded w-full" />
-                    <div className="h-[14px] bg-gray-200 rounded w-[85%]" />
-                    <div className="h-[14px] bg-gray-200 rounded w-36 mt-1" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : analysis?.recommendations?.length ? (
-            <div className="space-y-4" style={{ animation: 'fadeIn 300ms ease-in' }}>
-              {analysis.recommendations.map((rec, i) => (
-                <div key={i} className="flex gap-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
-                  <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                    {i + 1}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-semibold text-slate-900 text-sm">{rec.title}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PRIORITY_COLORS[rec.priority]}`}>
-                        {PRIORITY_LABELS[rec.priority]}
-                      </span>
-                    </div>
-                    <p className="text-slate-600 text-sm leading-relaxed mb-2">{rec.body}</p>
-                    <button
-                      onClick={() => navigate('/catalog')}
-                      className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
-                    >
-                      Sök utbildning →
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {/* 8. Rekommendationer */}
+        <Section eyebrow={`0${ssykSkills.length > 0 ? 8 : 7} / Rekommendationer`} title="Vad vi rekommenderar"
+          intro="Under varje rekommendation visas utbildningar som matchar. Finns ingen färdig utbildning kan ni begära offert eller boka ett rådgivningssamtal.">
+          {aiLoading ? (
+            <SkeletonGrid rows={3} single />
           ) : (
-            <div className="text-center py-6 space-y-3">
-              <p className="text-slate-600 text-sm">Rekommendationer kunde inte laddas.</p>
-              <button
-                onClick={runAnalysis}
-                className="inline-flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                Försök igen
-              </button>
+            <div className="space-y-4">
+              {analysis.recommendations.map((rec, i) => (
+                <RecommendationCard key={`${rec.title}-${i}`} index={i} rec={rec} courses={courseMap.get(i) ?? []}
+                  coursesLoading={coursesLoading} via={via} showAdvisory={showAdvisory} />
+              ))}
             </div>
           )}
-        </div>
+        </Section>
 
-        {/* CTA */}
-        <div className="bg-blue-600 rounded-xl p-8 text-center">
-          <h3 className="text-xl font-bold text-white mb-2">Redo att hitta rätt utbildning?</h3>
-          <p className="text-blue-100 text-sm mb-6">Matcha er kompetensprofil mot utbildningar från ledande lärosäten</p>
+        {/* 9. 12 månader */}
+        <Section eyebrow={`0${ssykSkills.length > 0 ? 9 : 8} / Handlingsplan`} title="Föreslagen väg framåt" intro="En enkel 12-månadersplan från nuläge till effekt.">
+          {aiLoading ? <SkeletonGrid rows={2} single /> : <Roadmap steps={analysis.roadmap} />}
+        </Section>
+
+        {/* 10. Nästa steg */}
+        <section className="rounded-[18px] bg-[var(--accent)] text-white px-6 sm:px-10 py-10 text-center">
+          <h2 className="text-[clamp(1.4rem,3vw,1.9rem)] font-bold tracking-[-0.02em] mb-2">Redo att hitta rätt utbildning?</h2>
+          <p className="text-white/80 text-[15px] mb-7 max-w-lg mx-auto">Matcha er kompetensprofil mot utbildningar från ledande lärosäten eller begär en offert på anpassad utbildning.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={onReset}
-              className="px-6 py-3 border border-white text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
-            >
+            <button onClick={() => navigate(`/catalog${via ? `?via=${encodeURIComponent(via)}` : ''}`)}
+              className="px-6 py-3 bg-white text-[var(--accent)] rounded-[12px] text-sm font-semibold hover:bg-white/90 transition-colors">
+              Sök utbildning
+            </button>
+            <button onClick={() => navigate(`/efterfraga${via ? `?via=${encodeURIComponent(via)}` : ''}`)}
+              className="px-6 py-3 bg-white text-[var(--accent)] rounded-[12px] text-sm font-semibold hover:bg-white/90 transition-colors">
+              Begär offert från lärosäten
+            </button>
+            <button onClick={onReset}
+              className="px-6 py-3 border border-white/70 text-white rounded-[12px] text-sm font-semibold hover:bg-white/10 transition-colors">
               Gör en ny analys
             </button>
-            <button
-              onClick={() => navigate('/efterfraga')}
-              className="px-6 py-3 bg-white text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors"
-            >
-              Begär offert från lärosäten →
-            </button>
           </div>
-        </div>
+        </section>
 
       </div>
+    </div>
+  );
+}
+
+function SkeletonLines() {
+  return (
+    <div className="animate-pulse space-y-2">
+      <div className="h-3.5 bg-[var(--chip-bg)] rounded w-full" />
+      <div className="h-3.5 bg-[var(--chip-bg)] rounded w-[92%]" />
+      <div className="h-3.5 bg-[var(--chip-bg)] rounded w-[70%]" />
+    </div>
+  );
+}
+
+function SkeletonGrid({ rows = 2, single = false }: { rows?: number; single?: boolean }) {
+  return (
+    <div className={`grid gap-4 ${single ? '' : 'sm:grid-cols-2'}`}>
+      {Array.from({ length: single ? rows : 4 }).map((_, i) => (
+        <div key={i} className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-raised)] p-5"><SkeletonLines /></div>
+      ))}
     </div>
   );
 }
