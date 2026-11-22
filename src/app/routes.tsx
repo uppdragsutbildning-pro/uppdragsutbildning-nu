@@ -11,6 +11,7 @@ import { KompetensindexPage } from "./components/pages/KompetensindexPage";
 import { OmTjansten } from "./components/pages/OmTjansten";
 import { ProviderTermsPage } from "./components/pages/ProviderTermsPage";
 import { AccountPage } from "./components/account/AccountPage";
+import { SavedReportPage } from "./components/account/SavedReportPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { ProviderLayout } from "./components/provider/ProviderLayout";
 import { ProviderDashboard } from "./components/provider/ProviderDashboard";
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
       { path: "om-tjansten", Component: OmTjansten },
       { path: "leverantor/:id/villkor", Component: ProviderTermsPage },
       { path: "konto", Component: AccountPage },
+      { path: "konto/rapport/:id", Component: SavedReportPage },
       { path: "efterfraga", Component: RequestCustomTrainingPage },
       // Gamla offertförfrågningsflödet är ersatt av efterfrågeformuläret; länkar fortsätter fungera.
       { path: "request", element: <Navigate to="/efterfraga" replace /> },

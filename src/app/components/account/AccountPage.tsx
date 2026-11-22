@@ -8,6 +8,8 @@ import { useTrainingRequestUpdates } from '../../../hooks/useTrainingRequestUpda
 import { CasesView } from './CasesView';
 import { BookingsView } from './BookingsView';
 import { InvoicesView } from './InvoicesView';
+import { ReportsView } from './ReportsView';
+import { clearPendingReport, loadPendingReport, saveReport } from '../../../lib/skiReports';
 import { useInvoiceUnreadCount } from '../../../hooks/useInvoiceUpdates';
 import { normalizeOrganizationNumber, organizationNumberError } from '../../../lib/organizationNumber';
 
@@ -289,17 +291,17 @@ function OnboardingForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-function RequestsView({ membership, onSignOut }: { membership: Membership; onSignOut: () => void }) {
+function RequestsView({ membership, onSignOut, reportsRefresh }: { membership: Membership; onSignOut: () => void; reportsRefresh: number }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   // "efterfragningar" är den gamla flik-parametern (länkar i tidigare mejl) och ger samma vy.
-  const tab: 'cases' | 'bookings' | 'invoices' =
-    tabParam === 'bokningar' ? 'bookings' : tabParam === 'fakturor' ? 'invoices' : 'cases';
+  const tab: 'cases' | 'bookings' | 'invoices' | 'reports' =
+    tabParam === 'bokningar' ? 'bookings' : tabParam === 'fakturor' ? 'invoices' : tabParam === 'rapporter' ? 'reports' : 'cases';
   const unreadInvoices = useInvoiceUnreadCount('buyer');
   const { unreadCount } = useTrainingRequestUpdates();
-  const selectTab = (next: 'cases' | 'bookings' | 'invoices') =>
+  const selectTab = (next: 'cases' | 'bookings' | 'invoices' | 'reports') =>
     setSearchParams(
-      next === 'bookings' ? { tab: 'bokningar' } : next === 'invoices' ? { tab: 'fakturor' } : { tab: 'arenden' },
+      next === 'bookings' ? { tab: 'bokningar' } : next === 'invoices' ? { tab: 'fakturor' } : next === 'reports' ? { tab: 'rapporter' } : { tab: 'arenden' },
       { replace: true }
     );
 
@@ -335,6 +337,7 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
             ['cases', 'Mina ärenden'],
             ['bookings', 'Bokningar'],
             ['invoices', 'Fakturor'],
+            ['reports', 'Rapporter'],
           ] as const).map(([key, label]) => (
             <button
               key={key}
@@ -371,6 +374,8 @@ function RequestsView({ membership, onSignOut }: { membership: Membership; onSig
 
       {tab === 'invoices' && <InvoicesView />}
 
+      {tab === 'reports' && <ReportsView refreshKey={reportsRefresh} />}
+
       {tab === 'bookings' && (
         <BookingsView
           orgId={membership.organizations.id}
@@ -388,6 +393,21 @@ export function AccountPage() {
   const { user, profile, loading, signOut } = useAuth();
   const [membership, setMembership] = useState<Membership | null>(null);
   const [membershipLoading, setMembershipLoading] = useState(true);
+  const [reportsRefresh, setReportsRefresh] = useState(0);
+
+  // En rapport som väntar på att sparas (användaren loggade in via e-postlänken i stället för koden).
+  useEffect(() => {
+    if (!user || profile) return;
+    const pending = loadPendingReport();
+    if (!pending) return;
+    saveReport(pending.clientReportId, pending.snapshot)
+      .then(() => {
+        clearPendingReport();
+        setReportsRefresh((n) => n + 1);
+        toast.success('Din rapport är sparad');
+      })
+      .catch((e) => toast.error('Kunde inte spara rapporten', { description: e?.message }));
+  }, [user, profile]);
 
   const loadMembership = useCallback(async () => {
     if (!user) {
@@ -443,5 +463,5 @@ export function AccountPage() {
 
   if (!membership) return <OnboardingForm onDone={loadMembership} />;
 
-  return <RequestsView membership={membership} onSignOut={() => signOut()} />;
+  return <RequestsView membership={membership} onSignOut={() => signOut()} reportsRefresh={reportsRefresh} />;
 }

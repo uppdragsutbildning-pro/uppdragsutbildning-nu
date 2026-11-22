@@ -7,6 +7,8 @@ import {
   DIMS, TOTAL_BAND_TEXT, bandFor, buildRuleAnalysis, computeFindings, mergeAnalysis,
   recommendedStart, selectInitiatives, withRecTerms, zoneFor, DIM_KEYS, type Analysis,
 } from '../../../lib/kompetensindexReport';
+import type { SkiReportSnapshot } from '../../../lib/skiReports';
+import { SaveReportPanel } from './report/SaveReportPanel';
 import { loadCoursesForReport, matchRecommendations, type ReportCourse } from '../../../lib/reportCourseMatching';
 import { DimensionRadar, PressureQuadrant, PriorityMatrix, ScoreGauge } from './report/ReportCharts';
 import {
@@ -19,6 +21,8 @@ interface ResultsViewProps {
   onReset: () => void;
   onEditStep?: (step: number) => void;
   onReanalyze?: () => void;
+  // Sparad rapport: visas som den sparades (ingen ny AI-analys, inga svar att ändra, ingen spara-panel).
+  savedSnapshot?: SkiReportSnapshot;
 }
 
 function AnswerSummaryDrawer({
@@ -150,15 +154,16 @@ function AnswerSummaryDrawer({
   );
 }
 
-export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
+export function ResultsView({ result, onReset, onEditStep, savedSnapshot }: ResultsViewProps) {
+  const readOnly = !!savedSnapshot;
   const navigate = useNavigate();
   const { marketplace, loading: marketplaceLoading } = useMarketplace();
   const { scores, siScores, ssykSkills, occupations, answers } = result;
   const [showDrawer, setShowDrawer] = useState(false);
 
   const ruleAnalysis = useMemo(() => buildRuleAnalysis(result), [result]);
-  const [analysis, setAnalysis] = useState<Analysis>(ruleAnalysis);
-  const [aiLoading, setAiLoading] = useState(true);
+  const [analysis, setAnalysis] = useState<Analysis>(savedSnapshot?.analysis ?? ruleAnalysis);
+  const [aiLoading, setAiLoading] = useState(!savedSnapshot);
   const [aiFailed, setAiFailed] = useState(false);
 
   const [courses, setCourses] = useState<ReportCourse[]>([]);
@@ -198,7 +203,7 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
   };
 
   useEffect(() => {
-    runAnalysis();
+    if (!savedSnapshot) runAnalysis();
   }, []);
 
   // Kurser hämtas när marknadsplatskontexten är känd, så att urvalet följer en partners kuraterade kurser.
@@ -247,16 +252,14 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button disabled title="PDF-rapporten kommer i nästa version"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] border border-[var(--border)] text-[var(--fg-subtle)] text-sm font-medium cursor-not-allowed">
-              <Download className="w-3.5 h-3.5" aria-hidden="true" />PDF kommer snart
-            </button>
             <button onClick={() => setShowDrawer(true)}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] border border-[var(--border)] bg-[var(--bg-raised)] hover:bg-[var(--chip-bg)] text-[var(--fg)] text-sm font-medium transition-colors">
-              <Pencil className="w-3.5 h-3.5" aria-hidden="true" />Ändra svar
+              <Pencil className="w-3.5 h-3.5" aria-hidden="true" />{readOnly ? 'Visa svar' : 'Ändra svar'}
             </button>
           </div>
         </div>
+
+        {!readOnly && <SaveReportPanel result={result} analysis={analysis} analysisReady={!aiLoading} />}
 
         {/* 1. Sammanfattning */}
         <Section eyebrow="01 / Sammanfattning" title="Ledningsöversikt" intro="Det viktigaste på en skärm: var ni står, vad som är starkast och vad som behöver prioriteras.">
