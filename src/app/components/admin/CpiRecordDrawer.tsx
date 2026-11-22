@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
 import type { CpiRecord } from '../pages/AdminDashboard';
+import { DIMS, DIM_KEYS, bandFor, siToPct } from '../../../lib/kompetensindexReport';
+import { ANSWER_LABEL, DIM_QUESTIONS, SI_QUESTIONS } from '../../../lib/skiQuestions';
 
 interface CpiRecordDrawerProps {
   record: CpiRecord;
@@ -23,6 +25,24 @@ function Row({ q, a }: { q: string; a: string }) {
     <div className="flex justify-between gap-3 text-sm">
       <span className="text-slate-500 shrink-0">{q}</span>
       <span className="text-slate-800 text-right">{a || '—'}</span>
+    </div>
+  );
+}
+
+function BandChip({ score }: { score: number | undefined }) {
+  if (score == null) return null;
+  const b = bandFor(score);
+  return (
+    <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold border"
+      style={{ color: b.color, backgroundColor: b.bg, borderColor: b.border }}>{b.label}</span>
+  );
+}
+
+function QuestionRow({ id, text, value }: { id: string; text: string; value: number | undefined }) {
+  return (
+    <div className="text-sm">
+      <p className="text-slate-500"><span className="font-semibold text-slate-700">{id}</span> {text}</p>
+      <p className="text-slate-900 font-medium">{value ? `${value}/5 · ${ANSWER_LABEL[value] ?? ''}` : '—'}</p>
     </div>
   );
 }
@@ -53,19 +73,44 @@ export function CpiRecordDrawer({ record, onClose }: CpiRecordDrawerProps) {
             <Row q="Roll" a={record.respondent_role} />
           </Section>
 
-          <Section title="CPI-poäng">
-            <Row q="Total" a={String(scores?.total ?? '')} />
-            <Row q="AF — Arbetsförändring" a={String(scores?.AF ?? '')} />
-            <Row q="KP — Kompetenspåverkan" a={String(scores?.LF ?? '')} />
-            <Row q="OK — Omställningskapacitet" a={String(scores?.OK ?? '')} />
-            <Row q="SR — Strategisk riktning" a={String(scores?.TR ?? '')} />
+          <Section title="Strategiskt kompetensindex">
+            <div className="flex justify-between gap-3 text-sm">
+              <span className="text-slate-500 shrink-0">Total</span>
+              <span className="text-slate-900 font-semibold text-right">{scores?.total ?? '—'}<BandChip score={scores?.total} /></span>
+            </div>
+            {DIM_KEYS.map((d) => (
+              <div key={d} className="flex justify-between gap-3 text-sm">
+                <span className="text-slate-500 shrink-0">{DIMS[d].abbr} — {DIMS[d].label}</span>
+                <span className="text-slate-800 text-right">{scores?.[d] ?? '—'}<BandChip score={scores?.[d]} /></span>
+              </div>
+            ))}
+            <p className="text-[11px] text-slate-400 pt-1">Skala 0–100. Högre poäng = större behov eller större begränsning.</p>
           </Section>
 
-          <Section title="Strategisk insats">
-            <Row q="SI1 — Rekrytering" a={si_scores?.SI1 != null ? `${si_scores.SI1}/5` : ''} />
-            <Row q="SI2 — Kompetensväxling" a={si_scores?.SI2 != null ? `${si_scores.SI2}/5` : ''} />
-            <Row q="SI3 — Kompetensutveckling" a={si_scores?.SI3 != null ? `${si_scores.SI3}/5` : ''} />
-            <Row q="SI4 — Nya arbetssätt" a={si_scores?.SI4 != null ? `${si_scores.SI4}/5` : ''} />
+          {record.answers ? (
+            DIM_KEYS.map((d) => (
+              <Section key={d} title={`Svar: ${DIMS[d].abbr} ${DIMS[d].label}`}>
+                {DIM_QUESTIONS[d].scale.map((q) => (
+                  <QuestionRow key={q.id} id={q.id} text={q.text} value={record.answers?.[q.field]} />
+                ))}
+                {DIM_QUESTIONS[d].reversed && (
+                  <p className="text-[11px] text-slate-400">Positivt formulerade frågor: höga svar ger lågt poängvärde (omvänd skala).</p>
+                )}
+              </Section>
+            ))
+          ) : (
+            <Section title="Svar per fråga">
+              <p className="text-sm text-slate-500">Svaren på skalfrågorna sparades inte för analyser som gjordes innan 22 november 2026. Poängen ovan är beräknade från dem.</p>
+            </Section>
+          )}
+
+          <Section title="Strategisk insats (SI)">
+            {record.answers
+              ? SI_QUESTIONS.map((q) => <QuestionRow key={q.id} id={q.id} text={q.text} value={record.answers?.[q.field]} />)
+              : (['SI1', 'SI2', 'SI3', 'SI4'] as const).map((k, i) => (
+                  <Row key={k} q={`${k} — ${['Rekrytering', 'Kompetensväxling', 'Kompetensutveckling', 'Nya arbetssätt'][i]}`}
+                    a={si_scores?.[k] != null ? `${si_scores[k]}/5 (${siToPct(si_scores[k])}/100)` : ''} />
+                ))}
           </Section>
 
           <Section title="Fritextsvar">
@@ -81,7 +126,7 @@ export function CpiRecordDrawer({ record, onClose }: CpiRecordDrawerProps) {
           </Section>
 
           {ssyk_skills && ssyk_skills.length > 0 && (
-            <Section title="SSYK-kompetenser">
+            <Section title="Kompetenser (SSYK) kopplade till valda yrkesroller">
               <div className="flex flex-wrap gap-1.5">
                 {ssyk_skills.map((skill) => (
                   <span key={skill.id} className="px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs">

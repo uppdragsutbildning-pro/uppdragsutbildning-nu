@@ -236,7 +236,7 @@ export function KompetensindexPage() {
 
     setLoadingStep(2);
     try {
-      const { error: insertError } = await supabase.from('cpi_results').insert({
+      const row = {
         contact_name: answers.contactName,
         company_name: answers.companyName,
         contact_email: answers.email,
@@ -253,7 +253,20 @@ export function KompetensindexPage() {
           yrkesroller: answers.li3,
         },
         created_at: new Date().toISOString(),
-      });
+      };
+      // Svar på skalfrågorna (utan kontaktuppgifter) sparas så att adminvyn kan visa varje fråga. Kolumnen
+      // finns först när migrationen är körd: saknas den provas insättningen igen utan svaren.
+      const scaleAnswers = {
+        af1: answers.af1, af2: answers.af2, af3: answers.af3,
+        pf1: answers.pf1, pf2: answers.pf2, pf3: answers.pf3, pf4: answers.pf4,
+        ok1: answers.ok1, ok2: answers.ok2, ok3: answers.ok3, ok4: answers.ok4,
+        tr1: answers.tr1, tr2: answers.tr2, tr3: answers.tr3,
+        si1: answers.si1, si2: answers.si2, si3: answers.si3, si4: answers.si4,
+      };
+      let { error: insertError } = await supabase.from('cpi_results').insert({ ...row, answers: scaleAnswers });
+      if (insertError && /answers/i.test(`${insertError.message} ${insertError.details ?? ''}`)) {
+        ({ error: insertError } = await supabase.from('cpi_results').insert(row));
+      }
       if (insertError) console.error('Supabase insert error:', insertError);
       else console.log('CPI result saved successfully');
     } catch (err) { console.error('Supabase insert exception:', err); }

@@ -13,6 +13,8 @@ import { TrainingRequestsTab, useOpenTrainingRequestsCount } from '../admin/Trai
 import { BillingTab, useBillingAttentionCount } from '../admin/BillingTab';
 import { ContractsTab, useContractsAttentionCount } from '../admin/ContractsTab';
 import { CpiRecordDrawer } from '../admin/CpiRecordDrawer';
+import { CpiDashboard, type ReportStats } from '../admin/CpiDashboard';
+import { bandFor } from '../../../lib/kompetensindexReport';
 import { getPaginationRange } from '../../../hooks/usePaginatedQuery';
 import {
   Pagination,
@@ -39,6 +41,8 @@ export interface CpiRecord {
   freetext: { af4: string; pf5: string; tr4: string };
   ssyk_skills: { id: string; title: string }[];
   li_preferences: { insatstyp: string[]; upplägg: string[]; yrkesroller: { id: string; label: string }[] };
+  // Svar på skalfrågorna (1–5). Saknas för analyser som gjordes innan kolumnen infördes.
+  answers?: Record<string, number> | null;
   created_at: string;
 }
 
@@ -67,6 +71,7 @@ export function AdminDashboard() {
   const [cpiRoleFilter, setCpiRoleFilter] = useState('');
   const [cpiPage, setCpiPage] = useState(1);
   const [cpiDetailRecord, setCpiDetailRecord] = useState<CpiRecord | null>(null);
+  const [reportStats, setReportStats] = useState<ReportStats | null>(null);
   const CPI_PAGE_SIZE = 20;
 
   // Form state for creating new provider
@@ -122,15 +127,25 @@ export function AdminDashboard() {
       .order('created_at', { ascending: false });
     if (!error && data) setCpiRecords(data as CpiRecord[]);
     setCpiLoading(false);
+
+    // Antal sparade rapporter (bara siffror). Funktionen finns först när migrationen är körd.
+    const { data: stats, error: statsError } = await supabase.rpc('admin_ski_report_stats');
+    const row = Array.isArray(stats) ? stats[0] : stats;
+    setReportStats(!statsError && row ? {
+      saved_total: Number(row.saved_total), saved_last_30d: Number(row.saved_last_30d), users_with_reports: Number(row.users_with_reports),
+    } : null);
   }
 
   function exportCpiToCSV(records: CpiRecord[]) {
     if (!records.length) return;
     const headers = [
       'Datum', 'Kontaktnamn', 'E-post', 'Företag', 'Bransch', 'Storlek', 'Roll',
-      'Total', 'AF', 'KP', 'OK', 'SR', 'SI1', 'SI2', 'SI3', 'SI4',
-      'AF4', 'KP5', 'SR4', 'Yrkesroller',
+      'Total', 'Nivå', 'AF', 'KP', 'OK', 'SR',
+      'AF1', 'AF2', 'AF3', 'KP1', 'KP2', 'KP3', 'KP4', 'OK1', 'OK2', 'OK3', 'OK4', 'SR1', 'SR2', 'SR3',
+      'SI1 (1-5)', 'SI2 (1-5)', 'SI3 (1-5)', 'SI4 (1-5)',
+      'AF4', 'KP5', 'SR4', 'LI1 Insatstyp', 'LI2 Upplägg', 'LI3 Yrkesroller', 'Kompetenser',
     ];
+    const ans = (r: CpiRecord, k: string) => r.answers?.[k] ?? '';
     const rows = records.map((r) => [
       new Date(r.created_at).toLocaleDateString('sv-SE'),
       r.contact_name,
@@ -140,10 +155,15 @@ export function AdminDashboard() {
       r.company_size,
       r.respondent_role,
       r.scores?.total ?? '',
+      r.scores ? bandFor(r.scores.total).label : '',
       r.scores?.AF ?? '',
       r.scores?.LF ?? '',
       r.scores?.OK ?? '',
       r.scores?.TR ?? '',
+      ans(r, 'af1'), ans(r, 'af2'), ans(r, 'af3'),
+      ans(r, 'pf1'), ans(r, 'pf2'), ans(r, 'pf3'), ans(r, 'pf4'),
+      ans(r, 'ok1'), ans(r, 'ok2'), ans(r, 'ok3'), ans(r, 'ok4'),
+      ans(r, 'tr1'), ans(r, 'tr2'), ans(r, 'tr3'),
       r.si_scores?.SI1 ?? '',
       r.si_scores?.SI2 ?? '',
       r.si_scores?.SI3 ?? '',
@@ -151,7 +171,10 @@ export function AdminDashboard() {
       r.freetext?.af4 ?? '',
       r.freetext?.pf5 ?? '',
       r.freetext?.tr4 ?? '',
+      r.li_preferences?.insatstyp?.join(', ') ?? '',
+      r.li_preferences?.upplägg?.join(', ') ?? '',
       r.li_preferences?.yrkesroller?.map((o) => o.label).join(', ') ?? '',
+      r.ssyk_skills?.map((sk) => sk.title).join(', ') ?? '',
     ]);
     const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1192,7 +1215,7 @@ export function AdminDashboard() {
 
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Kompetensindex — Rapporter</h2>
+                <h2 className="text-xl font-bold text-slate-900">Strategiskt kompetensindex</h2>
                 <p className="text-slate-500 text-sm mt-1">
                   {filteredCpiRecords.length} av {cpiRecords.length} genomförda analyser
                 </p>
@@ -1215,20 +1238,8 @@ export function AdminDashboard() {
               <div className="text-center py-16 text-slate-400">Inga analyser genomförda ännu.</div>
             ) : (
               <>
-                {/* Summary stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  {(['AF', 'LF', 'OK', 'TR'] as const).map((dim) => {
-                    const avg = filteredCpiRecords.length
-                      ? Math.round(filteredCpiRecords.reduce((s, r) => s + (r.scores?.[dim] ?? 0), 0) / filteredCpiRecords.length)
-                      : 0;
-                    return (
-                      <div key={dim} className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-                        <p className="text-xs text-slate-500 mb-1">{({ LF: 'KP', TR: 'SR' } as Record<string, string>)[dim] ?? dim} — snitt</p>
-                        <p className="text-3xl font-bold text-slate-900">{avg}</p>
-                      </div>
-                    );
-                  })}
-                </div>
+                {/* Översikt */}
+                <CpiDashboard records={filteredCpiRecords} reportStats={reportStats} totalCount={cpiRecords.length} />
 
                 {/* Search + filters */}
                 <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -1287,6 +1298,7 @@ export function AdminDashboard() {
                         <th className="text-left px-4 py-3 font-medium text-slate-600">Bransch</th>
                         <th className="text-left px-4 py-3 font-medium text-slate-600">Storlek</th>
                         <th className="text-center px-4 py-3 font-medium text-slate-600">Total</th>
+                        <th className="text-center px-4 py-3 font-medium text-slate-600">Nivå</th>
                         <th className="text-center px-4 py-3 font-medium text-slate-600">AF</th>
                         <th className="text-center px-4 py-3 font-medium text-slate-600">KP</th>
                         <th className="text-center px-4 py-3 font-medium text-slate-600">OK</th>
@@ -1297,7 +1309,7 @@ export function AdminDashboard() {
                     <tbody className="divide-y divide-slate-100">
                       {paginatedCpiRecords.length === 0 ? (
                         <tr>
-                          <td colSpan={11} className="px-4 py-10 text-center text-slate-400">
+                          <td colSpan={12} className="px-4 py-10 text-center text-slate-400">
                             Inga träffar för nuvarande sökning/filter.
                           </td>
                         </tr>
@@ -1309,11 +1321,15 @@ export function AdminDashboard() {
                             <td className="px-4 py-3 text-slate-600 max-w-[160px] truncate">{r.contact_name}</td>
                             <td className="px-4 py-3 text-slate-600 max-w-[180px] truncate">{r.industry}</td>
                             <td className="px-4 py-3 text-slate-600">{r.company_size}</td>
-                            <td className="px-4 py-3 text-center font-bold text-slate-900">{r.scores?.total ?? '—'}</td>
-                            <td className="px-4 py-3 text-center text-blue-600">{r.scores?.AF ?? '—'}</td>
-                            <td className="px-4 py-3 text-center text-red-500">{r.scores?.LF ?? '—'}</td>
-                            <td className="px-4 py-3 text-center text-green-600">{r.scores?.OK ?? '—'}</td>
-                            <td className="px-4 py-3 text-center text-amber-500">{r.scores?.TR ?? '—'}</td>
+                            <td className="px-4 py-3 text-center font-bold" style={{ color: r.scores ? bandFor(r.scores.total).color : undefined }}>{r.scores?.total ?? '—'}</td>
+                            <td className="px-4 py-3 text-center">
+                              {r.scores ? (() => { const b = bandFor(r.scores.total); return (
+                                <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold border" style={{ color: b.color, backgroundColor: b.bg, borderColor: b.border }}>{b.label}</span>
+                              ); })() : '—'}
+                            </td>
+                            {(['AF', 'LF', 'OK', 'TR'] as const).map((d) => (
+                              <td key={d} className="px-4 py-3 text-center font-medium" style={{ color: r.scores ? bandFor(r.scores[d]).color : undefined }}>{r.scores?.[d] ?? '—'}</td>
+                            ))}
                             <td className="px-4 py-3">
                               <div className="flex items-center justify-end gap-1">
                                 <button
