@@ -22,6 +22,8 @@ interface Props {
   analysis: Analysis;
   analysisReady: boolean;
   pdf: { busy: boolean; download: () => void };
+  // Hämtar fördjupad text (om den saknas) och ger den kompletta analysen att spara.
+  prepare: () => Promise<Analysis>;
 }
 
 const inputClass =
@@ -39,7 +41,7 @@ function PdfButton({ onClick, busy, label }: { onClick: () => void; busy: boolea
 const primary =
   'inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-60 text-white text-sm font-semibold rounded-[10px] transition-colors';
 
-export function SaveReportPanel({ result, analysis, analysisReady, pdf }: Props) {
+export function SaveReportPanel({ result, analysis, analysisReady, pdf, prepare }: Props) {
   const { user, profile } = useAuth();
   const { marketplace } = useMarketplace();
   const clientReportId = useMemo(() => crypto.randomUUID(), []);
@@ -56,7 +58,8 @@ export function SaveReportPanel({ result, analysis, analysisReady, pdf }: Props)
     if (!consent) { toast.error('Godkänn att rapporten sparas för att fortsätta'); return; }
     setSaving(true);
     try {
-      const id = await saveReport(clientReportId, buildSnapshot(result, analysis));
+      const full = await prepare();
+      const id = await saveReport(clientReportId, buildSnapshot(result, full));
       clearPendingReport();
       setSavedId(id);
       toast.success('Rapporten är sparad i Mitt konto');
@@ -95,6 +98,8 @@ export function SaveReportPanel({ result, analysis, analysisReady, pdf }: Props)
     if (!consent) { toast.error('Godkänn att rapporten sparas för att fortsätta'); return; }
     // Reservplan om användaren väljer länken i mejlet i stället för koden.
     storePendingReport({ clientReportId, snapshot: buildSnapshot(result, analysis) });
+    // Uppdatera reservkopian när fördjupningen är klar (om användaren går via mejllänken).
+    prepare().then((full) => storePendingReport({ clientReportId, snapshot: buildSnapshot(result, full) })).catch(() => {});
     setIntent('save');
     setLoginOpen(true);
   }

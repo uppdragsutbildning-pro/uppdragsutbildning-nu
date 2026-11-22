@@ -3,6 +3,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/analyze-cpi.ts": { "maxDuration": 30 },
+    "api/ski-deep-dive.ts": { "maxDuration": 45 },
     "api/improve-freetext.ts": { "maxDuration": 30 },
     "api/suggest-course-skills.ts": { "maxDuration": 30 },
     "api/extract-course-from-pdf.ts": { "maxDuration": 60 },

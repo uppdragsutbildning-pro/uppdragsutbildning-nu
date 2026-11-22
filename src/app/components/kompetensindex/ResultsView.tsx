@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pencil, X, ChevronDown, ChevronUp, RefreshCw, Download } from 'lucide-react';
 import type { CPIResult } from '../pages/KompetensindexPage';
 import { useMarketplace } from '../../../lib/marketplaceContext';
@@ -10,6 +10,7 @@ import {
 import type { SkiReportSnapshot } from '../../../lib/skiReports';
 import { SaveReportPanel } from './report/SaveReportPanel';
 import { usePdfDownload } from './report/usePdfDownload';
+import { fetchDeepDive } from '../../../lib/skiDeepDive';
 import { loadCoursesForReport, matchRecommendations, type ReportCourse } from '../../../lib/reportCourseMatching';
 import { DimensionRadar, PressureQuadrant, PriorityMatrix, ScoreGauge } from './report/ReportCharts';
 import {
@@ -238,9 +239,25 @@ export function ResultsView({ result, onReset, onEditStep, savedSnapshot, savedA
   // Partnermarknadsplatser är helt vitmärkta: CTC Nordics rådgivning visas bara på den öppna plattformen.
   const showAdvisory = !marketplace;
 
-  const pdf = usePdfDownload(() => ({
+  // Fördjupad AI-text per dimension hämtas först när PDF eller sparad rapport behövs (kräver inloggning).
+  // Anropet delas mellan PDF och spara, och faller det används regelbaserad text.
+  const deepDiveRef = useRef<Promise<Analysis> | null>(null);
+  const prepare = (): Promise<Analysis> => {
+    if (readOnly || analysis.deepDive) return Promise.resolve(analysis);
+    if (!deepDiveRef.current) {
+      deepDiveRef.current = fetchDeepDive(result).then((dd) => {
+        const next = dd ? { ...analysis, deepDive: dd } : analysis;
+        if (dd) setAnalysis(next);
+        else deepDiveRef.current = null; // tillåt nytt försök vid nästa klick
+        return next;
+      });
+    }
+    return deepDiveRef.current;
+  };
+
+  const pdf = usePdfDownload(async () => ({
     result,
-    analysis,
+    analysis: await prepare(),
     courseMap,
     origin: window.location.origin,
     via,
@@ -279,7 +296,7 @@ export function ResultsView({ result, onReset, onEditStep, savedSnapshot, savedA
           </div>
         </div>
 
-        {!readOnly && <SaveReportPanel result={result} analysis={analysis} analysisReady={!aiLoading} pdf={pdf} />}
+        {!readOnly && <SaveReportPanel result={result} analysis={analysis} analysisReady={!aiLoading} pdf={pdf} prepare={prepare} />}
 
         {/* 1. Sammanfattning */}
         <Section eyebrow="01 / Sammanfattning" title="Ledningsöversikt" intro="Det viktigaste på en skärm: var ni står, vad som är starkast och vad som behöver prioriteras.">

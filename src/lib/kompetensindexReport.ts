@@ -235,7 +235,17 @@ export interface Recommendation {
 
 export interface Message { title: string; body: string }
 
+// Fördjupad text per dimension (AI), används i PDF-rapportens dimensionssidor.
+export interface DimDeepDive {
+  interpretation: string;
+  drivers: string[];
+  actions: string[];
+  watchOut: string;
+}
+
 export interface Analysis {
+  // Skapas först när PDF eller sparad rapport behövs; saknas annars och PDF:en använder regelbaserad text.
+  deepDive?: Partial<Record<DimKey, DimDeepDive>>;
   overallAssessment: string;
   topRisk: string;
   topAction: string;

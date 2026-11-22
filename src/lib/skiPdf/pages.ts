@@ -259,68 +259,117 @@ export function dimensionPage(k: Kit, inp: PdfInput, d: DimKey, index: number) {
   const b = bandFor(scores[d]);
   const q = DIM_QUESTIONS[d];
   const a = answers as unknown as Record<string, any>;
+  const dd = inp.analysis.deepDive?.[d];
 
-  k.newPage();
-  let y = k.header(`05.${index + 1} / Dimension ${meta.abbr}`, meta.label, meta.question);
+  const scoreCard = (y: number): number => {
+    const topH = 40;
+    k.card(X, y, CONTENT_W, topH, { r: 4 });
+    k.text(String(scores[d]), X + 7, y + 6, { size: 30, bold: true, color: bandColor(b) });
+    k.chip(b.label, X + 7, y + 22, { bg: bandBg(b), color: bandColor(b), border: bandBorder(b), size: 7 });
+    k.scaleBar(X + 44, y + 8, CONTENT_W - 44 - 8, scores[d], 2.4);
+    k.text('0', X + 44, y + 13, { size: 6.5, color: COLOR.subtle });
+    k.text('100', X + CONTENT_W - 8, y + 13, { size: 6.5, color: COLOR.subtle, align: 'right' });
+    const ty = y + 18;
+    const th = k.text(meta.bandText[b.index], X + 44, ty, { size: 9.5, w: CONTENT_W - 44 - 8 });
+    k.text(meta.reading, X + 44, ty + th + 1.5, { size: 7.8, color: COLOR.muted, w: CONTENT_W - 44 - 8, lineHeight: 1.28 });
+    return y + topH + 5;
+  };
 
-  // Poängkort
-  const topH = 40;
-  k.card(X, y, CONTENT_W, topH, { r: 4 });
-  k.text(String(scores[d]), X + 7, y + 6, { size: 30, bold: true, color: bandColor(b) });
-  k.chip(b.label, X + 7, y + 22, { bg: bandBg(b), color: bandColor(b), border: bandBorder(b), size: 7 });
-  k.scaleBar(X + 44, y + 8, CONTENT_W - 44 - 8, scores[d], 2.4);
-  k.text('0', X + 44, y + 13, { size: 6.5, color: COLOR.subtle });
-  k.text('100', X + CONTENT_W - 8, y + 13, { size: 6.5, color: COLOR.subtle, align: 'right' });
-  const ty = y + 18;
-  const th = k.text(meta.bandText[b.index], X + 44, ty, { size: 9.5, w: CONTENT_W - 44 - 8 });
-  k.text(meta.reading, X + 44, ty + th + 1.5, { size: 7.8, color: COLOR.muted, w: CONTENT_W - 44 - 8, lineHeight: 1.28 });
-  y += topH + 5;
+  const answerBlock = (y0: number): number => {
+    let y = y0;
+    k.text('ERA SVAR I DEN HÄR DIMENSIONEN', X, y, { size: 7.5, bold: true, color: COLOR.accent });
+    y += 5;
+    const qW = 104;
+    for (const sq of q.scale) {
+      const val = Number(a[sq.field]) || 0;
+      const lines = k.wrap(sq.text, qW, 8.5);
+      const rh = Math.max(9, k.textHeight(lines.length, 8.5) + 4);
+      k.doc.setDrawColor(...COLOR.border);
+      k.doc.setLineWidth(0.2);
+      k.doc.line(X, y + rh, X + CONTENT_W, y + rh);
+      k.text(sq.id, X, y + 2, { size: 8, bold: true, color: COLOR.accent });
+      k.text(sq.text, X + 12, y + 2, { size: 8.5, w: qW });
+      k.text(val ? `${val}/5  ${ANSWER_LABEL[val]}` : '-', X + 12 + qW + 4, y + 2, { size: 8.5, bold: true });
+      const eff = effectOnScore(val, q.reversed);
+      const effTxt = eff === 'raises' ? 'Höjer poängen' : eff === 'lowers' ? 'Sänker poängen' : 'Neutral';
+      const effCol = eff === 'raises' ? COLOR.red : eff === 'lowers' ? COLOR.green : COLOR.muted;
+      k.text(effTxt, X + CONTENT_W, y + 2, { size: 7.5, color: effCol, align: 'right' });
+      y += rh;
+    }
+    if (q.reversed) {
+      y += 1.5;
+      y = k.para('Frågorna är positivt formulerade: ett högt svar betyder god förmåga och ger därför ett lågt behovsvärde (omvänd skala).', X, y, CONTENT_W, { size: 7.5, color: COLOR.muted });
+    }
+    return y + 4;
+  };
 
-  // Svarstabell
-  k.text('ERA SVAR I DEN HÄR DIMENSIONEN', X, y, { size: 7.5, bold: true, color: COLOR.accent });
-  y += 5;
-  const qW = 104;
-  for (const sq of q.scale) {
-    const val = Number(a[sq.field]) || 0;
-    const lines = k.wrap(sq.text, qW, 8.5);
-    const rh = Math.max(9, k.textHeight(lines.length, 8.5) + 4);
-    k.doc.setDrawColor(...COLOR.border);
-    k.doc.setLineWidth(0.2);
-    k.doc.line(X, y + rh, X + CONTENT_W, y + rh);
-    k.text(sq.id, X, y + 2, { size: 8, bold: true, color: COLOR.accent });
-    k.text(sq.text, X + 12, y + 2, { size: 8.5, w: qW });
-    k.text(val ? `${val}/5  ${ANSWER_LABEL[val]}` : '-', X + 12 + qW + 4, y + 2, { size: 8.5, bold: true });
-    const eff = effectOnScore(val, q.reversed);
-    const effTxt = eff === 'raises' ? 'Höjer poängen' : eff === 'lowers' ? 'Sänker poängen' : 'Neutral';
-    const effCol = eff === 'raises' ? COLOR.red : eff === 'lowers' ? COLOR.green : COLOR.muted;
-    k.text(effTxt, X + CONTENT_W, y + 2, { size: 7.5, color: effCol, align: 'right' });
-    y += rh;
-  }
-  if (q.reversed) {
-    y += 1.5;
-    y = k.para('Frågorna är positivt formulerade: ett högt svar betyder god förmåga och ger därför ett lågt behovsvärde (omvänd skala).', X, y, CONTENT_W, { size: 7.5, color: COLOR.muted }) ;
-  }
-  y += 4;
-
-  // Fritext
-  if (q.free) {
+  const freeBlock = (y0: number): number => {
+    if (!q.free) return y0;
     const t = String(a[q.free.field] ?? '').trim();
     const lines = k.wrap(t || 'Inget angavs i enkäten.', CONTENT_W - 14, 9);
     const h = k.textHeight(lines.length, 9) + 14;
-    k.accentCard(X, y, CONTENT_W, h, COLOR.accent);
-    k.text(`${q.free.id}  ${q.free.text}`.toUpperCase().slice(0, 95), X + 6, y + 4, { size: 6.8, bold: true, color: COLOR.accent });
-    k.text(t || 'Inget angavs i enkäten.', X + 6, y + 9.5, { size: 9, color: t ? COLOR.fg : COLOR.muted, w: CONTENT_W - 14 });
-    y += h + 5;
+    k.accentCard(X, y0, CONTENT_W, h, COLOR.accent);
+    k.text(`${q.free.id}  ${q.free.text}`.toUpperCase().slice(0, 95), X + 6, y0 + 4, { size: 6.8, bold: true, color: COLOR.accent });
+    k.text(t || 'Inget angavs i enkäten.', X + 6, y0 + 9.5, { size: 9, color: t ? COLOR.fg : COLOR.muted, w: CONTENT_W - 14 });
+    return y0 + h + 5;
+  };
+
+  const actionsBlock = (y0: number): number => {
+    let y = y0;
+    k.text(dd && dd.actions.length >= 3 ? 'ÅTGÄRDER ANPASSADE EFTER ERA SVAR' : 'REKOMMENDERADE ÅTGÄRDER', X, y, { size: 7.5, bold: true, color: COLOR.accent });
+    y += 5;
+    const acts = dd && dd.actions.length >= 3 ? dd.actions.slice(0, 3) : DIM_ACTIONS[d].actions;
+    acts.forEach((act, i) => {
+      k.circleNumber(i + 1, X + 3.2, y + 2.6, 3.2, COLOR.accent, COLOR.white, 8);
+      y += Math.max(7, k.text(act, X + 10, y, { size: 9, w: CONTENT_W - 10 }) + 2.5);
+    });
+    return y;
+  };
+
+  k.newPage();
+  const eyebrow = `05.${index + 1} / Dimension ${meta.abbr}`;
+  let y = k.header(eyebrow, meta.label, meta.question);
+
+  if (!dd) {
+    y = scoreCard(y);
+    y = answerBlock(y);
+    y = freeBlock(y);
+    actionsBlock(y);
+    k.focusQuestion(DIM_ACTIONS[d].focus);
+    return;
   }
 
-  // Åtgärder
-  k.text('REKOMMENDERADE ÅTGÄRDER', X, y, { size: 7.5, bold: true, color: COLOR.accent });
+  // Med fördjupning: två sidor. Första sidan tolkar resultatet, andra visar svar och åtgärder.
+  y = scoreCard(y);
+  k.text('TOLKNING', X, y, { size: 7.5, bold: true, color: COLOR.accent });
   y += 5;
-  DIM_ACTIONS[d].actions.forEach((act, i) => {
-    k.circleNumber(i + 1, X + 3.2, y + 2.6, 3.2, COLOR.accent, COLOR.white, 8);
-    y += Math.max(7, k.text(act, X + 10, y, { size: 9, w: CONTENT_W - 10 }) + 2.5);
-  });
+  y = k.para(dd.interpretation, X, y, CONTENT_W, { size: 10.2, lineHeight: 1.45 }) + 5;
+
+  if (dd.drivers.length) {
+    k.text('DET HÄR LIGGER BAKOM POÄNGEN', X, y, { size: 7.5, bold: true, color: COLOR.accent });
+    y += 5;
+    for (const dr of dd.drivers) {
+      k.fill(bandColor(b));
+      k.doc.circle(X + 1.6, y + 2, 1, 'F');
+      y += Math.max(6, k.text(dr, X + 6, y, { size: 9.5, w: CONTENT_W - 6 }) + 2.5);
+    }
+    y += 3;
+  }
+
+  if (dd.watchOut) {
+    const lines = k.wrap(dd.watchOut, CONTENT_W - 14, 9.5);
+    const h = k.textHeight(lines.length, 9.5) + 14;
+    k.accentCard(X, y, CONTENT_W, h, COLOR.orange);
+    k.text('ATT SE UPP MED', X + 6, y + 4.5, { size: 7.5, bold: true, color: COLOR.orange });
+    k.text(dd.watchOut, X + 6, y + 10, { size: 9.5, w: CONTENT_W - 14 });
+  }
   k.focusQuestion(DIM_ACTIONS[d].focus);
+
+  k.newPage();
+  y = k.header(`${eyebrow} · svar och åtgärder`, `${meta.label}: svar och åtgärder`);
+  y = answerBlock(y);
+  y = freeBlock(y);
+  actionsBlock(y);
 }
 
 // ── 10. Tryck mot kapacitet ─────────────────────────────────────────────
