@@ -12,12 +12,14 @@ interface Props {
   onChange: (next: CourseSkillTag[]) => void;
   // Kursens text som underlag för AI-förslag.
   getCourseText: () => SkillSuggestInput;
+  // Hämtar AI-förslag direkt när fältet visas (förslagen läggs aldrig till automatiskt).
+  autoSuggest?: boolean;
 }
 
 const badge = (source: CourseSkillTag['source']) =>
   source === 'esco' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700';
 
-export function CourseSkillsField({ value, onChange, getCourseText }: Props) {
+export function CourseSkillsField({ value, onChange, getCourseText, autoSuggest = false }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<CourseSkillTag[]>([]);
   const [searching, setSearching] = useState(false);
@@ -70,6 +72,11 @@ export function CourseSkillsField({ value, onChange, getCourseText }: Props) {
       setSuggesting(false);
     }
   };
+
+  useEffect(() => {
+    if (autoSuggest) handleSuggest();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const shownSuggestions = suggestions.filter((t) => !selectedIds.has(t.id));
 

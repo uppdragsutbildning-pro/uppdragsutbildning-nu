@@ -4,7 +4,9 @@ import {
   MoreVertical, Copy, TrendingUp, Calendar, BookOpen,
   FileSpreadsheet, FileText, ChevronDown, Link2
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Tags } from 'lucide-react';
+import { fetchUntaggedCourses } from '../../../lib/courseSkills';
 import { toast } from 'sonner';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useProviderContext } from '../../../contexts/ProviderContext';
@@ -36,6 +38,16 @@ export function ProviderCoursesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'draft'>('all');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [untaggedCount, setUntaggedCount] = useState(0);
+
+  useEffect(() => {
+    if (!selectedProviderId) return;
+    let active = true;
+    fetchUntaggedCourses(selectedProviderId)
+      .then((c) => active && setUntaggedCount(c.length))
+      .catch(() => active && setUntaggedCount(0));
+    return () => { active = false; };
+  }, [selectedProviderId, refreshKey]);
 
   const { rows: courses, page, setPage, totalPages, loading } = usePaginatedQuery<Training>({
     pageSize: PAGE_SIZE,
@@ -139,6 +151,24 @@ export function ProviderCoursesPage() {
           </DropdownMenu>
         </div>
       </div>
+
+      {untaggedCount > 0 && (
+        <Link
+          to="/provider/courses/skills"
+          className="flex items-center justify-between gap-4 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 hover:bg-blue-100/60 transition-colors"
+        >
+          <span className="flex items-center gap-3 min-w-0">
+            <Tags className="w-5 h-5 text-blue-600 shrink-0" />
+            <span className="min-w-0">
+              <span className="block font-semibold text-slate-900">
+                {untaggedCount} {untaggedCount === 1 ? 'kurs saknar' : 'kurser saknar'} kompetenser
+              </span>
+              <span className="block text-sm text-slate-600">Med kompetenser kan era kurser rekommenderas till köpare som gör Strategiskt kompetensindex.</span>
+            </span>
+          </span>
+          <span className="text-sm font-medium text-blue-700 shrink-0">Lägg till →</span>
+        </Link>
+      )}
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-slate-200 p-4">

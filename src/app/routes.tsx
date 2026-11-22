@@ -15,6 +15,7 @@ import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { ProviderLayout } from "./components/provider/ProviderLayout";
 import { ProviderDashboard } from "./components/provider/ProviderDashboard";
 import { ProviderCoursesPage } from "./components/provider/ProviderCoursesPage";
+import { ProviderCourseSkillsReviewPage } from "./components/provider/ProviderCourseSkillsReviewPage";
 import { ProviderMarketplacesPage } from "./components/provider/ProviderMarketplacesPage";
 import { ProviderCourseExcelImportPage } from "./components/provider/ProviderCourseExcelImportPage";
 import { ProviderCoursePdfImportPage } from "./components/provider/ProviderCoursePdfImportPage";
@@ -123,6 +124,7 @@ export const router = createBrowserRouter([
       { path: "courses/import-excel", Component: ProviderCourseExcelImportPage },
       { path: "courses/import-pdf", Component: ProviderCoursePdfImportPage },
       { path: "courses/import-url", Component: ProviderCourseUrlImportPage },
+      { path: "courses/skills", Component: ProviderCourseSkillsReviewPage },
       { path: "courses/:id/edit", Component: ProviderCourseFormPage },
       { path: "marketplaces", Component: ProviderMarketplacesPage },
       { path: "applications", Component: ProviderApplicationsPage },

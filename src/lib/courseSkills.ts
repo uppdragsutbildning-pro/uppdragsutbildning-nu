@@ -3,6 +3,8 @@
 //  - esco: EU:s kompetenstaxonomi ESCO, som finns i samma API och är bredare på tvärgående kompetenser
 // Taggar sparas som [{ id, title, source }] i trainings.ssyk_skills (jsonb). Äldre taggar utan source räknas som ssyk.
 
+import { supabase } from './supabaseClient';
+
 const API_BASE = 'https://taxonomy.api.jobtechdev.se/v1/taxonomy';
 
 export type SkillSource = 'ssyk' | 'esco';
@@ -70,4 +72,34 @@ export async function suggestCourseSkills(
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error ?? 'Kunde inte hämta förslag');
   return normalizeCourseSkills(data.suggestions);
+}
+
+export interface UntaggedCourse {
+  id: string;
+  title: string;
+  description: string;
+  target_audience: string | null;
+  learning_outcomes: string[];
+  is_active: boolean;
+}
+
+// Leverantörens kurser som saknar kompetenstaggar (utkast och publicerade).
+export async function fetchUntaggedCourses(providerId: string): Promise<UntaggedCourse[]> {
+  const { data, error } = await supabase
+    .from('trainings')
+    .select('id, title, description, target_audience, learning_outcomes, is_active, ssyk_skills')
+    .eq('provider_id', providerId)
+    .order('created_at', { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  return (data ?? [])
+    .filter((t: any) => normalizeCourseSkills(t.ssyk_skills).length === 0)
+    .map((t: any) => ({
+      id: t.id,
+      title: t.title,
+      description: t.description ?? '',
+      target_audience: t.target_audience ?? null,
+      learning_outcomes: Array.isArray(t.learning_outcomes) ? t.learning_outcomes : [],
+      is_active: !!t.is_active,
+    }));
 }
