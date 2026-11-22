@@ -21,14 +21,25 @@ interface Props {
   result: CPIResult;
   analysis: Analysis;
   analysisReady: boolean;
+  pdf: { busy: boolean; download: () => void };
 }
 
 const inputClass =
   'w-full px-3.5 py-2.5 rounded-[10px] border border-[var(--border)] bg-[var(--bg-raised)] text-[var(--fg)] text-[15px] outline-none focus:border-[var(--accent)]';
+function PdfButton({ onClick, busy, label }: { onClick: () => void; busy: boolean; label: string }) {
+  return (
+    <button type="button" onClick={onClick} disabled={busy}
+      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] border border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent-dim)] disabled:opacity-60 text-sm font-semibold transition-colors">
+      {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" aria-hidden="true" />}
+      {label}
+    </button>
+  );
+}
+
 const primary =
   'inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-60 text-white text-sm font-semibold rounded-[10px] transition-colors';
 
-export function SaveReportPanel({ result, analysis, analysisReady }: Props) {
+export function SaveReportPanel({ result, analysis, analysisReady, pdf }: Props) {
   const { user, profile } = useAuth();
   const { marketplace } = useMarketplace();
   const clientReportId = useMemo(() => crypto.randomUUID(), []);
@@ -36,6 +47,7 @@ export function SaveReportPanel({ result, analysis, analysisReady }: Props) {
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [intent, setIntent] = useState<'save' | 'pdf'>('save');
 
   const via = marketplace?.slug ? `&via=${encodeURIComponent(marketplace.slug)}` : '';
   const isStaff = !!profile; // leverantörer och admin har inte Mitt konto
@@ -65,10 +77,25 @@ export function SaveReportPanel({ result, analysis, analysisReady }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, saveAfterLogin]);
 
+  const [pdfAfterLogin, setPdfAfterLogin] = useState(false);
+  useEffect(() => {
+    if (user && pdfAfterLogin) {
+      setPdfAfterLogin(false);
+      pdf.download();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, pdfAfterLogin]);
+
+  function openPdfLogin() {
+    setIntent('pdf');
+    setLoginOpen(true);
+  }
+
   function openLogin() {
     if (!consent) { toast.error('Godkänn att rapporten sparas för att fortsätta'); return; }
     // Reservplan om användaren väljer länken i mejlet i stället för koden.
     storePendingReport({ clientReportId, snapshot: buildSnapshot(result, analysis) });
+    setIntent('save');
     setLoginOpen(true);
   }
 
@@ -95,14 +122,12 @@ export function SaveReportPanel({ result, analysis, analysisReady }: Props) {
           <span className="inline-flex items-center gap-1.5 text-sm font-medium text-[#15803D]">
             <CheckCircle2 className="w-4 h-4" aria-hidden="true" />Sparad i Mitt konto
           </span>
-          <button type="button" disabled title="PDF-rapporten kommer i nästa version"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] border border-[var(--border)] text-[var(--fg-subtle)] text-sm font-medium cursor-not-allowed">
-            <Download className="w-4 h-4" aria-hidden="true" />PDF kommer snart
-          </button>
+          <PdfButton onClick={user ? pdf.download : openPdfLogin} busy={pdf.busy} label={user ? "Ladda ner PDF" : "Logga in och ladda ner PDF"} />
         </div>
       ) : isStaff ? (
         <p className="mt-4 text-sm text-[var(--fg-muted)]">
           Du är inloggad som {profile?.role === 'admin' ? 'administratör' : 'leverantör'}. Rapporter sparas på ett köparkonto: logga ut och logga in som köpare för att spara.
+          <span className="block mt-3"><PdfButton onClick={pdf.download} busy={pdf.busy} label="Ladda ner PDF" /></span>
         </p>
       ) : (
         <div className="mt-4 space-y-3">
@@ -122,23 +147,20 @@ export function SaveReportPanel({ result, analysis, analysisReady }: Props) {
                 <LogIn className="w-4 h-4" aria-hidden="true" />Logga in för att spara
               </button>
             )}
-            <button type="button" disabled title="PDF-rapporten kommer i nästa version"
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] border border-[var(--border)] text-[var(--fg-subtle)] text-sm font-medium cursor-not-allowed">
-              <Download className="w-4 h-4" aria-hidden="true" />PDF kommer snart
-            </button>
+            <PdfButton onClick={user ? pdf.download : openPdfLogin} busy={pdf.busy} label={user ? "Ladda ner PDF" : "Logga in och ladda ner PDF"} />
             {!analysisReady && <span className="text-xs text-[var(--fg-subtle)]">Väntar på att analysen blir klar…</span>}
           </div>
         </div>
       )}
 
-      <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} redirectVia={via}
-        onLoggedIn={() => { setLoginOpen(false); setSaveAfterLogin(true); }} />
+      <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} redirectVia={via} intent={intent}
+        onLoggedIn={() => { setLoginOpen(false); if (intent === 'pdf') setPdfAfterLogin(true); else setSaveAfterLogin(true); }} />
     </div>
   );
 }
 
-function LoginDialog({ open, onOpenChange, onLoggedIn, redirectVia }: {
-  open: boolean; onOpenChange: (o: boolean) => void; onLoggedIn: () => void; redirectVia: string;
+function LoginDialog({ open, onOpenChange, onLoggedIn, redirectVia, intent }: {
+  open: boolean; onOpenChange: (o: boolean) => void; onLoggedIn: () => void; redirectVia: string; intent: 'save' | 'pdf';
 }) {
   const login = useEmailCodeLogin(`/konto?tab=rapporter${redirectVia}`);
   const [email, setEmail] = useState('');
@@ -160,7 +182,7 @@ function LoginDialog({ open, onOpenChange, onLoggedIn, redirectVia }: {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="ub-theme sm:max-w-[420px]">
         <DialogHeader>
-          <DialogTitle>Logga in för att spara</DialogTitle>
+          <DialogTitle>{intent === 'pdf' ? 'Logga in för att ladda ner PDF' : 'Logga in för att spara'}</DialogTitle>
           <DialogDescription>
             Ange din e-postadress så skickar vi en engångskod. Ingen lösenord behövs, och nya användare skapas automatiskt.
           </DialogDescription>
@@ -174,12 +196,12 @@ function LoginDialog({ open, onOpenChange, onLoggedIn, redirectVia }: {
           </form>
         ) : (
           <form onSubmit={verify} className="space-y-3">
-            <p className="text-sm text-[var(--fg-muted)]">Vi har skickat en kod till {email}. Du kan också klicka på länken i mejlet, då hittar du rapporten i Mitt konto.</p>
+            <p className="text-sm text-[var(--fg-muted)]">Vi har skickat en kod till {email}.{intent === 'save' ? ' Du kan också klicka på länken i mejlet, då hittar du rapporten i Mitt konto.' : ''}</p>
             <input type="text" inputMode="numeric" autoComplete="one-time-code" required value={code}
               onChange={(e) => setCode(e.target.value)} placeholder="Kod från mejlet" className={inputClass} autoFocus />
             {login.error && <p className="text-xs text-red-600">{login.error}</p>}
             <button type="submit" disabled={login.verifying} className={`${primary} w-full`}>
-              {login.verifying ? 'Kontrollerar…' : 'Logga in och spara'}
+              {login.verifying ? 'Kontrollerar…' : intent === 'pdf' ? 'Logga in och ladda ner' : 'Logga in och spara'}
             </button>
             <button type="button" disabled={login.cooldown > 0 || login.sending} onClick={() => send()}
               className="w-full text-xs text-[var(--fg-muted)] hover:underline disabled:opacity-60">

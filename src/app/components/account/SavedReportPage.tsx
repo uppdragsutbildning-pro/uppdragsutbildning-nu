@@ -58,7 +58,7 @@ export function SavedReportPage() {
           Sparad {new Date(data.row.created_at).toLocaleDateString('sv-SE', { year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
-      <ResultsView result={data.snapshot.result} savedSnapshot={data.snapshot} onReset={() => navigate('/kompetensanalys')} />
+      <ResultsView result={data.snapshot.result} savedSnapshot={data.snapshot} savedAt={data.row.created_at} onReset={() => navigate('/kompetensanalys')} />
     </div>
   );
 }

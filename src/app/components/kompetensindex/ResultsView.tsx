@@ -9,6 +9,7 @@ import {
 } from '../../../lib/kompetensindexReport';
 import type { SkiReportSnapshot } from '../../../lib/skiReports';
 import { SaveReportPanel } from './report/SaveReportPanel';
+import { usePdfDownload } from './report/usePdfDownload';
 import { loadCoursesForReport, matchRecommendations, type ReportCourse } from '../../../lib/reportCourseMatching';
 import { DimensionRadar, PressureQuadrant, PriorityMatrix, ScoreGauge } from './report/ReportCharts';
 import {
@@ -23,6 +24,8 @@ interface ResultsViewProps {
   onReanalyze?: () => void;
   // Sparad rapport: visas som den sparades (ingen ny AI-analys, inga svar att ändra, ingen spara-panel).
   savedSnapshot?: SkiReportSnapshot;
+  // När rapporten sparades (visas i PDF:en). Utan värde används dagens datum.
+  savedAt?: string;
 }
 
 function AnswerSummaryDrawer({
@@ -154,7 +157,7 @@ function AnswerSummaryDrawer({
   );
 }
 
-export function ResultsView({ result, onReset, onEditStep, savedSnapshot }: ResultsViewProps) {
+export function ResultsView({ result, onReset, onEditStep, savedSnapshot, savedAt }: ResultsViewProps) {
   const readOnly = !!savedSnapshot;
   const navigate = useNavigate();
   const { marketplace, loading: marketplaceLoading } = useMarketplace();
@@ -235,6 +238,17 @@ export function ResultsView({ result, onReset, onEditStep, savedSnapshot }: Resu
   // Partnermarknadsplatser är helt vitmärkta: CTC Nordics rådgivning visas bara på den öppna plattformen.
   const showAdvisory = !marketplace;
 
+  const pdf = usePdfDownload(() => ({
+    result,
+    analysis,
+    courseMap,
+    origin: window.location.origin,
+    via,
+    showAdvisory,
+    createdAt: savedAt ? new Date(savedAt) : new Date(),
+    brandName: marketplace?.name ?? null,
+  }));
+
   return (
     <div className="ub-theme min-h-screen">
       {showDrawer && <AnswerSummaryDrawer result={result} onClose={() => setShowDrawer(false)} onEditStep={onEditStep} />}
@@ -256,10 +270,16 @@ export function ResultsView({ result, onReset, onEditStep, savedSnapshot }: Resu
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] border border-[var(--border)] bg-[var(--bg-raised)] hover:bg-[var(--chip-bg)] text-[var(--fg)] text-sm font-medium transition-colors">
               <Pencil className="w-3.5 h-3.5" aria-hidden="true" />{readOnly ? 'Visa svar' : 'Ändra svar'}
             </button>
+            {readOnly && (
+              <button onClick={pdf.download} disabled={pdf.busy}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-60 text-white text-sm font-semibold transition-colors">
+                <Download className="w-3.5 h-3.5" aria-hidden="true" />{pdf.busy ? 'Skapar PDF…' : 'Ladda ner PDF'}
+              </button>
+            )}
           </div>
         </div>
 
-        {!readOnly && <SaveReportPanel result={result} analysis={analysis} analysisReady={!aiLoading} />}
+        {!readOnly && <SaveReportPanel result={result} analysis={analysis} analysisReady={!aiLoading} pdf={pdf} />}
 
         {/* 1. Sammanfattning */}
         <Section eyebrow="01 / Sammanfattning" title="Ledningsöversikt" intro="Det viktigaste på en skärm: var ni står, vad som är starkast och vad som behöver prioriteras.">
