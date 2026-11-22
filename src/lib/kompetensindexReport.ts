@@ -246,6 +246,21 @@ export interface Analysis {
   focus: { profile: string; quadrant: string; messages: string; priority: string };
 }
 
+// Söktermer per rekommendationsområde som alltid läggs till (även ovanpå AI:ns egna) när rekommendationer
+// kopplas till kurser. Specifika ord, inte breda: "digital" ensamt ger träff på alla digitala kurser.
+export const REC_TERMS: Record<RecDim, string[]> = {
+  AF: ['förändringsledning', 'förändringshantering', 'omställning', 'transformation', 'artificiell intelligens', 'maskininlärning'],
+  KP: ['produktivitet', 'effektivitet', 'processförbättring', 'verksamhetsutveckling', 'lean'],
+  OK: ['mentorskap', 'coachning', 'coachande', 'chefsstöd', 'ledarutveckling', 'chefsutveckling', 'ledarskapsprogram'],
+  SR: ['kompetensförsörjning', 'kompetensplanering', 'talangutveckling', 'talangförsörjning', 'organisationsutveckling'],
+  SI: ['kompetensväxling', 'omskolning', 'karriärväxling', 'talangutveckling'],
+};
+
+export function withRecTerms(rec: Recommendation): Recommendation {
+  const all = [...rec.searchTerms, ...REC_TERMS[rec.dimension]];
+  return { ...rec, searchTerms: [...new Set(all.map((t) => t.toLowerCase()))] };
+}
+
 const lc = (d: DimKey) => DIMS[d].label.toLowerCase();
 
 export function buildRuleAnalysis(result: CPIResult): Analysis {

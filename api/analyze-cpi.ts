@@ -71,7 +71,7 @@ Svara ENBART med ett JSON-objekt (ingen markdown, inga förklaringar utanför JS
     "wishes": "1-2 meningar: hur organisationen vill utveckla kompetensen (insatstyp och upplägg)"
   },
   "recommendations": [
-    {"title": "Kort titel", "body": "2-3 meningar med konkret råd", "priority": "high", "dimension": "KP", "searchTerms": ["2-4 sökord som kan finnas i en kurstitel, t.ex. 'förändringsledning'"]}
+    {"title": "Kort titel", "body": "2-3 meningar med konkret råd", "priority": "high", "dimension": "KP", "searchTerms": ["4-6 specifika sökord och synonymer som kan finnas i en kurstitel, t.ex. 'förändringsledning', 'förändringshantering'"]}
   ],
   "roadmap": [
     {"title": "Diagnos", "text": "1-2 meningar för månad 0-3"},
@@ -86,7 +86,7 @@ Svara ENBART med ett JSON-objekt (ingen markdown, inga förklaringar utanför JS
     "priority": "En fråga till ledningen om vilka insatser som ska prioriteras"
   }
 }
-Krav: "recommendations" ska innehålla 4 poster. "priority" är "high", "medium" eller "low". "dimension" är ett av "AF", "KP", "OK", "SR", "SI". "roadmap" ska innehålla exakt 4 poster i den ordningen. Frågorna i "focus" ska vara öppna frågor som slutar med frågetecken.`;
+Krav: "searchTerms" ska vara specifika kompetensord (gärna sammansatta ord), inte breda ord som "digital", "ledarskap" eller "strategi" ensamma. "recommendations" ska innehålla 4 poster. "priority" är "high", "medium" eller "low". "dimension" är ett av "AF", "KP", "OK", "SR", "SI". "roadmap" ska innehålla exakt 4 poster i den ordningen. Frågorna i "focus" ska vara öppna frågor som slutar med frågetecken.`;
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key missing' });

@@ -5,7 +5,7 @@ import type { CPIResult } from '../pages/KompetensindexPage';
 import { useMarketplace } from '../../../lib/marketplaceContext';
 import {
   DIMS, TOTAL_BAND_TEXT, bandFor, buildRuleAnalysis, computeFindings, mergeAnalysis,
-  recommendedStart, selectInitiatives, zoneFor, DIM_KEYS, type Analysis,
+  recommendedStart, selectInitiatives, withRecTerms, zoneFor, DIM_KEYS, type Analysis,
 } from '../../../lib/kompetensindexReport';
 import { loadCoursesForReport, matchRecommendations, type ReportCourse } from '../../../lib/reportCourseMatching';
 import { DimensionRadar, PressureQuadrant, PriorityMatrix, ScoreGauge } from './report/ReportCharts';
@@ -222,7 +222,7 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
   const startHere = recommendedStart(initiatives);
 
   const courseMap = useMemo(
-    () => matchRecommendations(analysis.recommendations, courses, ssykSkills.map((s) => s.id)),
+    () => matchRecommendations(analysis.recommendations.map(withRecTerms), courses, ssykSkills.map((s) => s.id)),
     [analysis.recommendations, courses, ssykSkills]
   );
 
