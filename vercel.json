@@ -3,6 +3,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/analyze-cpi.ts": { "maxDuration": 30 },
+    "api/suggest-course-skills.ts": { "maxDuration": 30 },
     "api/extract-course-from-pdf.ts": { "maxDuration": 60 },
     "api/extract-course-from-url.ts": { "maxDuration": 60 }
   },

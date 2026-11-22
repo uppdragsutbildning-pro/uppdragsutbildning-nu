@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
   Save, X, Plus, Trash2, ChevronDown, ChevronUp, Image as ImageIcon,
-  AlertCircle, BookOpen, Users, Calendar, Mail, Loader2
+  AlertCircle, BookOpen, Users, Calendar, Mail, Loader2, Tags
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Category } from '../../../lib/supabase';
@@ -10,6 +10,8 @@ import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import { generateUniqueTrainingSlug } from '../../../lib/slug';
 import { Switch } from '../ui/switch';
+import { CourseSkillsField } from './CourseSkillsField';
+import { normalizeCourseSkills, type CourseSkillTag } from '../../../lib/courseSkills';
 
 interface CurriculumModule {
   title: string;
@@ -45,6 +47,7 @@ const emptyForm = {
   isPopular: false,
   featured: false,
   learningOutcomes: [''] as string[],
+  skills: [] as CourseSkillTag[],
   curriculum: [{ title: '', topics: [''] }] as CurriculumModule[],
   instructorName: '',
   instructorTitle: '',
@@ -75,6 +78,7 @@ export function ProviderCourseFormPage() {
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
     content: true,
+    skills: true,
     instructor: false,
     starts: false,
     contact: false,
@@ -119,6 +123,7 @@ export function ProviderCourseFormPage() {
           isPopular: t.is_popular || false,
           featured: t.featured || false,
           learningOutcomes: t.learning_outcomes?.length ? t.learning_outcomes : [''],
+          skills: normalizeCourseSkills(t.ssyk_skills),
           curriculum: modulesRes.data?.length
             ? modulesRes.data.map(m => ({ title: m.title, topics: m.topics || [''] }))
             : [{ title: '', topics: [''] }],
@@ -177,6 +182,7 @@ export function ProviderCourseFormPage() {
         is_popular: formData.isPopular,
         featured: formData.featured,
         learning_outcomes: formData.learningOutcomes.filter(o => o.trim()),
+        ssyk_skills: formData.skills,
         instructor_name: formData.instructorName || null,
         instructor_title: formData.instructorTitle || null,
         instructor_bio: formData.instructorBio || null,
@@ -510,6 +516,25 @@ export function ProviderCourseFormPage() {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* Kompetenser (SSYK/ESCO) */}
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <SectionHeader title="Kompetenser" section="skills" icon={Tags} />
+          {expandedSections.skills && (
+            <div className="p-6">
+              <CourseSkillsField
+                value={formData.skills}
+                onChange={(skills) => setFormData(prev => ({ ...prev, skills }))}
+                getCourseText={() => ({
+                  title: formData.title,
+                  description: formData.description,
+                  targetAudience: formData.targetAudience,
+                  learningOutcomes: formData.learningOutcomes.filter(o => o.trim()),
+                })}
+              />
             </div>
           )}
         </div>

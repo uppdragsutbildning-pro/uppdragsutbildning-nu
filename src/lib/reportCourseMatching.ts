@@ -53,7 +53,7 @@ const GENERIC = new Set([
   'kompetens', 'lärande', 'verksamhet', 'verksamhetsutveckling', 'arbetssätt', 'program', 'kvalitet',
 ]);
 
-// Poäng per söktermsträff: specifik term i titeln 3, i kategorin 2, i beskrivningen/målgruppen 1.
+// Poäng per söktermsträff: specifik term i titeln eller i en kompetenstagg (SSYK/ESCO) 3, i kategorin 2, i beskrivningen/målgruppen 1.
 // Breda termer ger 1 i titeln och inget i övrigt. SSYK/ESCO-taggar ger 3 per gemensam tagg (högst två).
 export function matchRecommendations(
   recs: Recommendation[],
@@ -68,6 +68,7 @@ export function matchRecommendations(
   const prepared = courses.map((c) => ({
     c,
     titleTokens: [...tokenize(c.title)],
+    tagTokens: [...tokenize((c.ssyk_skills ?? []).map((t) => t.title ?? '').join(' '))],
     categoryTokens: [...tokenize(c.categoryName ?? '')],
     bodyTokens: [...tokenize(`${c.description} ${c.target_audience ?? ''}`)],
   }));
@@ -83,7 +84,7 @@ export function matchRecommendations(
         let score = 0;
         for (const term of terms) {
           const generic = GENERIC.has(term);
-          if (p.titleTokens.some((t) => wordsMatch(term, t))) score += generic ? 1 : 3;
+          if (p.titleTokens.some((t) => wordsMatch(term, t)) || p.tagTokens.some((t) => wordsMatch(term, t))) score += generic ? 1 : 3;
           else if (!generic && p.categoryTokens.some((t) => wordsMatch(term, t))) score += 2;
           else if (!generic && p.bodyTokens.some((t) => wordsMatch(term, t))) score += 1;
         }
