@@ -25,9 +25,9 @@ Designa det kompletta flödet för **Strategiskt Kompetensindex®** på Uppdrags
 ## Domänlogik (för att visualiseringarna ska bli rätt)
 - Fyra CPI-dimensioner, 0–100:
   - **AF – Arbetsförändring** (direkt scoring): hur snabbt roller/processer förändras.
-  - **LF – Leveransfriktion** (direkt): hur mycket kompetensbrist hindrar leveransen.
+  - **KP – Kompetenspåverkan** (direkt): hur mycket kompetensbrist hindrar leveransen.
   - **OK – Omställningskapacitet** (omvänd): förmåga att lära om och ställa om. Högt svar = lägre tryck.
-  - **TR – Transformationsriktning** (omvänd): hur tydlig strategin för kompetensförsörjning är.
+  - **SR – Strategisk riktning** (omvänd): hur tydlig strategin för kompetensförsörjning är.
 - Direkt = (svar−1)/4×100. Omvänd = (5−svar)/4×100. **Total CPI = snitt av de fyra.** Högt värde = högt kompetenstryck (sämre läge).
 - **SI – Strategisk insats** (4 frågor, 1–5) påverkar inte CPI utan visar vilka insatstyper som prioriteras.
 - **LI – Lärande & insatser** är preferenser + val av yrkesroller enligt **SSYK 2012** (Arbetsförmedlingens yrkestaxonomi). Valda roller hämtar automatiskt tillhörande kompetenser som visas i rapporten.
@@ -61,9 +61,9 @@ Hero-kort bredvid "Sök utbildning"-kortet: badge "STRATEGISK KOMPETENSINDEX®" 
 **Stegens innehåll:**
 - **Steg 1 – Om er verksamhet:** Namn, E-postadress, Företagets namn, Bransch (SNI, autocomplete), Antal medarbetare (dropdown: 1–9 … 5 000+), Din roll (dropdown: VD/CEO, HR-chef, HR-specialist, Utbildningsansvarig/L&D-chef, Avdelningschef, Ekonomichef, Operativ chef, Inköpsansvarig, Medarbetare utan chefsroll, Annan chef, Styrelseledamot/Ägare, Annat).
 - **Steg 2 – Arbetsförändring (AF):** AF1–AF3 skala (förändrade arbetssätt idag, förändrade roller kommande två år, ökad komplexitet senaste året). AF4 fritext "Vilka områden driver störst förändring just nu?" + hjälpruta.
-- **Steg 3 – Leveransfriktion (LF):** LF1–LF4 skala (kvalitet, tempo/produktivitet, leveransförmåga, beroende av nyckelpersoner). LF5 fritext "Vilka arbetsuppgifter undviks, skjuts upp eller tar längre tid på grund av kompetensbrist?" + hjälpruta.
+- **Steg 3 – Kompetenspåverkan (KP):** KP1–KP4 skala (kvalitet, tempo/produktivitet, leveransförmåga, beroende av nyckelpersoner). LF5 fritext "Vilka arbetsuppgifter undviks, skjuts upp eller tar längre tid på grund av kompetensbrist?" + hjälpruta.
 - **Steg 4 – Omställningskapacitet (OK):** OK1–OK4 skala (tid/struktur för lärande, förmåga att lära om, trygghet i förändring, utveckling över teamgränser).
-- **Steg 5 – Transformationsriktning (TR):** TR1–TR3 skala (tydliga förmågor framåt, koppling till verksamhetsmål, plan för rekrytera/växla/utveckla). TR4 fritext "Vilka kompetenser bedömer ni som mest kritiska de kommande 12–24 månaderna?" (meta: "Används för kompetensmatchning") + hjälpruta.
+- **Steg 5 – Strategisk riktning (SR):** SR1–SR3 skala (tydliga förmågor framåt, koppling till verksamhetsmål, plan för rekrytera/växla/utveckla). TR4 fritext "Vilka kompetenser bedömer ni som mest kritiska de kommande 12–24 månaderna?" (meta: "Används för kompetensmatchning") + hjälpruta.
 - **Steg 6 – Strategisk insats (SI):** SI1–SI4 skala (behov av rekrytering, kompetensväxling, kompetensutveckling, nya arbetssätt).
 - **Steg 7 – Lärande & insatser (LI):** LI1 chips (Kort kurs 1–3 dagar, Längre program, Workshop, Coaching & mentoring, Företagsanpassad uppdragsutbildning). LI2 chips (Digitalt/online, Fysiskt/på plats, Blandat lärande, Cohort-baserat, Självstudier i egen takt). LI3 SSYK-yrkesrollsväljare (meta: "Kopplas mot SSYK 2012 och används för att grunda rapportens kompetensrekommendationer").
 

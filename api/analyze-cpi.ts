@@ -28,9 +28,9 @@ Kompetensnivå: ${level} (${total}/100)
 
 Delpoäng:
 - AF (Arbetsförändring): ${AF}/100
-- LF (Leveransfriktion): ${LF}/100
+- KP (Kompetenspåverkan): ${LF}/100
 - OK (Omställningskapacitet): ${OK}/100
-- TR (Transformationsriktning): ${TR}/100
+- SR (Strategisk riktning): ${TR}/100
 
 Fritext från användaren:
 ${freetext ? JSON.stringify(freetext) : 'Ingen fritext angiven'}

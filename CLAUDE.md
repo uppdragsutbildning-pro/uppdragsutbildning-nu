@@ -71,9 +71,9 @@ Post-MVP-tillägg (URL-import, kurskloning, subdomän fas 2–3 m.m.) hålls sep
 
 **CPI (Kompetenstrycksindex):** Proprietärt gapanalysverktyg, fyra dimensioner:
 - AF – Arbetsförmåga/Arbetsförändring (direkt scoring)
-- LF – Leveransfriktion (direkt scoring)
+- KP – Kompetenspåverkan (direkt scoring; lagras fortfarande under nyckeln `LF` i databasen)
 - OK – Omställningskapacitet (omvänd scoring)
-- TR – Tillit/Relationer / Transformationsriktning (omvänd scoring)
+- SR – Strategisk riktning (omvänd scoring; lagras fortfarande under nyckeln `TR` i databasen)
 
 Scoringformel: Direkt = (svar−1)/4×100. Omvänd = (5−svar)/4×100. Total CPI = snitt av de fyra dimensionerna.
 Nivåer: 0–24 Lågt, 25–49 Måttligt, 50–74 Högt, 75–100 Kritiskt.

@@ -13,8 +13,9 @@ const cpiLevel = (score: number) => {
 const DIM_COLORS: Record<string, string> = {
   AF: 'bg-blue-500', LF: 'bg-red-500', OK: 'bg-green-500', TR: 'bg-amber-500',
 };
+const DIM_ABBR: Record<string, string> = { AF: 'AF', LF: 'KP', OK: 'OK', TR: 'SR' };
 const DIM_LABELS: Record<string, string> = {
-  AF: 'Arbetsförändring', LF: 'Leveransfriktion', OK: 'Omställningskapacitet', TR: 'Transformationsriktning',
+  AF: 'Arbetsförändring', LF: 'Kompetenspåverkan', OK: 'Omställningskapacitet', TR: 'Strategisk riktning',
 };
 const DIM_DESCRIPTIONS: Record<string, string> = {
   AF: 'Mäter hur snabbt och djupt arbetsuppgifter, roller och processer förändras i er verksamhet — drivet av teknik, marknad eller omvärldsförändringar.',
@@ -54,10 +55,10 @@ function buildAnalysis(result: CPIResult): AnalysisResult {
   const strongest = dims.reduce((a, b) => (scores[a] > scores[b] ? a : b));
 
   const dimName: Record<string, string> = {
-    AF: 'arbetsförändring', LF: 'leveransfriktion', OK: 'omställningskapacitet', TR: 'transformationsriktning',
+    AF: 'arbetsförändring', LF: 'kompetenspåverkan', OK: 'omställningskapacitet', TR: 'strategisk riktning',
   };
   const dimNameCap: Record<string, string> = {
-    AF: 'Arbetsförändring', LF: 'Leveransfriktion', OK: 'Omställningskapacitet', TR: 'Transformationsriktning',
+    AF: 'Arbetsförändring', LF: 'Kompetenspåverkan', OK: 'Omställningskapacitet', TR: 'Strategisk riktning',
   };
 
   const pressureDesc = total < 25 ? 'lågt' : total < 50 ? 'måttligt' : total < 75 ? 'högt' : 'kritiskt';
@@ -70,9 +71,9 @@ function buildAnalysis(result: CPIResult): AnalysisResult {
 
   const riskMap: Record<string, string> = {
     AF: `Arbetsförändringen går snabbt och riskerar att lämna medarbetare utan rätt förutsättningar. Om roller och processer förändras utan att kompetensen hänger med ökar prestationsgapet successivt.`,
-    LF: `Leveransfriktionen är hög — kompetensbrist skapar redan märkbara hinder i det dagliga arbetet. Utan riktade insatser riskerar leveransförmågan att försämras ytterligare.`,
+    LF: `Kompetenspåverkan är hög — kompetensbrist skapar redan märkbara hinder i det dagliga arbetet. Utan riktade insatser riskerar leveransförmågan att försämras ytterligare.`,
     OK: `Omställningskapaciteten är låg, vilket gör organisationen sårbar när förutsättningarna ändras. Bristen på adaptiv förmåga kan fördröja nödvändiga omställningar och öka omställningskostnaden.`,
-    TR: `Transformationsriktningen är otydlig — det saknas en sammanhållen strategi för hur kompetens ska förnyas. Utan tydlig riktning riskerar insatser att bli fragmenterade och ge begränsad effekt.`,
+    TR: `Den strategiska riktningen är otydlig — det saknas en sammanhållen strategi för hur kompetens ska förnyas. Utan tydlig riktning riskerar insatser att bli fragmenterade och ge begränsad effekt.`,
   };
   const topRisk = riskMap[weakest] ?? `${dimNameCap[weakest]}-dimensionen (${scores[weakest]}p) utgör den viktigaste risken och bör adresseras skyndsamt.`;
 
@@ -99,15 +100,15 @@ function buildAnalysis(result: CPIResult): AnalysisResult {
       `Sammantaget visar era svar på en organisation med ${pressureLevel === 'high' ? 'högt förändringstempo och tydliga kompetensgap' : 'medvetna kompetensbehov och god självkännedom'}. ` +
       `Ambitionsnivån indikerar att ni är redo för ${pressureLevel === 'high' ? 'riktade och skyndsamma' : 'proaktiva och strategiska'} kompetensinsatser.`;
   } else {
-    orgVoice = 'Inga fritextsvar registrerades. Fyll i frågorna AF4, LF5 och TR4 för en mer personaliserad analys av organisationens röst och behov.';
+    orgVoice = 'Inga fritextsvar registrerades. Fyll i frågorna AF4, KP5 och SR4 för en mer personaliserad analys av organisationens röst och behov.';
   }
 
   const recommendations: AnalysisResult['recommendations'] = [];
 
   if (LF >= 50) {
     recommendations.push({
-      title: 'Minska leveransfriktion med riktad kompetensutveckling',
-      body: `Med ett LF-värde på ${LF} finns tydliga hinder för effektiv prestation. Strukturerade kompetensprogram inom kärnprocesser kan snabbt minska friktion och förbättra leveransförmågan.`,
+      title: 'Minska kompetensbristens påverkan med riktad kompetensutveckling',
+      body: `Med ett KP-värde på ${LF} finns tydliga hinder för effektiv prestation. Strukturerade kompetensprogram inom kärnprocesser kan snabbt minska friktion och förbättra leveransförmågan.`,
       priority: LF >= 70 ? 'high' : 'medium',
     });
   }
@@ -130,8 +131,8 @@ function buildAnalysis(result: CPIResult): AnalysisResult {
 
   if (TR < 60) {
     recommendations.push({
-      title: 'Tydliggör transformationsriktningen',
-      body: `Med TR-värde ${TR}p saknas delvis tydlig färdriktning för kompetensförsörjningen. Ta fram en kompetensförsörjningsplan som kopplar lärande till verksamhetsmålen på 1–3 års sikt.`,
+      title: 'Tydliggör den strategiska riktningen',
+      body: `Med SR-värde ${TR}p saknas delvis tydlig färdriktning för kompetensförsörjningen. Ta fram en kompetensförsörjningsplan som kopplar lärande till verksamhetsmålen på 1–3 års sikt.`,
       priority: TR < 40 ? 'high' : 'medium',
     });
   }
@@ -195,13 +196,13 @@ function AnswerSummaryDrawer({
       ],
     },
     {
-      label: 'Leveransfriktion',
+      label: 'Kompetenspåverkan',
       rows: [
-        { q: 'LF1', a: `${answers.pf1}/5` },
-        { q: 'LF2', a: `${answers.pf2}/5` },
-        { q: 'LF3', a: `${answers.pf3}/5` },
-        { q: 'LF4', a: `${answers.pf4}/5` },
-        { q: 'LF5', a: answers.pf5 || '—' },
+        { q: 'KP1', a: `${answers.pf1}/5` },
+        { q: 'KP2', a: `${answers.pf2}/5` },
+        { q: 'KP3', a: `${answers.pf3}/5` },
+        { q: 'KP4', a: `${answers.pf4}/5` },
+        { q: 'KP5', a: answers.pf5 || '—' },
       ],
     },
     {
@@ -214,12 +215,12 @@ function AnswerSummaryDrawer({
       ],
     },
     {
-      label: 'Transformationsriktning',
+      label: 'Strategisk riktning',
       rows: [
-        { q: 'TR1', a: `${answers.tr1}/5` },
-        { q: 'TR2', a: `${answers.tr2}/5` },
-        { q: 'TR3', a: `${answers.tr3}/5` },
-        { q: 'TR4', a: answers.tr4 || '—' },
+        { q: 'SR1', a: `${answers.tr1}/5` },
+        { q: 'SR2', a: `${answers.tr2}/5` },
+        { q: 'SR3', a: `${answers.tr3}/5` },
+        { q: 'SR4', a: answers.tr4 || '—' },
       ],
     },
     {
@@ -390,7 +391,7 @@ export function ResultsView({ result, onReset, onEditStep }: ResultsViewProps) {
               <div key={dim} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
                 <div className="flex items-start justify-between mb-1">
                   <div>
-                    <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full mb-1">{dim}</span>
+                    <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full mb-1">{DIM_ABBR[dim]}</span>
                     <p className="text-sm font-semibold text-slate-900">{DIM_LABELS[dim]}</p>
                   </div>
                   <span className="text-2xl font-bold" style={{ color: dimLevel.text }}>{s}</span>

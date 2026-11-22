@@ -128,8 +128,8 @@ export function AdminDashboard() {
     if (!records.length) return;
     const headers = [
       'Datum', 'Kontaktnamn', 'E-post', 'Företag', 'Bransch', 'Storlek', 'Roll',
-      'Total', 'AF', 'LF', 'OK', 'TR', 'SI1', 'SI2', 'SI3', 'SI4',
-      'AF4', 'LF5', 'TR4', 'Yrkesroller',
+      'Total', 'AF', 'KP', 'OK', 'SR', 'SI1', 'SI2', 'SI3', 'SI4',
+      'AF4', 'KP5', 'SR4', 'Yrkesroller',
     ];
     const rows = records.map((r) => [
       new Date(r.created_at).toLocaleDateString('sv-SE'),
@@ -1223,7 +1223,7 @@ export function AdminDashboard() {
                       : 0;
                     return (
                       <div key={dim} className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-                        <p className="text-xs text-slate-500 mb-1">{dim} — snitt</p>
+                        <p className="text-xs text-slate-500 mb-1">{({ LF: 'KP', TR: 'SR' } as Record<string, string>)[dim] ?? dim} — snitt</p>
                         <p className="text-3xl font-bold text-slate-900">{avg}</p>
                       </div>
                     );
@@ -1288,9 +1288,9 @@ export function AdminDashboard() {
                         <th className="text-left px-4 py-3 font-medium text-slate-600">Storlek</th>
                         <th className="text-center px-4 py-3 font-medium text-slate-600">Total</th>
                         <th className="text-center px-4 py-3 font-medium text-slate-600">AF</th>
-                        <th className="text-center px-4 py-3 font-medium text-slate-600">LF</th>
+                        <th className="text-center px-4 py-3 font-medium text-slate-600">KP</th>
                         <th className="text-center px-4 py-3 font-medium text-slate-600">OK</th>
-                        <th className="text-center px-4 py-3 font-medium text-slate-600">TR</th>
+                        <th className="text-center px-4 py-3 font-medium text-slate-600">SR</th>
                         <th className="text-right px-4 py-3 font-medium text-slate-600">Åtgärder</th>
                       </tr>
                     </thead>

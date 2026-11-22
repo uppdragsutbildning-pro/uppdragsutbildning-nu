@@ -56,9 +56,9 @@ export function CpiRecordDrawer({ record, onClose }: CpiRecordDrawerProps) {
           <Section title="CPI-poäng">
             <Row q="Total" a={String(scores?.total ?? '')} />
             <Row q="AF — Arbetsförändring" a={String(scores?.AF ?? '')} />
-            <Row q="LF — Leveransfriktion" a={String(scores?.LF ?? '')} />
+            <Row q="KP — Kompetenspåverkan" a={String(scores?.LF ?? '')} />
             <Row q="OK — Omställningskapacitet" a={String(scores?.OK ?? '')} />
-            <Row q="TR — Transformationsriktning" a={String(scores?.TR ?? '')} />
+            <Row q="SR — Strategisk riktning" a={String(scores?.TR ?? '')} />
           </Section>
 
           <Section title="Strategisk insats">
@@ -70,8 +70,8 @@ export function CpiRecordDrawer({ record, onClose }: CpiRecordDrawerProps) {
 
           <Section title="Fritextsvar">
             <Row q="AF4 — Förändringsdrivkrafter" a={freetext?.af4} />
-            <Row q="LF5 — Kompetensbristens effekt" a={freetext?.pf5} />
-            <Row q="TR4 — Kritiska kompetenser framåt" a={freetext?.tr4} />
+            <Row q="KP5 — Kompetensbristens effekt" a={freetext?.pf5} />
+            <Row q="SR4 — Kritiska kompetenser framåt" a={freetext?.tr4} />
           </Section>
 
           <Section title="Lärande & insatser">
