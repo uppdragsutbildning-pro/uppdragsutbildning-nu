@@ -28,6 +28,7 @@ import { ProviderTrainingRequestsPage } from "./components/provider/ProviderTrai
 import { ProviderHistoryPage } from "./components/provider/ProviderHistoryPage";
 import { ProviderTermsSettingsPage } from "./components/provider/ProviderTermsSettingsPage";
 import { ProviderBillingPage } from "./components/provider/ProviderBillingPage";
+import { AdminCourseEditPage } from "./components/admin/AdminCourseEditPage";
 import { MarketplaceFormPage } from "./components/admin/MarketplaceFormPage";
 import { MarketplaceBrandingPage } from "./components/admin/MarketplaceBrandingPage";
 import { MarketplaceCurationPage } from "./components/admin/MarketplaceCurationPage";
@@ -106,6 +107,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requireRole="admin">
             <MarketplaceCurationPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: "admin/trainings/:id/edit",
+        element: (
+          <ProtectedRoute requireRole="admin">
+            <AdminCourseEditPage />
           </ProtectedRoute>
         )
       },

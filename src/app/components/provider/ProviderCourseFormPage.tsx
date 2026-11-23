@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   Save, X, Plus, Trash2, ChevronDown, ChevronUp, Image as ImageIcon,
   AlertCircle, BookOpen, Users, Calendar, Mail, Loader2, Tags
@@ -68,6 +68,11 @@ export function ProviderCourseFormPage() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const isEdit = !!id;
+  // Samma formulär används av administratören (/admin/trainings/:id/edit) för att kunna
+  // redigera och publicera å lärosätets vägnar, t.ex. vid support.
+  const isAdminMode = useLocation().pathname.startsWith('/admin');
+  const backPath = isAdminMode ? '/admin?tab=trainings' : '/provider/courses';
+  const [ownerProvider, setOwnerProvider] = useState<{ id: string; name: string } | null>(null);
 
   const [formData, setFormData] = useState(emptyForm);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -109,6 +114,8 @@ export function ProviderCourseFormPage() {
 
         if (trainingRes.error) throw trainingRes.error;
         const t = trainingRes.data;
+        const { data: ownerRow } = await supabase.from('providers').select('id, name').eq('id', t.provider_id).maybeSingle();
+        setOwnerProvider(ownerRow ?? { id: t.provider_id, name: '' });
 
         setFormData({
           title: t.title || '',
@@ -178,18 +185,18 @@ export function ProviderCourseFormPage() {
   };
 
   const saveCourse = async () => {
-    if (!profile?.provider_id) {
+    if (!isEdit && !profile?.provider_id) {
       toast.error('Inget provider-konto kopplat till din profil');
       return;
     }
 
     setSaving(true);
     try {
+      // provider_id sätts bara vid skapande; en redigering (även av admin) flyttar aldrig kursen.
       const trainingPayload = {
         title: formData.title,
         description: formData.description,
         course_code: formData.courseCode || null,
-        provider_id: profile.provider_id,
         category_id: formData.categoryId,
         format: formData.format,
         duration: formData.duration,
@@ -222,7 +229,7 @@ export function ProviderCourseFormPage() {
         // en redan delad/indexerad /kurs/{slug}-länk inte går sönder om
         // titeln redigeras.
         const slug = await generateUniqueTrainingSlug(trainingPayload.title);
-        const { data, error } = await supabase.from('trainings').insert({ ...trainingPayload, slug }).select('id').single();
+        const { data, error } = await supabase.from('trainings').insert({ ...trainingPayload, provider_id: profile!.provider_id!, slug }).select('id').single();
         if (error) throw error;
         trainingId = data.id;
       }
@@ -255,34 +262,52 @@ export function ProviderCourseFormPage() {
         );
       }
 
-      // Replace scheduled starts
-      await supabase.from('scheduled_starts').delete().eq('training_id', trainingId);
+      // Synka kursstarter utan att radera och skapa om dem: anmälningar (ON DELETE CASCADE) och
+      // bokningar hänger på kursstartens id, så en omskrivning skulle radera kursens anmälningar.
       const starts = formData.scheduledStarts.filter(s => s.startDate);
-      if (starts.length > 0) {
-        await supabase.from('scheduled_starts').insert(
-          starts.map(s => ({
-            training_id: trainingId,
-            start_date: s.startDate,
-            application_deadline: s.applicationDeadline,
-            price: s.price,
-            max_participants: s.maxParticipants,
-            available_spots: s.availableSpots,
-            status: s.status,
-            language: 'Svenska',
-          }))
-        );
+      const toRow = (s: ScheduledStart) => ({
+        start_date: s.startDate,
+        application_deadline: s.applicationDeadline,
+        price: s.price,
+        max_participants: s.maxParticipants,
+        available_spots: s.availableSpots,
+        status: s.status,
+      });
+      const { data: existing, error: existingErr } = await supabase.from('scheduled_starts').select('id').eq('training_id', trainingId);
+      if (existingErr) throw existingErr;
+      const keepIds = new Set(starts.filter(s => s.id).map(s => s.id as string));
+      const removedIds = (existing ?? []).map(r => r.id).filter(rid => !keepIds.has(rid));
+      if (removedIds.length > 0) {
+        const [{ count: appCount }, { count: bookingCount }] = await Promise.all([
+          supabase.from('applications').select('id', { count: 'exact', head: true }).in('scheduled_start_id', removedIds),
+          supabase.from('bookings').select('id', { count: 'exact', head: true }).in('scheduled_start_id', removedIds),
+        ]);
+        if ((appCount ?? 0) > 0 || (bookingCount ?? 0) > 0) {
+          throw new Error('En kursstart du tagit bort har anmälningar eller bokningar och kan inte raderas. Sätt dess status till "Fullt" i stället. Övriga ändringar är sparade.');
+        }
+        const { error } = await supabase.from('scheduled_starts').delete().in('id', removedIds);
+        if (error) throw error;
+      }
+      for (const s of starts) {
+        if (s.id) {
+          const { error } = await supabase.from('scheduled_starts').update(toRow(s)).eq('id', s.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('scheduled_starts').insert({ ...toRow(s), training_id: trainingId, language: 'Svenska' });
+          if (error) throw error;
+        }
       }
 
       toast.success(isEdit ? 'Kurs uppdaterad!' : (formData.isActive ? 'Kurs publicerad!' : 'Kurs sparad som utkast!'), {
         description: 'Din kurs har sparats på plattformen.'
       });
-      navigate('/provider/courses');
+      navigate(backPath);
     } catch (err: any) {
       console.error(err);
       if (typeof err?.message === 'string' && err.message.includes('avbokningsvillkor')) {
         toast.error('Registrera avbokningsvillkor först', {
           description: 'En kurs kan inte publiceras innan lärosätet har registrerat sina avbokningsregler. Du kan spara kursen som utkast under tiden.',
-          action: { label: 'Gå till Villkor', onClick: () => navigate('/provider/villkor') },
+          action: isAdminMode ? undefined : { label: 'Gå till Villkor', onClick: () => navigate('/provider/villkor') },
         });
       } else {
         toast.error('Något gick fel', { description: err.message });
@@ -299,7 +324,7 @@ export function ProviderCourseFormPage() {
   async function handleImageFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !profile?.provider_id) return;
+    if (!file || !(ownerProvider?.id ?? profile?.provider_id)) return;
 
     if (!file.type.startsWith('image/')) {
       toast.error('Endast bildfiler stöds');
@@ -314,7 +339,7 @@ export function ProviderCourseFormPage() {
     try {
       const extensionMatch = file.name.match(/\.[a-zA-Z0-9]+$/);
       const extension = extensionMatch ? extensionMatch[0] : '.jpg';
-      const path = `${profile.provider_id}/${crypto.randomUUID()}${extension}`;
+      const path = `${ownerProvider?.id ?? profile?.provider_id}/${crypto.randomUUID()}${extension}`;
       const { error: uploadError } = await supabase.storage.from('course-images').upload(path, file);
       if (uploadError) throw uploadError;
 
@@ -370,6 +395,11 @@ export function ProviderCourseFormPage() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {isAdminMode && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Du redigerar som administratör{ownerProvider?.name ? <> å <strong>{ownerProvider.name}</strong>s vägnar</> : ' å lärosätets vägnar'}. Ändringarna syns direkt för lärosätet och i katalogen.
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -386,7 +416,7 @@ export function ProviderCourseFormPage() {
               {formData.isActive ? 'Publicerad' : 'Utkast'}
             </span>
           </div>
-          <button type="button" onClick={() => navigate('/provider/courses')} className="flex items-center gap-2 px-5 py-2.5 border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium">
+          <button type="button" onClick={() => navigate(backPath)} className="flex items-center gap-2 px-5 py-2.5 border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium">
             <X className="w-5 h-5" />Avbryt
           </button>
           <button type="submit" disabled={saving} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
@@ -731,7 +761,7 @@ export function ProviderCourseFormPage() {
 
       {/* Bottom actions */}
       <div className="flex justify-end gap-3 pt-6 border-t border-slate-200">
-        <button type="button" onClick={() => navigate('/provider/courses')} className="px-6 py-2.5 border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium">Avbryt</button>
+        <button type="button" onClick={() => navigate(backPath)} className="px-6 py-2.5 border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium">Avbryt</button>
         <button type="submit" disabled={saving} className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-lg font-medium transition-colors">
           {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
           {isEdit ? 'Spara ändringar' : 'Publicera kurs'}

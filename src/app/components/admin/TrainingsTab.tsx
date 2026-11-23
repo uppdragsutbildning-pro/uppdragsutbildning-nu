@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { ArrowDown, ArrowUp, ArrowUpDown, Download, ExternalLink, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabaseClient';
@@ -277,6 +277,23 @@ export function TrainingsTab() {
   const activeFilterCount = FILTER_KEYS.filter(k => get(k)).length + (get('q') ? 1 : 0);
   const publishedCount = rows.filter(r => r.is_active).length;
 
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const togglePublished = async (r: Row) => {
+    const publish = !r.is_active;
+    if (publish && !r.tagged && !window.confirm('Kursen saknar SSYK-kompetenser. Publicera ändå?')) return;
+    if (!publish && !window.confirm(`Avpublicera "${r.title}"? Kursen försvinner ur katalogen och från marknadsplatser.`)) return;
+    setBusyId(r.id);
+    const { error: err } = await supabase.from('trainings').update({ is_active: publish }).eq('id', r.id);
+    setBusyId(null);
+    if (err) {
+      // Databasen stoppar publicering när lärosätet saknar avbokningsvillkor.
+      toast.error(err.message.includes('avbokningsvillkor') ? 'Lärosätet har inte registrerat avbokningsvillkor, så kursen kan inte publiceras' : 'Kunde inte ändra status', { description: err.message });
+      return;
+    }
+    setTrainings(prev => prev.map(t => (t.id === r.id ? { ...t, is_active: publish, updated_at: new Date().toISOString() } : t)));
+    toast.success(publish ? 'Kursen är publicerad' : 'Kursen är avpublicerad');
+  };
+
   const toggleSort = (key: SortKey) =>
     setSort(s => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'updated' || key === 'apps' ? 'desc' : 'asc' }));
 
@@ -439,7 +456,7 @@ export function TrainingsTab() {
             {pageRows.map(r => (
               <tr key={r.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 max-w-xs">
-                  <div className="font-medium text-slate-900 truncate">{r.title}</div>
+                  <Link to={`/admin/trainings/${r.id}/edit`} className="font-medium text-slate-900 hover:text-blue-600 truncate block">{r.title}</Link>
                   <div className="text-xs text-slate-500 flex flex-wrap items-center gap-x-2">
                     <span>{r.categories?.name}</span>
                     <span>{fmt(r.format)}</span>
@@ -449,9 +466,14 @@ export function TrainingsTab() {
                 </td>
                 <td className="px-4 py-3 text-slate-700">{r.providers?.name}</td>
                 <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 rounded-full text-xs border ${r.is_active ? 'bg-green-100 text-green-700 border-green-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                  <button
+                    onClick={() => togglePublished(r)}
+                    disabled={busyId === r.id}
+                    title={r.is_active ? 'Avpublicera' : 'Publicera'}
+                    className={`px-2 py-0.5 rounded-full text-xs border disabled:opacity-50 ${r.is_active ? 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'}`}
+                  >
                     {r.is_active ? 'Publicerad' : 'Ej publicerad'}
-                  </span>
+                  </button>
                 </td>
                 <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
                   {r.nextStart ? fmtDate(r.nextStart) : <span className="text-slate-400">Ingen</span>}
