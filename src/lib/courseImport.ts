@@ -1,3 +1,6 @@
+import type { CourseSkillTag } from './courseSkills';
+import { stampConfirmed } from './courseSkills';
+
 export interface ParsedCourseRow {
   _id: string;
   title: string;
@@ -14,6 +17,8 @@ export interface ParsedCourseRow {
   instructorName: string;
   instructorTitle: string;
   instructorBio: string;
+  // Kompetenstaggar (SSYK/ESCO) som leverantören bekräftat i förhandsgranskningen.
+  skills: CourseSkillTag[];
   _errors: string[];
   _include: boolean;
 }
@@ -157,6 +162,7 @@ export function buildParsedRow(raw: RawCourseInput, categories: SimpleCategory[]
     instructorName: (raw.instructorName || '').trim(),
     instructorTitle: (raw.instructorTitle || '').trim(),
     instructorBio: (raw.instructorBio || '').trim(),
+    skills: [] as CourseSkillTag[],
   };
   const errors = validateRow(base);
   return { ...base, _errors: errors, _include: errors.length === 0 };
@@ -187,6 +193,7 @@ export function toTrainingInsertPayload(row: ParsedCourseRow, providerId: string
     instructor_name: row.instructorName || null,
     instructor_title: row.instructorTitle || null,
     instructor_bio: row.instructorBio || null,
+    ssyk_skills: stampConfirmed(row.skills ?? []),
     is_active: false,
   };
 }

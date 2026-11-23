@@ -12,6 +12,16 @@ export interface CourseSkillTag {
   id: string;
   title: string;
   source: SkillSource;
+  // Hur taggen kom till: föreslagen av AI eller vald manuellt. Båda bekräftas alltid av en person innan de sparas.
+  origin?: 'ai' | 'manual';
+  // När en person bekräftade taggen (ISO-tid). Äldre taggar saknar fältet och räknas som bekräftade.
+  confirmed_at?: string;
+}
+
+// Förslag från AI-funktionen. confidence visar hur säker uppslaget är: 'high' = begreppets namn motsvarar frasen.
+export interface CourseSkillSuggestion extends CourseSkillTag {
+  confidence: 'high' | 'medium' | 'low';
+  phrase: string;
 }
 
 export const MAX_COURSE_SKILLS = 10;
@@ -26,7 +36,13 @@ export function normalizeCourseSkills(raw: unknown): CourseSkillTag[] {
   const out: CourseSkillTag[] = [];
   for (const r of raw) {
     if (r && typeof r.id === 'string' && typeof r.title === 'string') {
-      out.push({ id: r.id, title: r.title, source: r.source === 'esco' ? 'esco' : 'ssyk' });
+      out.push({
+        id: r.id,
+        title: r.title,
+        source: r.source === 'esco' ? 'esco' : 'ssyk',
+        ...(r.origin === 'ai' || r.origin === 'manual' ? { origin: r.origin } : {}),
+        ...(typeof r.confirmed_at === 'string' ? { confirmed_at: r.confirmed_at } : {}),
+      });
     }
   }
   return out;
@@ -60,10 +76,34 @@ export interface SkillSuggestInput {
 
 // Ber servern föreslå taggar utifrån kursens text. Förslagen är riktiga begrepp ur taxonomin
 // (servern slår upp dem), och sparas aldrig här: leverantören väljer vilka som läggs till.
+// Stämplar bekräftelsetid på taggar som saknar den. Anropas när en person sparar kursen.
+export function stampConfirmed(tags: CourseSkillTag[]): CourseSkillTag[] {
+  const now = new Date().toISOString();
+  return tags.map((t) => (t.confirmed_at ? t : { ...t, confirmed_at: now }));
+}
+
+export function normalizeSuggestions(raw: unknown): CourseSkillSuggestion[] {
+  if (!Array.isArray(raw)) return [];
+  const out: CourseSkillSuggestion[] = [];
+  for (const r of raw) {
+    if (r && typeof r.id === 'string' && typeof r.title === 'string') {
+      out.push({
+        id: r.id,
+        title: r.title,
+        source: r.source === 'esco' ? 'esco' : 'ssyk',
+        origin: 'ai',
+        confidence: r.confidence === 'high' || r.confidence === 'low' ? r.confidence : 'medium',
+        phrase: typeof r.phrase === 'string' ? r.phrase : '',
+      });
+    }
+  }
+  return out;
+}
+
 export async function suggestCourseSkills(
   input: SkillSuggestInput,
   accessToken: string
-): Promise<CourseSkillTag[]> {
+): Promise<CourseSkillSuggestion[]> {
   const res = await fetch('/api/suggest-course-skills', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
@@ -71,7 +111,7 @@ export async function suggestCourseSkills(
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error ?? 'Kunde inte hämta förslag');
-  return normalizeCourseSkills(data.suggestions);
+  return normalizeSuggestions(data.suggestions);
 }
 
 export interface UntaggedCourse {

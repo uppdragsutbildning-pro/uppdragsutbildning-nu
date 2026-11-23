@@ -9,10 +9,21 @@ const TAXONOMY = 'https://taxonomy.api.jobtechdev.se/v1/taxonomy/suggesters/auto
 const MAX_PHRASES = 10;
 const MAX_SUGGESTIONS = 24;
 
-type Tag = { id: string; title: string; source: 'ssyk' | 'esco' };
+type Tag = { id: string; title: string; source: 'ssyk' | 'esco'; confidence: 'high' | 'medium' | 'low'; phrase: string };
 
-async function lookup(phrase: string, type: 'skill' | 'esco-skill', limit: number): Promise<Tag[]> {
-  const qs = new URLSearchParams({ 'query-string': phrase, type, limit: String(limit) });
+const norm = (t: string) => t.toLowerCase().replace(/[^a-zåäö0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+// Hur väl begreppets namn motsvarar frasen AI föreslog: samma eller överlappande ord ger hög säkerhet.
+function confidenceFor(phrase: string, label: string, viaFallbackWord: boolean): Tag['confidence'] {
+  if (viaFallbackWord) return 'low';
+  const p = norm(phrase), l = norm(label);
+  if (!p || !l) return 'medium';
+  if (p === l || l.startsWith(p) || p.startsWith(l)) return 'high';
+  return 'medium';
+}
+
+async function lookup(phrase: string, type: 'skill' | 'esco-skill', limit: number, queryText = phrase, fallback = false): Promise<Tag[]> {
+  const qs = new URLSearchParams({ 'query-string': queryText, type, limit: String(limit) });
   try {
     const res = await fetch(`${TAXONOMY}?${qs}`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(6000) });
     if (!res.ok) return [];
@@ -20,7 +31,9 @@ async function lookup(phrase: string, type: 'skill' | 'esco-skill', limit: numbe
     return concepts.map((c) => ({
       id: c['taxonomy/id'],
       title: c['taxonomy/preferred-label'],
-      source: type === 'skill' ? 'ssyk' : 'esco',
+      source: (type === 'skill' ? 'ssyk' : 'esco') as 'ssyk' | 'esco',
+      confidence: confidenceFor(phrase, c['taxonomy/preferred-label'], fallback),
+      phrase,
     }));
   } catch {
     return [];
@@ -33,7 +46,7 @@ async function lookupPhrase(phrase: string): Promise<Tag[]> {
   if (ssyk.length === 0 && esco.length === 0) {
     const longest = phrase.split(/\s+/).sort((a, b) => b.length - a.length)[0];
     if (longest && longest !== phrase && longest.length >= 5) {
-      [ssyk, esco] = await Promise.all([lookup(longest, 'skill', 2), lookup(longest, 'esco-skill', 2)]);
+      [ssyk, esco] = await Promise.all([lookup(phrase, 'skill', 2, longest, true), lookup(phrase, 'esco-skill', 2, longest, true)]);
     }
   }
   return [...ssyk, ...esco];

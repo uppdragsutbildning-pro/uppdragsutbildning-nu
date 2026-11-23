@@ -31,7 +31,9 @@ function Kpi({ label, value, sub, color }: { label: string; value: string; sub?:
 }
 
 // Översikt över de analyser som just nu är filtrerade, med samma nivåer, färger och namn som rapporterna.
-export function CpiDashboard({ records, reportStats, totalCount }: { records: CpiRecord[]; reportStats: ReportStats | null; totalCount: number }) {
+export interface CourseCoverage { total: number; tagged: number }
+
+export function CpiDashboard({ records, reportStats, totalCount, courseCoverage }: { records: CpiRecord[]; reportStats: ReportStats | null; totalCount: number; courseCoverage?: CourseCoverage | null }) {
   const totals = records.map((r) => r.scores?.total ?? 0);
   const meanTotal = avg(totals);
   const meanBand = bandFor(meanTotal);
@@ -47,10 +49,18 @@ export function CpiDashboard({ records, reportStats, totalCount }: { records: Cp
 
   return (
     <div className="space-y-4 mb-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Kpi label="Analyser i urvalet" value={String(records.length)} sub={`${last30} senaste 30 dagarna · ${totalCount} totalt`} />
         <Kpi label="Snittindex" value={`${meanTotal}`} sub={`${meanBand.label} kompetenstryck`} color={meanBand.color} />
         <Kpi label="Vanligaste nivå" value={commonest.label} sub={`${Math.max(...bandCounts)} av ${records.length} analyser`} color={commonest.color} />
+        {courseCoverage && (
+          <Kpi
+            label="Kurser som kan matchas"
+            value={`${courseCoverage.tagged}/${courseCoverage.total}`}
+            sub={courseCoverage.total === courseCoverage.tagged ? 'Alla publicerade kurser har kompetenser' : `${courseCoverage.total - courseCoverage.tagged} publicerade kurser saknar kompetenser`}
+            color={courseCoverage.total > 0 && courseCoverage.tagged < courseCoverage.total ? '#C2410C' : undefined}
+          />
+        )}
         <Kpi
           label="Sparade rapporter"
           value={reportStats ? String(reportStats.saved_total) : '–'}

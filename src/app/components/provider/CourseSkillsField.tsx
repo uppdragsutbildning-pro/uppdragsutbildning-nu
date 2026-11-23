@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabaseClient';
 import {
   MAX_COURSE_SKILLS, SOURCE_LABEL, searchCourseSkills, suggestCourseSkills,
-  type CourseSkillTag, type SkillSuggestInput,
+  type CourseSkillSuggestion, type CourseSkillTag, type SkillSuggestInput,
 } from '../../../lib/courseSkills';
 
 interface Props {
@@ -14,16 +14,18 @@ interface Props {
   getCourseText: () => SkillSuggestInput;
   // Hämtar AI-förslag direkt när fältet visas (förslagen läggs aldrig till automatiskt).
   autoSuggest?: boolean;
+  // Förslag som redan hämtats (till exempel för alla kurser i en import), så att de syns utan nytt anrop.
+  initialSuggestions?: CourseSkillSuggestion[];
 }
 
 const badge = (source: CourseSkillTag['source']) =>
   source === 'esco' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700';
 
-export function CourseSkillsField({ value, onChange, getCourseText, autoSuggest = false }: Props) {
+export function CourseSkillsField({ value, onChange, getCourseText, autoSuggest = false, initialSuggestions }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<CourseSkillTag[]>([]);
   const [searching, setSearching] = useState(false);
-  const [suggestions, setSuggestions] = useState<CourseSkillTag[]>([]);
+  const [suggestions, setSuggestions] = useState<CourseSkillSuggestion[]>(initialSuggestions ?? []);
   const [suggesting, setSuggesting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -45,10 +47,18 @@ export function CourseSkillsField({ value, onChange, getCourseText, autoSuggest 
     return () => { clearTimeout(timer); ctrl.abort(); };
   }, [query]);
 
-  const add = (tag: CourseSkillTag) => {
+  const add = (tag: CourseSkillTag, origin: 'ai' | 'manual' = 'manual') => {
     if (selectedIds.has(tag.id)) return;
     if (full) { toast.error(`Du kan välja högst ${MAX_COURSE_SKILLS} kompetenser`); return; }
-    onChange([...value, tag]);
+    onChange([...value, { id: tag.id, title: tag.title, source: tag.source, origin }]);
+  };
+
+  // Lägger till de förslag som AI är säkrast på (begreppets namn motsvarar frasen), upp till gränsen.
+  const addConfident = () => {
+    const room = MAX_COURSE_SKILLS - value.length;
+    const picks = suggestions.filter((t) => t.confidence === 'high' && !selectedIds.has(t.id)).slice(0, Math.max(0, room));
+    if (picks.length === 0) { toast.message('Inga förslag är markerade som säkra.'); return; }
+    onChange([...value, ...picks.map((t) => ({ id: t.id, title: t.title, source: t.source, origin: 'ai' as const }))]);
   };
   const remove = (id: string) => onChange(value.filter((t) => t.id !== id));
 
@@ -121,12 +131,21 @@ export function CourseSkillsField({ value, onChange, getCourseText, autoSuggest 
 
       {shownSuggestions.length > 0 && (
         <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 mb-2">Förslag, klicka för att lägga till</p>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Förslag, klicka för att lägga till</p>
+            {shownSuggestions.some((t) => t.confidence === 'high') && (
+              <button type="button" onClick={addConfident} className="text-xs font-medium text-blue-700 hover:underline">
+                Lägg till alla säkra förslag
+              </button>
+            )}
+          </div>
           <div className="flex flex-wrap gap-2">
             {shownSuggestions.map((t) => (
-              <button key={t.id} type="button" onClick={() => add(t)} disabled={full}
+              <button key={t.id} type="button" onClick={() => add(t, 'ai')} disabled={full}
+                title={t.confidence === 'high' ? 'Säkert förslag: begreppets namn motsvarar det AI föreslog' : 'Granska noga: förslaget är en ungefärlig träff'}
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-200 hover:border-blue-400 text-sm text-slate-800 disabled:opacity-50">
                 <Plus className="w-3 h-3 text-blue-600" />
+                <span className={`w-1.5 h-1.5 rounded-full ${t.confidence === 'high' ? 'bg-green-500' : 'bg-slate-300'}`} aria-hidden="true" />
                 {t.title}
                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${badge(t.source)}`}>{SOURCE_LABEL[t.source]}</span>
               </button>

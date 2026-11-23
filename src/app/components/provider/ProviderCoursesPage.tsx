@@ -39,12 +39,13 @@ export function ProviderCoursesPage() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'draft'>('all');
   const [refreshKey, setRefreshKey] = useState(0);
   const [untaggedCount, setUntaggedCount] = useState(0);
+  const [untaggedPublished, setUntaggedPublished] = useState(0);
 
   useEffect(() => {
     if (!selectedProviderId) return;
     let active = true;
     fetchUntaggedCourses(selectedProviderId)
-      .then((c) => active && setUntaggedCount(c.length))
+      .then((c) => { if (!active) return; setUntaggedCount(c.length); setUntaggedPublished(c.filter((x) => x.is_active).length); })
       .catch(() => active && setUntaggedCount(0));
     return () => { active = false; };
   }, [selectedProviderId, refreshKey]);
@@ -162,8 +163,13 @@ export function ProviderCoursesPage() {
             <span className="min-w-0">
               <span className="block font-semibold text-slate-900">
                 {untaggedCount} {untaggedCount === 1 ? 'kurs saknar' : 'kurser saknar'} kompetenser
+                {untaggedPublished > 0 && <span className="text-amber-700">, varav {untaggedPublished} publicerade</span>}
               </span>
-              <span className="block text-sm text-slate-600">Med kompetenser kan era kurser rekommenderas till köpare som gör Strategiskt kompetensindex.</span>
+              <span className="block text-sm text-slate-600">
+                {untaggedPublished > 0
+                  ? 'Publicerade kurser utan kompetenser kan inte matchas mot köparnas behov och rekommenderas inte i Strategiskt kompetensindex.'
+                  : 'Med kompetenser kan era kurser rekommenderas till köpare som gör Strategiskt kompetensindex.'}
+              </span>
             </span>
           </span>
           <span className="text-sm font-medium text-blue-700 shrink-0">Lägg till →</span>
@@ -251,6 +257,17 @@ export function ProviderCoursesPage() {
                         <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">
                           Utkast
                         </span>
+                      )}
+                      {!(Array.isArray((course as any).ssyk_skills) && (course as any).ssyk_skills.length > 0) && (
+                        <Link
+                          to={`/provider/courses/${course.id}/edit`}
+                          title="Kursen kan inte matchas mot köparnas behov förrän kompetenser lagts till"
+                          className={`px-2 py-1 text-xs rounded-full border font-medium ${
+                            course.is_active ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}
+                        >
+                          {course.is_active ? 'Saknar kompetenser, kan inte matchas' : 'Saknar kompetenser'}
+                        </Link>
                       )}
                     </div>
                     {course.course_code && (

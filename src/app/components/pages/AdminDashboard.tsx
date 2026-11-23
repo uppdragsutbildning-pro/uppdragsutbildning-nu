@@ -13,8 +13,9 @@ import { TrainingRequestsTab, useOpenTrainingRequestsCount } from '../admin/Trai
 import { BillingTab, useBillingAttentionCount } from '../admin/BillingTab';
 import { ContractsTab, useContractsAttentionCount } from '../admin/ContractsTab';
 import { CpiRecordDrawer } from '../admin/CpiRecordDrawer';
-import { CpiDashboard, type ReportStats } from '../admin/CpiDashboard';
+import { CpiDashboard, type CourseCoverage, type ReportStats } from '../admin/CpiDashboard';
 import { bandFor } from '../../../lib/kompetensindexReport';
+import { TaggingEvalPanel } from '../admin/TaggingEvalPanel';
 import { getPaginationRange } from '../../../hooks/usePaginatedQuery';
 import {
   Pagination,
@@ -72,6 +73,7 @@ export function AdminDashboard() {
   const [cpiPage, setCpiPage] = useState(1);
   const [cpiDetailRecord, setCpiDetailRecord] = useState<CpiRecord | null>(null);
   const [reportStats, setReportStats] = useState<ReportStats | null>(null);
+  const [courseCoverage, setCourseCoverage] = useState<CourseCoverage | null>(null);
   const CPI_PAGE_SIZE = 20;
 
   // Form state for creating new provider
@@ -127,6 +129,15 @@ export function AdminDashboard() {
       .order('created_at', { ascending: false });
     if (!error && data) setCpiRecords(data as CpiRecord[]);
     setCpiLoading(false);
+
+    // Hur många publicerade kurser som har kompetenstaggar (kan matchas mot köparnas behov).
+    const { data: tr } = await supabase.from('trainings').select('id, ssyk_skills').eq('is_active', true).limit(2000);
+    if (tr) {
+      setCourseCoverage({
+        total: tr.length,
+        tagged: tr.filter((t: any) => Array.isArray(t.ssyk_skills) && t.ssyk_skills.length > 0).length,
+      });
+    }
 
     // Antal sparade rapporter (bara siffror). Funktionen finns först när migrationen är körd.
     const { data: stats, error: statsError } = await supabase.rpc('admin_ski_report_stats');
@@ -1239,7 +1250,16 @@ export function AdminDashboard() {
             ) : (
               <>
                 {/* Översikt */}
-                <CpiDashboard records={filteredCpiRecords} reportStats={reportStats} totalCount={cpiRecords.length} />
+                <CpiDashboard records={filteredCpiRecords} reportStats={reportStats} totalCount={cpiRecords.length} courseCoverage={courseCoverage} />
+
+                <details className="mb-6 group">
+                  <summary className="cursor-pointer list-none flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-3.5 hover:bg-slate-50">
+                    <span className="font-semibold text-slate-900">Utvärdera kurstaggning</span>
+                    <span className="text-xs text-slate-500 group-open:hidden">Visa</span>
+                    <span className="text-xs text-slate-500 hidden group-open:inline">Dölj</span>
+                  </summary>
+                  <div className="mt-3"><TaggingEvalPanel /></div>
+                </details>
 
                 {/* Search + filters */}
                 <div className="flex flex-wrap items-center gap-3 mb-6">

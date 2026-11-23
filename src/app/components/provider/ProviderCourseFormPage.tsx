@@ -10,8 +10,9 @@ import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
 import { generateUniqueTrainingSlug } from '../../../lib/slug';
 import { Switch } from '../ui/switch';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { CourseSkillsField } from './CourseSkillsField';
-import { normalizeCourseSkills, type CourseSkillTag } from '../../../lib/courseSkills';
+import { normalizeCourseSkills, stampConfirmed, type CourseSkillTag } from '../../../lib/courseSkills';
 
 interface CurriculumModule {
   title: string;
@@ -158,8 +159,25 @@ export function ProviderCourseFormPage() {
     loadTraining();
   }, [id, isEdit]);
 
+  const [noSkillsDialog, setNoSkillsDialog] = useState(false);
+
+  const goToSkills = () => {
+    setNoSkillsDialog(false);
+    setExpandedSections(prev => ({ ...prev, skills: true }));
+    setTimeout(() => document.getElementById('kompetenser')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+  };
+
+  // Publicering utan kompetenser blockeras inte, men leverantören ska se och välja det medvetet.
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.isActive && formData.skills.length === 0) {
+      setNoSkillsDialog(true);
+      return;
+    }
+    await saveCourse();
+  };
+
+  const saveCourse = async () => {
     if (!profile?.provider_id) {
       toast.error('Inget provider-konto kopplat till din profil');
       return;
@@ -182,7 +200,7 @@ export function ProviderCourseFormPage() {
         is_popular: formData.isPopular,
         featured: formData.featured,
         learning_outcomes: formData.learningOutcomes.filter(o => o.trim()),
-        ssyk_skills: formData.skills,
+        ssyk_skills: stampConfirmed(formData.skills),
         instructor_name: formData.instructorName || null,
         instructor_title: formData.instructorTitle || null,
         instructor_bio: formData.instructorBio || null,
@@ -378,6 +396,44 @@ export function ProviderCourseFormPage() {
         </div>
       </div>
 
+      {formData.isActive && formData.skills.length === 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-5 py-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold text-amber-900">Kursen saknar kompetenser</p>
+              <p className="text-sm text-amber-800 max-w-2xl">
+                Utan kompetenser kan kursen inte matchas mot köparnas behov och rekommenderas inte i Strategiskt kompetensindex. Lägg till kompetenser innan du publicerar.
+              </p>
+            </div>
+          </div>
+          <button type="button" onClick={goToSkills} className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium">
+            Lägg till kompetenser
+          </button>
+        </div>
+      )}
+
+      <Dialog open={noSkillsDialog} onOpenChange={setNoSkillsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Publicera utan kompetenser?</DialogTitle>
+            <DialogDescription>
+              Kursen har inga kompetenser och kan därför inte matchas mot köparnas behov. Den syns i katalogen, men rekommenderas inte i Strategiskt kompetensindex. Du kan lägga till kompetenser nu eller när som helst senare.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <button type="button" onClick={() => { setNoSkillsDialog(false); saveCourse(); }}
+              className="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium">
+              Publicera ändå
+            </button>
+            <button type="button" onClick={goToSkills}
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">
+              Lägg till kompetenser
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="space-y-4">
         {/* Basic Information */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -521,7 +577,7 @@ export function ProviderCourseFormPage() {
         </div>
 
         {/* Kompetenser (SSYK/ESCO) */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div id="kompetenser" className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <SectionHeader title="Kompetenser" section="skills" icon={Tags} />
           {expandedSections.skills && (
             <div className="p-6">

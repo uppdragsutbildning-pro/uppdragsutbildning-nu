@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Fragment, useState } from 'react';
+import { Link } from 'react-router';
+import { CheckCircle, AlertCircle, Loader2, Sparkles, Tags } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -10,6 +11,8 @@ import {
   toTrainingInsertPayload,
 } from '../../../lib/courseImport';
 import { generateUniqueTrainingSlug } from '../../../lib/slug';
+import { MAX_COURSE_SKILLS, suggestCourseSkills, type CourseSkillSuggestion, type CourseSkillTag } from '../../../lib/courseSkills';
+import { CourseSkillsField } from './CourseSkillsField';
 
 interface CourseImportPreviewProps {
   rows: ParsedCourseRow[];
@@ -25,8 +28,66 @@ export function CourseImportPreview({ rows, categories, onRowsChange, onDone }: 
   const { profile } = useAuth();
   const [importing, setImporting] = useState(false);
   const [results, setResults] = useState<{ title: string; success: boolean; error?: string }[] | null>(null);
+  // Kompetensförslag per rad. Inget läggs till förrän leverantören själv godkänner.
+  const [suggestions, setSuggestions] = useState<Record<string, CourseSkillSuggestion[]>>({});
+  const [suggesting, setSuggesting] = useState<{ done: number; total: number } | null>(null);
+  const [openRow, setOpenRow] = useState<string | null>(null);
 
-  const includedCount = rows.filter((r) => r._include && r._errors.length === 0).length;
+  const includedRows = rows.filter((r) => r._include && r._errors.length === 0);
+  const includedCount = includedRows.length;
+  const withoutSkills = includedRows.filter((r) => r.skills.length === 0).length;
+
+  function updateSkills(id: string, skills: CourseSkillTag[]) {
+    onRowsChange(rows.map((r) => (r._id === id ? { ...r, skills } : r)));
+  }
+
+  // Hämtar förslag för alla valda kurser, två i taget. Förslagen visas per kurs och läggs inte till automatiskt.
+  async function suggestAll() {
+    const targets = includedRows.filter((r) => !suggestions[r._id]);
+    if (targets.length === 0) { toast.message('Det finns redan förslag för alla valda kurser.'); return; }
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) { toast.error('Du är inte inloggad'); return; }
+    setSuggesting({ done: 0, total: targets.length });
+    let done = 0;
+    let failed = 0;
+    const queue = [...targets];
+    const worker = async () => {
+      while (queue.length) {
+        const row = queue.shift()!;
+        try {
+          const list = await suggestCourseSkills(
+            { title: row.title, description: row.description, targetAudience: row.targetAudience, learningOutcomes: row.learningOutcomes },
+            token
+          );
+          setSuggestions((prev) => ({ ...prev, [row._id]: list }));
+        } catch {
+          failed += 1;
+        }
+        done += 1;
+        setSuggesting({ done, total: targets.length });
+      }
+    };
+    await Promise.all([worker(), worker()]);
+    setSuggesting(null);
+    if (failed > 0) toast.error(`Kunde inte hämta förslag för ${failed} kurs${failed !== 1 ? 'er' : ''}. Prova igen eller granska dem en och en.`);
+  }
+
+  // Lägger till de säkraste förslagen (begreppets namn motsvarar det AI föreslog), högst fem per kurs.
+  function acceptConfident() {
+    let added = 0;
+    onRowsChange(
+      rows.map((r) => {
+        const list = suggestions[r._id];
+        if (!list || r.skills.length > 0) return r;
+        const picks = list.filter((t) => t.confidence === 'high').slice(0, Math.min(5, MAX_COURSE_SKILLS));
+        if (picks.length === 0) return r;
+        added += 1;
+        return { ...r, skills: picks.map((t) => ({ id: t.id, title: t.title, source: t.source, origin: 'ai' as const })) };
+      })
+    );
+    toast.success(added > 0 ? `Säkra förslag lades till på ${added} kurs${added !== 1 ? 'er' : ''}. Granska gärna dem.` : 'Inga kurser hade säkra förslag att lägga till.');
+  }
 
   function toggleInclude(id: string) {
     onRowsChange(rows.map((r) => (r._id === id ? { ...r, _include: !r._include } : r)));
@@ -84,6 +145,12 @@ export function CourseImportPreview({ rows, categories, onRowsChange, onDone }: 
         <p className="text-slate-600 mb-4">
           Gå till "Mina kurser" och publicera dem när du har granskat innehållet.
         </p>
+        {withoutSkills > 0 && (
+          <div className="text-left bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 text-sm text-amber-800">
+            <p className="font-medium mb-1">{withoutSkills} kurs{withoutSkills !== 1 ? 'er' : ''} saknar kompetenser</p>
+            <p>Kurser utan kompetenser kan inte matchas mot köparnas behov i Strategiskt kompetensindex. <Link to="/provider/courses/skills" className="underline font-medium">Lägg till kompetenser nu</Link>.</p>
+          </div>
+        )}
         {failed.length > 0 && (
           <div className="text-left bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-sm text-red-700">
             <p className="font-medium mb-1">{failed.length} kurs{failed.length !== 1 ? 'er' : ''} misslyckades:</p>
@@ -106,6 +173,31 @@ export function CourseImportPreview({ rows, categories, onRowsChange, onDone }: 
 
   return (
     <div className="space-y-4">
+      <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <Tags className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-semibold text-slate-900 text-sm">Kompetenser för matchning</p>
+            <p className="text-xs text-slate-600 max-w-xl">
+              Kurser med kompetenser kan rekommenderas till köpare i Strategiskt kompetensindex. Hämta förslag, granska dem per kurs och godkänn. Inget läggs till utan att du bekräftar.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={suggestAll} disabled={!!suggesting || includedCount === 0}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-200 bg-white text-blue-700 hover:bg-blue-50 text-sm font-medium disabled:opacity-60">
+            {suggesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            {suggesting ? `Hämtar förslag ${suggesting.done}/${suggesting.total}…` : 'Föreslå för alla valda kurser'}
+          </button>
+          {Object.keys(suggestions).length > 0 && (
+            <button type="button" onClick={acceptConfident}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">
+              Godkänn alla säkra förslag
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 border-b border-slate-200">
@@ -116,12 +208,14 @@ export function CourseImportPreview({ rows, categories, onRowsChange, onDone }: 
               <th className="px-3 py-3 text-left font-medium text-slate-600">Format</th>
               <th className="px-3 py-3 text-left font-medium text-slate-600">Typ</th>
               <th className="px-3 py-3 text-left font-medium text-slate-600">Hp</th>
+              <th className="px-3 py-3 text-left font-medium text-slate-600">Kompetenser</th>
               <th className="px-3 py-3 text-left font-medium text-slate-600">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {rows.map((row) => (
-              <tr key={row._id} className={row._errors.length > 0 ? 'bg-red-50/40' : ''}>
+              <Fragment key={row._id}>
+              <tr className={row._errors.length > 0 ? 'bg-red-50/40' : ''}>
                 <td className="px-3 py-3">
                   <input
                     type="checkbox"
@@ -180,6 +274,15 @@ export function CourseImportPreview({ rows, categories, onRowsChange, onDone }: 
                 </td>
                 <td className="px-3 py-3 text-slate-600">{row.credits}</td>
                 <td className="px-3 py-3">
+                  <button type="button" onClick={() => setOpenRow(openRow === row._id ? null : row._id)}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
+                      row.skills.length > 0 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'
+                    }`}>
+                    {row.skills.length > 0 ? `${row.skills.length} valda` : suggestions[row._id] ? `${suggestions[row._id].length} förslag` : 'Saknas'}
+                    <span className="text-[10px] opacity-70">{openRow === row._id ? 'Stäng' : 'Granska'}</span>
+                  </button>
+                </td>
+                <td className="px-3 py-3">
                   {row._errors.length === 0 ? (
                     <span className="inline-flex items-center gap-1 text-emerald-600 text-xs font-medium">
                       <CheckCircle className="w-3.5 h-3.5" />Giltig
@@ -191,10 +294,30 @@ export function CourseImportPreview({ rows, categories, onRowsChange, onDone }: 
                   )}
                 </td>
               </tr>
+              {openRow === row._id && (
+                <tr className="bg-slate-50/60">
+                  <td colSpan={8} className="px-5 py-5">
+                    <CourseSkillsField
+                      value={row.skills}
+                      onChange={(skills) => updateSkills(row._id, skills)}
+                      initialSuggestions={suggestions[row._id]}
+                      getCourseText={() => ({ title: row.title, description: row.description, targetAudience: row.targetAudience, learningOutcomes: row.learningOutcomes })}
+                    />
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             ))}
           </tbody>
         </table>
       </div>
+
+      {withoutSkills > 0 && includedCount > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+          <p className="font-medium">{withoutSkills} av {includedCount} valda kurser saknar kompetenser</p>
+          <p className="mt-0.5">De sparas som utkast, men kan inte matchas mot köparnas behov förrän du lagt till kompetenser. Du kan komplettera dem senare under Mina kurser.</p>
+        </div>
+      )}
 
       <div className="flex justify-end gap-3">
         <button

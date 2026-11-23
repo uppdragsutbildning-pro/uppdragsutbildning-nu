@@ -4,7 +4,7 @@ import { ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, Loader2 } from 'lucide
 import { toast } from 'sonner';
 import { useProviderContext } from '../../../contexts/ProviderContext';
 import { supabase } from '../../../lib/supabaseClient';
-import { fetchUntaggedCourses, type CourseSkillTag, type UntaggedCourse } from '../../../lib/courseSkills';
+import { fetchUntaggedCourses, stampConfirmed, type CourseSkillTag, type UntaggedCourse } from '../../../lib/courseSkills';
 import { CourseSkillsField } from './CourseSkillsField';
 
 // Genomgång av kurser som saknar kompetenstaggar. AI-förslag hämtas när en kurs öppnas, men inget sparas
@@ -18,7 +18,7 @@ function ReviewRow({ course, onSaved }: { course: UntaggedCourse; onSaved: (id: 
   async function save() {
     if (skills.length === 0) return;
     setSaving(true);
-    const { error } = await supabase.from('trainings').update({ ssyk_skills: skills }).eq('id', course.id);
+    const { error } = await supabase.from('trainings').update({ ssyk_skills: stampConfirmed(skills) }).eq('id', course.id);
     setSaving(false);
     if (error) {
       toast.error('Kunde inte spara', { description: error.message });
