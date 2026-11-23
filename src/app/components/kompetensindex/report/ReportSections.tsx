@@ -274,6 +274,11 @@ export function RecommendationCard({
                         <span className="flex-1 min-w-0">
                           <span className="block text-sm font-semibold text-[var(--fg)] truncate group-hover:text-[var(--accent)]">{c.title}</span>
                           {c.providerName && <span className="block text-xs text-[var(--fg-muted)] truncate">{c.providerName}</span>}
+                          {c.coveredSkills.length > 0 && (
+                            <span className="mt-1 block text-xs text-[var(--accent)] font-medium">
+                              Täcker {c.coveredSkills.length} av era yrkeskompetenser
+                            </span>
+                          )}
                           {c.matchedTags.length > 0 && (
                             <span className="mt-1.5 flex flex-wrap gap-1.5">
                               {c.matchedTags.map((t) => (

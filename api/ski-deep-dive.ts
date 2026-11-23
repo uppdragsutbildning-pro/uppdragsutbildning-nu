@@ -51,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return `${clip(d.abbr, 4)} ${clip(d.label, 60)}: poäng ${Math.round(Number(d.score) || 0)}/100 (${clip(d.band, 12)})${d.reversed ? ' [OMVÄND SKALA: höga svar = god förmåga = lågt poängvärde]' : ''}\n${qs}\n${free}`;
   }).join('\n\n');
 
-  const prompt = `Du är en svensk HR-strateg och kompetensutvecklingsexpert. Skriv fördjupande text till en rapport till ledningen, en sida per dimension i Strategiskt kompetensindex. Skriv på svenska, sakligt och konkret, i "ni"-form, utan utropstecken. Hitta inte på fakta som inte framgår av svaren.
+  const prompt = `Du är en svensk HR-strateg och kompetensutvecklingsexpert. Skriv fördjupande text till en rapport till ledningen, en sida per dimension i Strategiskt kompetensindex. Skriv på svenska, sakligt och konkret, i "ni"-form, utan utropstecken. Hitta inte på fakta som inte framgår av svaren. Återge eller citera aldrig frågornas ordalydelse och räkna inte upp frågorna: hänvisa till svaren övergripande (till exempel "era svar om arbetssätt" eller "fråga 2").
 
 Alla poäng är 0-100 där HÖGRE POÄNG = STÖRRE BEHOV ELLER STÖRRE BEGRÄNSNING. Nivåer: 0-24 Lågt, 25-49 Måttligt, 50-74 Högt, 75-100 Kritiskt. Bransch: ${clip(req.body?.industry, 120) || 'okänd'}. Storlek: ${clip(req.body?.companySize, 40) || 'okänd'} medarbetare.
 

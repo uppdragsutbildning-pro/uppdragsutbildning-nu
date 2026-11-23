@@ -24,6 +24,14 @@ export interface PdfInput {
 }
 
 const X = PAGE.mx;
+
+// Fem prickar som visar ett svar 1-5. Frågornas ordalydelse redovisas inte i rapporten, bara numret och svaret.
+function answerDots(k: Kit, x: number, y: number, value: number, color: RGB = COLOR.accent) {
+  for (let i = 1; i <= 5; i++) {
+    k.fill(i <= value ? color : COLOR.chip);
+    k.doc.circle(x + (i - 1) * 4.6, y, 1.5, 'F');
+  }
+}
 const dateStr = (d: Date) => d.toLocaleDateString('sv-SE', { day: 'numeric', month: 'long', year: 'numeric' });
 const dimAbbr = (k: DimKey) => DIMS[k].abbr;
 
@@ -279,26 +287,24 @@ export function dimensionPage(k: Kit, inp: PdfInput, d: DimKey, index: number) {
     let y = y0;
     k.text('ERA SVAR I DEN HÄR DIMENSIONEN', X, y, { size: 7.5, bold: true, color: COLOR.accent });
     y += 5;
-    const qW = 104;
     for (const sq of q.scale) {
       const val = Number(a[sq.field]) || 0;
-      const lines = k.wrap(sq.text, qW, 8.5);
-      const rh = Math.max(9, k.textHeight(lines.length, 8.5) + 4);
+      const rh = 9;
       k.doc.setDrawColor(...COLOR.border);
       k.doc.setLineWidth(0.2);
       k.doc.line(X, y + rh, X + CONTENT_W, y + rh);
-      k.text(sq.id, X, y + 2, { size: 8, bold: true, color: COLOR.accent });
-      k.text(sq.text, X + 12, y + 2, { size: 8.5, w: qW });
-      k.text(val ? `${val}/5  ${ANSWER_LABEL[val]}` : '-', X + 12 + qW + 4, y + 2, { size: 8.5, bold: true });
+      k.text(sq.id, X, y + 2.5, { size: 8.5, bold: true, color: COLOR.accent });
+      answerDots(k, X + 18, y + 4.1, val, val ? bandColor(bandFor(effectOnScore(val, q.reversed) === 'raises' ? 80 : effectOnScore(val, q.reversed) === 'lowers' ? 10 : 40)) : COLOR.accent);
+      k.text(val ? `${val}/5  ${ANSWER_LABEL[val]}` : '-', X + 46, y + 2.5, { size: 8.5, bold: true });
       const eff = effectOnScore(val, q.reversed);
       const effTxt = eff === 'raises' ? 'Höjer poängen' : eff === 'lowers' ? 'Sänker poängen' : 'Neutral';
       const effCol = eff === 'raises' ? COLOR.red : eff === 'lowers' ? COLOR.green : COLOR.muted;
-      k.text(effTxt, X + CONTENT_W, y + 2, { size: 7.5, color: effCol, align: 'right' });
+      k.text(effTxt, X + CONTENT_W, y + 2.5, { size: 7.5, color: effCol, align: 'right' });
       y += rh;
     }
     if (q.reversed) {
       y += 1.5;
-      y = k.para('Frågorna är positivt formulerade: ett högt svar betyder god förmåga och ger därför ett lågt behovsvärde (omvänd skala).', X, y, CONTENT_W, { size: 7.5, color: COLOR.muted });
+      y = k.para('För OK och SR ger höga svar låga poängvärden (omvänd skala): ett högt svar betyder god förmåga.', X, y, CONTENT_W, { size: 7.5, color: COLOR.muted });
     }
     return y + 4;
   };
@@ -309,7 +315,7 @@ export function dimensionPage(k: Kit, inp: PdfInput, d: DimKey, index: number) {
     const lines = k.wrap(t || 'Inget angavs i enkäten.', CONTENT_W - 14, 9);
     const h = k.textHeight(lines.length, 9) + 14;
     k.accentCard(X, y0, CONTENT_W, h, COLOR.accent);
-    k.text(`${q.free.id}  ${q.free.text}`.toUpperCase().slice(0, 95), X + 6, y0 + 4, { size: 6.8, bold: true, color: COLOR.accent });
+    k.text(`${q.free.id}  ER EGEN BESKRIVNING`, X + 6, y0 + 4, { size: 6.8, bold: true, color: COLOR.accent });
     k.text(t || 'Inget angavs i enkäten.', X + 6, y0 + 9.5, { size: 9, color: t ? COLOR.fg : COLOR.muted, w: CONTENT_W - 14 });
     return y0 + h + 5;
   };
@@ -607,6 +613,8 @@ export function priorityPages(k: Kit, inp: PdfInput) {
 const PRIORITY_LABEL = { high: 'Hög prioritet', medium: 'Medel', low: 'Låg' } as const;
 const PRIORITY_COLOR = { high: COLOR.red, medium: COLOR.yellow, low: COLOR.green } as const;
 
+const courseBlockH = (c: MatchedCourse) => 10 + (c.coveredSkills.length ? 3.6 : 0) + (c.matchedTags.length ? 4.5 : 0);
+
 export function recommendationPages(k: Kit, inp: PdfInput) {
   const { analysis, courseMap, origin, via, showAdvisory } = inp;
   k.newPage();
@@ -621,7 +629,7 @@ export function recommendationPages(k: Kit, inp: PdfInput) {
     let h = k.textHeight(titleLines.length, 11) + k.textHeight(bodyLines.length, 9) + 14;
     h += 6;
     if (courses.length) {
-      h += 6 + courses.length * (courses.some((c) => c.matchedTags.length) ? 14 : 10);
+      h += 6 + courses.reduce((sum, c) => sum + courseBlockH(c), 0);
     } else {
       h += 12;
     }
@@ -649,15 +657,19 @@ export function recommendationPages(k: Kit, inp: PdfInput) {
         k.text(c.title, X + 15, cy, { size: 9.5, bold: true, color: COLOR.accent, w: w - 20 });
         k.doc.link(X + 15, cy - 0.5, w - 20, 5, { url });
         k.text(c.providerName ?? '', X + 15, cy + 4.3, { size: 7.8, color: COLOR.muted });
+        let ly = cy + 8.2;
+        if (c.coveredSkills.length) {
+          k.text(`Täcker ${c.coveredSkills.length} av era yrkeskompetenser`, X + 15, ly, { size: 7.6, bold: true, color: COLOR.accent });
+          ly += 3.6;
+        }
         if (c.matchedTags.length) {
           let tx = X + 15;
-          const ty = cy + 8;
           c.matchedTags.forEach((t) => {
             const label = `${t.title.length > 34 ? t.title.slice(0, 33) + '...' : t.title} ${t.source.toUpperCase()}`;
-            tx += k.chip(label, tx, ty, { bg: COLOR.chip, color: COLOR.fg, size: 6.2 }) + 2;
+            tx += k.chip(label, tx, ly, { bg: COLOR.chip, color: COLOR.fg, size: 6.2 }) + 2;
           });
         }
-        cy += c.matchedTags.length ? 14 : 10;
+        cy += courseBlockH(c);
       });
     } else {
       cy += k.text('Ingen färdig utbildning matchar rekommendationen. Begär offert så tar vi fram förslag från lärosäten:', X + 15, cy, { size: 8.5, color: COLOR.muted, w: w - 20 });
@@ -678,18 +690,29 @@ export function recommendationPages(k: Kit, inp: PdfInput) {
 
 export function skillsPages(k: Kit, inp: PdfInput) {
   const { occupations, ssykSkills } = inp.result;
+  const { courseMap, origin, via } = inp;
   k.newPage();
-  k.header('11 / Kompetensfokus', 'Kompetenser kopplade till era yrkesroller', 'Enligt Arbetsförmedlingens yrkestaxonomi SSYK 2012. Kompetenserna används för att matcha rekommendationerna mot utbildningar.');
+  k.header('11 / Kompetensfokus', 'Yrkesroller och kompetenser', 'Era valda yrkesroller och deras kompetenser enligt SSYK 2012. Fyllda kompetenser täcks av en utbildning som föreslås i rekommendationerna.');
 
-  const chips = (labels: string[], x0: number, w: number, y0: number): number => {
+  // Föreslagna kurser och vilka kompetenser de täcker.
+  const courseById = new Map<string, MatchedCourse>();
+  for (const list of courseMap.values()) for (const c of list) if (!courseById.has(c.id)) courseById.set(c.id, c);
+  const courses = [...courseById.values()];
+  const covered = new Set<string>();
+  for (const c of courses) for (const sk of c.coveredSkills) covered.add(sk.id);
+
+  const chips = (skills: { id: string; title: string }[], x0: number, w: number, y0: number, draw: boolean): number => {
     let cx = x0, cy = y0;
-    for (const label of labels) {
+    for (const sk of skills) {
+      const label = sk.title.length > 46 ? sk.title.slice(0, 45) + '...' : sk.title;
       k.doc.setFont('helvetica', 'bold');
       k.doc.setFontSize(7.3);
-      const text = label.length > 48 ? label.slice(0, 47) + '...' : label;
-      const cw = k.doc.getTextWidth(text) + 5;
+      const cw = k.doc.getTextWidth(label) + 5;
       if (cx + cw > x0 + w) { cx = x0; cy += 7; }
-      k.chip(text, cx, cy, { bg: COLOR.accentDim, color: COLOR.accent, size: 7.3 });
+      if (draw) {
+        const isCov = covered.has(sk.id);
+        k.chip(label, cx, cy, { bg: isCov ? COLOR.accent : COLOR.accentDim, color: isCov ? COLOR.white : COLOR.accent, size: 7.3 });
+      }
       cx += cw + 2;
     }
     return cy + 7;
@@ -700,24 +723,71 @@ export function skillsPages(k: Kit, inp: PdfInput) {
     k.text('Inga yrkesroller valdes i enkäten.', X + 6, k.y + 7, { size: 10, color: COLOR.muted });
     return;
   }
+
+  const allIds = new Set(ssykSkills.map((s) => s.id));
+  const coveredCount = [...allIds].filter((id) => covered.has(id)).length;
+  if (allIds.size > 0) {
+    const y = k.y;
+    k.card(X, y, CONTENT_W, 17, { r: 3 });
+    k.text(`${coveredCount} av ${allIds.size} kompetenser täcks av föreslagna utbildningar`, X + 6, y + 4, { size: 9.5, bold: true });
+    k.bar(X + 6, y + 11, CONTENT_W - 12, allIds.size ? Math.round((coveredCount / allIds.size) * 100) : 0, COLOR.accent, 2.4);
+    k.y = y + 21;
+  }
+
   const groups = occupations.length
-    ? occupations.map((o) => ({ label: o.label, sub: o.ssykGroupLabel, skills: o.skills.map((s) => s.title) }))
-    : [{ label: 'Valda kompetenser', sub: null as string | null, skills: ssykSkills.map((s) => s.title) }];
+    ? occupations.map((o) => ({ label: o.label, sub: o.ssykGroupLabel, skills: o.skills.map((s) => ({ id: s.id, title: s.title })) }))
+    : [{ label: 'Valda kompetenser', sub: null as string | null, skills: ssykSkills.map((s) => ({ id: s.id, title: s.title })) }];
 
   for (const g of groups) {
-    const shown = g.skills.slice(0, 30);
-    const extra = g.skills.length - shown.length;
-    const est = 22 + Math.ceil(shown.length / 3) * 7;
-    k.ensure(Math.min(est, 80));
+    // Täckta kompetenser först, så att de syns även när listan kapas.
+    const sorted = [...g.skills].sort((a, b) => Number(covered.has(b.id)) - Number(covered.has(a.id)));
+    const shown = sorted.slice(0, 30);
+    const extra = sorted.length - shown.length;
+    const probe = chips(shown, X + 6, CONTENT_W - 12, 0, false);
+    k.ensure(Math.min(probe + 20, 90));
     const y = k.y;
-    const endY = chips(shown, X + 6, CONTENT_W - 12, y + 14);
+    const endY = chips(shown, X + 6, CONTENT_W - 12, y + 14, false);
     const h = endY - y + 3 + (extra > 0 ? 5 : 0);
     k.card(X, y, CONTENT_W, h, { r: 3 });
     k.text(g.label, X + 6, y + 4.5, { size: 10.5, bold: true });
     if (g.sub) k.text(g.sub, X + 6, y + 9.5, { size: 7.8, color: COLOR.muted });
-    chips(shown, X + 6, CONTENT_W - 12, y + 14);
+    chips(shown, X + 6, CONTENT_W - 12, y + 14, true);
     if (extra > 0) k.text(`och ${extra} fler kompetenser`, X + 6, endY - 1, { size: 7.5, color: COLOR.muted });
     k.y = y + h + 4;
+  }
+
+  // Utbildningar som täcker kompetenserna
+  k.ensure(30);
+  k.text('UTBILDNINGAR SOM TÄCKER ERA KOMPETENSER', X, k.y, { size: 7.5, bold: true, color: COLOR.accent });
+  k.y += 5.5;
+  if (courses.length === 0) {
+    k.y = k.para('Ingen färdig utbildning täcker era kompetenser ännu. Begär offert så tar vi fram förslag från lärosäten som utgår från era yrkesroller.', X, k.y, CONTENT_W, { size: 9, color: COLOR.muted }) + 2;
+    return;
+  }
+  const suffix = via ? `?via=${encodeURIComponent(via)}` : '';
+  for (const c of courses) {
+    const covLine = c.coveredSkills.length
+      ? `Täcker ${c.coveredSkills.length} av era kompetenser: ${c.coveredSkills.slice(0, 4).map((s) => s.title).join(', ')}${c.coveredSkills.length > 4 ? ` och ${c.coveredSkills.length - 4} till` : ''}`
+      : 'Matchar rekommendationerna men täcker ingen yrkeskompetens direkt.';
+    const lines = k.wrap(covLine, CONTENT_W - 12, 8);
+    const h = 13 + k.textHeight(lines.length, 8) + (c.matchedTags.length ? 6 : 0);
+    k.ensure(h + 3);
+    const y = k.y;
+    k.card(X, y, CONTENT_W, h, { r: 3 });
+    const url = `${origin}${c.slug ? `/kurs/${c.slug}` : `/training/${c.id}`}${suffix}`;
+    k.text(c.title, X + 6, y + 4.5, { size: 10, bold: true, color: COLOR.accent, w: CONTENT_W - 12 });
+    k.doc.link(X + 6, y + 4, CONTENT_W - 12, 5, { url });
+    k.text(c.providerName ?? '', X + 6, y + 9, { size: 7.8, color: COLOR.muted });
+    let cy = y + 13;
+    cy += k.text(covLine, X + 6, cy, { size: 8, color: COLOR.fg, w: CONTENT_W - 12 });
+    if (c.matchedTags.length) {
+      let tx = X + 6;
+      c.matchedTags.forEach((t) => {
+        const label = `${t.title.length > 34 ? t.title.slice(0, 33) + '...' : t.title} ${t.source.toUpperCase()}`;
+        tx += k.chip(label, tx, cy + 1, { bg: COLOR.chip, color: COLOR.fg, size: 6.2 }) + 2;
+      });
+    }
+    k.y = y + h + 3;
   }
 }
 
@@ -777,13 +847,19 @@ export function nextStepsPage(k: Kit, inp: PdfInput) {
 
 // ── Bilaga A: svar ──────────────────────────────────────────────────────
 
+const FREE_LABEL: Record<string, string> = {
+  AF4: 'Fritext: förändringsdrivare',
+  KP5: 'Fritext: påverkade arbetsuppgifter',
+  SR4: 'Fritext: kritiska kompetenser',
+};
+
 export function appendixPages(k: Kit, inp: PdfInput) {
   const { answers } = inp.result;
   const a = answers as unknown as Record<string, any>;
   k.newPage();
-  k.header('Bilaga A', 'Era svar', 'Skala: 1 = Inte alls, 5 = I mycket hög grad. OK och SR är positivt formulerade och räknas om med omvänd skala.');
+  k.header('Bilaga A', 'Era svar', 'Skala: 1 = Inte alls, 5 = I mycket hög grad. OK och SR räknas om med omvänd skala. Frågornas ordalydelse redovisas inte.');
 
-  const row = (id: string, text: string, ans: string) => {
+  const row = (id: string, text: string, ans: string, dots?: number) => {
     const lines = k.wrap(text, 108, 8.3);
     const aLines = k.wrap(ans, 44, 8.3, true);
     const rh = Math.max(7.5, k.textHeight(Math.max(lines.length, aLines.length), 8.3) + 3.5);
@@ -793,8 +869,9 @@ export function appendixPages(k: Kit, inp: PdfInput) {
     k.doc.setLineWidth(0.15);
     k.doc.line(X, y + rh, X + CONTENT_W, y + rh);
     k.text(id, X, y + 1.5, { size: 7.8, bold: true, color: COLOR.accent });
-    k.text(text, X + 12, y + 1.5, { size: 8.3, w: 108 });
-    k.text(ans, X + 12 + 112, y + 1.5, { size: 8.3, bold: true, w: 44 });
+    if (dots !== undefined) answerDots(k, X + 14, y + 3.2, dots);
+    else k.text(text, X + 12, y + 1.5, { size: 8.3, w: 108 });
+    k.text(ans, X + 12 + (dots !== undefined ? 34 : 112), y + 1.5, { size: 8.3, bold: true, w: dots !== undefined ? CONTENT_W - 46 : 44 });
     k.y = y + rh;
   };
   const section = (title: string) => {
@@ -815,19 +892,19 @@ export function appendixPages(k: Kit, inp: PdfInput) {
     section(`${DIMS[d].abbr} ${DIMS[d].label}`);
     for (const sq of q.scale) {
       const v = Number(a[sq.field]) || 0;
-      row(sq.id, sq.text, v ? `${v}/5  ${ANSWER_LABEL[v]}` : '-');
+      row(sq.id, '', v ? `${v}/5  ${ANSWER_LABEL[v]}` : '-', v);
     }
-    if (q.free) row(q.free.id, q.free.text, String(a[q.free.field] ?? '').trim() || '-');
+    if (q.free) row(q.free.id, FREE_LABEL[q.free.id] ?? 'Fritext', String(a[q.free.field] ?? '').trim() || '-');
   }
   section('Strategisk insats (SI)');
-  for (const sq of SI_QUESTIONS) {
+  SI_QUESTIONS.forEach((sq, i) => {
     const v = Number(a[sq.field]) || 0;
-    row(sq.id, sq.text, v ? `${v}/5  ${ANSWER_LABEL[v]}` : '-');
-  }
+    row(sq.id, SI_LABELS[i], v ? `${v}/5  ${ANSWER_LABEL[v]}` : '-', v);
+  });
   section('Lärande och insatser (LI)');
-  row('LI1', 'Vilken typ av kompetensinsats tror ni skulle ge störst effekt?', (answers.li1 ?? []).join(', ') || '-');
-  row('LI2', 'Vilket upplägg passar er verksamhet bäst?', (answers.li2 ?? []).join(', ') || '-');
-  row('LI3', 'Vilka yrkesroller vill ni prioritera kompetensutveckling för?', (answers.li3 ?? []).map((o: any) => o.label).join(', ') || '-');
+  row('LI1', 'Önskad insatstyp', (answers.li1 ?? []).join(', ') || '-');
+  row('LI2', 'Önskat upplägg', (answers.li2 ?? []).join(', ') || '-');
+  row('LI3', 'Prioriterade yrkesroller', (answers.li3 ?? []).map((o: any) => o.label).join(', ') || '-');
 }
 
 // ── Bilaga B: metod ─────────────────────────────────────────────────────

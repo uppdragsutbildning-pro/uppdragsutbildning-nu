@@ -9,6 +9,7 @@ import {
 } from '../../../lib/kompetensindexReport';
 import type { SkiReportSnapshot } from '../../../lib/skiReports';
 import { SaveReportPanel } from './report/SaveReportPanel';
+import { SkillCoverage } from './report/SkillCoverage';
 import { usePdfDownload } from './report/usePdfDownload';
 import { fetchDeepDive } from '../../../lib/skiDeepDive';
 import { loadCoursesForReport, matchRecommendations, type ReportCourse } from '../../../lib/reportCourseMatching';
@@ -231,10 +232,11 @@ export function ResultsView({ result, onReset, onEditStep, savedSnapshot, savedA
   const startHere = recommendedStart(initiatives);
 
   const courseMap = useMemo(
-    () => matchRecommendations(analysis.recommendations.map(withRecTerms), courses, ssykSkills.map((s) => s.id)),
+    () => matchRecommendations(analysis.recommendations.map(withRecTerms), courses, ssykSkills.map((s) => ({ id: s.id, title: s.title }))),
     [analysis.recommendations, courses, ssykSkills]
   );
 
+  const hasSkills = ssykSkills.length > 0 || occupations.length > 0;
   const via = marketplace?.slug ?? null;
   // Partnermarknadsplatser är helt vitmärkta: CTC Nordics rådgivning visas bara på den öppna plattformen.
   const showAdvisory = !marketplace;
@@ -399,22 +401,14 @@ export function ResultsView({ result, onReset, onEditStep, savedSnapshot, savedA
           <FocusQuestion>{analysis.focus.priority}</FocusQuestion>
         </Section>
 
-        {/* 7. Kompetenser (SSYK) */}
-        {ssykSkills.length > 0 && (
-          <Section eyebrow="07 / Kompetensfokus" title="Kompetenser kopplade till era yrkesroller"
-            intro="Enligt Arbetsförmedlingens yrkestaxonomi SSYK 2012. Kompetenserna används för att matcha rekommendationerna mot utbildningar.">
-            <Card>
-              <div className="flex flex-wrap gap-2">
-                {ssykSkills.map((item) => (
-                  <span key={item.id} className="px-3 py-1 rounded-full text-sm bg-[var(--accent-dim)] text-[var(--accent)] font-medium">{item.title}</span>
-                ))}
-              </div>
-            </Card>
-          </Section>
+        {/* 7. Yrkesroller och kompetenser */}
+        {hasSkills && (
+          <SkillCoverage eyebrow="07 / Kompetensfokus" occupations={occupations} ssykSkills={ssykSkills} courseMap={courseMap}
+            coursesLoading={coursesLoading} via={via} showAdvisory={showAdvisory} />
         )}
 
         {/* 8. Rekommendationer */}
-        <Section eyebrow={`0${ssykSkills.length > 0 ? 8 : 7} / Rekommendationer`} title="Vad vi rekommenderar"
+        <Section eyebrow={`0${hasSkills ? 8 : 7} / Rekommendationer`} title="Vad vi rekommenderar"
           intro="Under varje rekommendation visas utbildningar som matchar. Finns ingen färdig utbildning kan ni begära offert eller boka ett rådgivningssamtal.">
           {aiLoading ? (
             <SkeletonGrid rows={3} single />
@@ -429,7 +423,7 @@ export function ResultsView({ result, onReset, onEditStep, savedSnapshot, savedA
         </Section>
 
         {/* 9. 12 månader */}
-        <Section eyebrow={`0${ssykSkills.length > 0 ? 9 : 8} / Handlingsplan`} title="Föreslagen väg framåt" intro="En enkel 12-månadersplan från nuläge till effekt.">
+        <Section eyebrow={`0${hasSkills ? 9 : 8} / Handlingsplan`} title="Föreslagen väg framåt" intro="En enkel 12-månadersplan från nuläge till effekt.">
           {aiLoading ? <SkeletonGrid rows={2} single /> : <Roadmap steps={analysis.roadmap} />}
         </Section>
 

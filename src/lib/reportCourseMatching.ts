@@ -47,6 +47,25 @@ export async function loadCoursesForReport(marketplace: Marketplace | null): Pro
 // Kurs med de taggar som motiverar träffen (visas under kursnamnet i rapporten).
 export interface MatchedCourse extends ReportCourse {
   matchedTags: { id: string; title: string; source: 'ssyk' | 'esco' }[];
+  // Kompetenser ur köparens valda yrkesroller som kursen täcker (via samma tagg eller via ord i taggarnas titlar).
+  coveredSkills: { id: string; title: string }[];
+}
+
+export interface RoleSkill { id: string; title: string }
+
+// Vilka av köparens yrkeskompetenser en kurs täcker. En kompetens är täckt om kursen har samma SSYK-tagg, eller
+// om ett specifikt ord (minst 6 tecken, inte ett brett ord) i kompetensens titel finns i någon av kursens taggar
+// (SSYK eller ESCO). Ordjämförelsen gör att ESCO-taggar kan täcka SSYK-kompetenser utan någon ID-koppling.
+export function coveredBy(course: ReportCourse, roleSkills: RoleSkill[]): RoleSkill[] {
+  const tags = (course.ssyk_skills ?? []).filter((t) => typeof t.title === 'string');
+  if (tags.length === 0) return [];
+  const ids = new Set(tags.map((t) => t.id));
+  const tagWords = [...tokenize(tags.map((t) => t.title).join(' '))];
+  return roleSkills.filter((sk) => {
+    if (ids.has(sk.id)) return true;
+    const words = [...tokenize(sk.title)].filter((w) => w.length >= 6 && !GENERIC.has(w));
+    return words.some((w) => tagWords.some((t) => wordsMatch(w, t)));
+  });
 }
 
 function pickMatchedTags(course: ReportCourse, terms: Set<string>, tagSet: Set<string>) {
@@ -74,12 +93,12 @@ const GENERIC = new Set([
 export function matchRecommendations(
   recs: Recommendation[],
   courses: ReportCourse[],
-  tagIds: string[],
+  roleSkills: RoleSkill[],
   perRec = 2
 ): Map<number, MatchedCourse[]> {
   const result = new Map<number, MatchedCourse[]>();
   const used = new Set<string>();
-  const tagSet = new Set(tagIds);
+  const tagSet = new Set(roleSkills.map((s) => s.id));
 
   const prepared = courses.map((c) => ({
     c,
@@ -114,7 +133,7 @@ export function matchRecommendations(
 
     if (scored.length > 0) {
       scored.forEach((x) => used.add(x.c.id));
-      result.set(i, scored.map((x) => ({ ...x.c, matchedTags: pickMatchedTags(x.c, terms, tagSet) })));
+      result.set(i, scored.map((x) => ({ ...x.c, matchedTags: pickMatchedTags(x.c, terms, tagSet), coveredSkills: coveredBy(x.c, roleSkills) })));
     }
   });
 
