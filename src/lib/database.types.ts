@@ -1534,6 +1534,16 @@ export type Database = {
         Returns: string
       }
       get_user_provider_id: { Args: never; Returns: string }
+      save_course: {
+        Args: {
+          p_training_id: string | null
+          p_training: Json
+          p_starts?: Json
+          p_modules?: Json
+          p_faq?: Json
+        }
+        Returns: string
+      }
       is_admin: { Args: never; Returns: boolean }
       provider_curated_marketplace_ids: { Args: never; Returns: string[] }
       update_provider_terms: {

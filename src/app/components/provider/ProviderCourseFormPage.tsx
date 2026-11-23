@@ -219,84 +219,45 @@ export function ProviderCourseFormPage() {
         is_active: formData.isActive,
       };
 
-      let trainingId = id;
+      // Hela kursen (kursrad, kursstarter, moduler, FAQ) sparas i EN databastransaktion via
+      // save_course: fallerar något rullas allt tillbaka. Kursstarter synkas per id i funktionen
+      // så att anmälningar och bokningar (som hänger på startens id) bevaras, och en start med
+      // anmälningar/bokningar kan inte raderas.
+      // Slugen genereras en gång vid skapande och ändras aldrig senare, så en redan
+      // delad/indexerad /kurs/{slug}-länk inte går sönder om titeln redigeras.
+      const training = isEdit
+        ? trainingPayload
+        : {
+            ...trainingPayload,
+            provider_id: profile!.provider_id!,
+            slug: await generateUniqueTrainingSlug(trainingPayload.title),
+          };
+      const starts = formData.scheduledStarts
+        .filter(s => s.startDate)
+        .map(s => ({
+          id: s.id ?? null,
+          start_date: s.startDate,
+          application_deadline: s.applicationDeadline,
+          price: s.price,
+          max_participants: s.maxParticipants,
+          available_spots: s.availableSpots,
+          status: s.status,
+        }));
+      const modules = formData.curriculum
+        .filter(m => m.title.trim())
+        .map(m => ({ title: m.title, topics: m.topics.filter(t => t.trim()) }));
+      const faqs = formData.faq
+        .filter(f => f.question.trim())
+        .map(f => ({ question: f.question, answer: f.answer }));
 
-      if (isEdit) {
-        const { error } = await supabase.from('trainings').update(trainingPayload).eq('id', id);
-        if (error) throw error;
-      } else {
-        // Slugen genereras en gång vid skapande och ändras aldrig senare, så
-        // en redan delad/indexerad /kurs/{slug}-länk inte går sönder om
-        // titeln redigeras.
-        const slug = await generateUniqueTrainingSlug(trainingPayload.title);
-        const { data, error } = await supabase.from('trainings').insert({ ...trainingPayload, provider_id: profile!.provider_id!, slug }).select('id').single();
-        if (error) throw error;
-        trainingId = data.id;
-      }
-
-      // Replace curriculum modules
-      await supabase.from('curriculum_modules').delete().eq('training_id', trainingId);
-      const modules = formData.curriculum.filter(m => m.title.trim());
-      if (modules.length > 0) {
-        await supabase.from('curriculum_modules').insert(
-          modules.map((m, i) => ({
-            training_id: trainingId,
-            title: m.title,
-            topics: m.topics.filter(t => t.trim()),
-            order_index: i + 1,
-          }))
-        );
-      }
-
-      // Replace FAQ
-      await supabase.from('training_faq').delete().eq('training_id', trainingId);
-      const faqs = formData.faq.filter(f => f.question.trim());
-      if (faqs.length > 0) {
-        await supabase.from('training_faq').insert(
-          faqs.map((f, i) => ({
-            training_id: trainingId,
-            question: f.question,
-            answer: f.answer,
-            order_index: i + 1,
-          }))
-        );
-      }
-
-      // Synka kursstarter utan att radera och skapa om dem: anmälningar (ON DELETE CASCADE) och
-      // bokningar hänger på kursstartens id, så en omskrivning skulle radera kursens anmälningar.
-      const starts = formData.scheduledStarts.filter(s => s.startDate);
-      const toRow = (s: ScheduledStart) => ({
-        start_date: s.startDate,
-        application_deadline: s.applicationDeadline,
-        price: s.price,
-        max_participants: s.maxParticipants,
-        available_spots: s.availableSpots,
-        status: s.status,
+      const { error: saveErr } = await supabase.rpc('save_course', {
+        p_training_id: isEdit ? id : null,
+        p_training: training,
+        p_starts: starts,
+        p_modules: modules,
+        p_faq: faqs,
       });
-      const { data: existing, error: existingErr } = await supabase.from('scheduled_starts').select('id').eq('training_id', trainingId);
-      if (existingErr) throw existingErr;
-      const keepIds = new Set(starts.filter(s => s.id).map(s => s.id as string));
-      const removedIds = (existing ?? []).map(r => r.id).filter(rid => !keepIds.has(rid));
-      if (removedIds.length > 0) {
-        const [{ count: appCount }, { count: bookingCount }] = await Promise.all([
-          supabase.from('applications').select('id', { count: 'exact', head: true }).in('scheduled_start_id', removedIds),
-          supabase.from('bookings').select('id', { count: 'exact', head: true }).in('scheduled_start_id', removedIds),
-        ]);
-        if ((appCount ?? 0) > 0 || (bookingCount ?? 0) > 0) {
-          throw new Error('En kursstart du tagit bort har anmälningar eller bokningar och kan inte raderas. Sätt dess status till "Fullt" i stället. Övriga ändringar är sparade.');
-        }
-        const { error } = await supabase.from('scheduled_starts').delete().in('id', removedIds);
-        if (error) throw error;
-      }
-      for (const s of starts) {
-        if (s.id) {
-          const { error } = await supabase.from('scheduled_starts').update(toRow(s)).eq('id', s.id);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase.from('scheduled_starts').insert({ ...toRow(s), training_id: trainingId, language: 'Svenska' });
-          if (error) throw error;
-        }
-      }
+      if (saveErr) throw saveErr;
 
       toast.success(isEdit ? 'Kurs uppdaterad!' : (formData.isActive ? 'Kurs publicerad!' : 'Kurs sparad som utkast!'), {
         description: 'Din kurs har sparats på plattformen.'
