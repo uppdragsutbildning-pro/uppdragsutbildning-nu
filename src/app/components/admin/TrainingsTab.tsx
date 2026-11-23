@@ -278,6 +278,8 @@ export function TrainingsTab() {
   const publishedCount = rows.filter(r => r.is_active).length;
 
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
   const togglePublished = async (r: Row) => {
     const publish = !r.is_active;
     if (publish && !r.tagged && !window.confirm('Kursen saknar SSYK-kompetenser. Publicera ändå?')) return;
@@ -292,6 +294,29 @@ export function TrainingsTab() {
     }
     setTrainings(prev => prev.map(t => (t.id === r.id ? { ...t, is_active: publish, updated_at: new Date().toISOString() } : t)));
     toast.success(publish ? 'Kursen är publicerad' : 'Kursen är avpublicerad');
+  };
+
+  const bulkPublish = async (publish: boolean) => {
+    const ids = [...selected];
+    const target = rows.filter(r => ids.includes(r.id) && r.is_active !== publish);
+    if (target.length === 0) { toast.info(publish ? 'Alla valda är redan publicerade' : 'Alla valda är redan avpublicerade'); return; }
+    const untagged = publish ? target.filter(r => !r.tagged).length : 0;
+    const msg = `${publish ? 'Publicera' : 'Avpublicera'} ${target.length} utbildning${target.length > 1 ? 'ar' : ''}?` + (untagged ? `\n\n${untagged} saknar SSYK-kompetenser.` : '') + (publish ? '' : '\n\nDe försvinner ur katalogen och från marknadsplatser.');
+    if (!window.confirm(msg)) return;
+    setBulkBusy(true);
+    // En i taget: databasen stoppar publicering per kurs (t.ex. saknade avbokningsvillkor).
+    const done: string[] = [];
+    const failed: string[] = [];
+    for (const r of target) {
+      const { error: err } = await supabase.from('trainings').update({ is_active: publish }).eq('id', r.id);
+      (err ? failed : done).push(r.id);
+    }
+    setBulkBusy(false);
+    const now = new Date().toISOString();
+    setTrainings(prev => prev.map(t => (done.includes(t.id) ? { ...t, is_active: publish, updated_at: now } : t)));
+    setSelected(new Set(failed));
+    if (done.length) toast.success(`${done.length} utbildningar ${publish ? 'publicerade' : 'avpublicerade'}`);
+    if (failed.length) toast.error(`${failed.length} kunde inte ändras`, { description: publish ? 'Troligen saknar lärosätet avbokningsvillkor. De misslyckade ligger kvar markerade.' : undefined });
   };
 
   const toggleSort = (key: SortKey) =>
@@ -432,10 +457,27 @@ export function TrainingsTab() {
 
       <p className="text-sm text-slate-500 mb-2">{sorted.length} av {rows.length} utbildningar</p>
 
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+          <span className="text-slate-800">{selected.size} valda</span>
+          <button disabled={bulkBusy} onClick={() => bulkPublish(true)} className="px-3 py-1 rounded-md bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50">Publicera</button>
+          <button disabled={bulkBusy} onClick={() => bulkPublish(false)} className="px-3 py-1 rounded-md bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50">Avpublicera</button>
+          <button onClick={() => setSelected(new Set())} className="ml-auto text-slate-500 hover:text-slate-900">Avmarkera</button>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
+              <th className="px-4 py-3 w-8">
+                <input
+                  type="checkbox"
+                  aria-label="Markera alla på sidan"
+                  checked={pageRows.length > 0 && pageRows.every(r => selected.has(r.id))}
+                  onChange={e => setSelected(prev => { const n = new Set(prev); pageRows.forEach(r => (e.target.checked ? n.add(r.id) : n.delete(r.id))); return n; })}
+                />
+              </th>
               <SortHead k="title">Utbildning</SortHead>
               <SortHead k="provider">Leverantör</SortHead>
               <SortHead k="status">Status</SortHead>
@@ -450,11 +492,19 @@ export function TrainingsTab() {
           <tbody className="divide-y divide-slate-100">
             {pageRows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-slate-500">Inga utbildningar matchar filtren.</td>
+                <td colSpan={10} className="px-4 py-10 text-center text-slate-500">Inga utbildningar matchar filtren.</td>
               </tr>
             )}
             {pageRows.map(r => (
               <tr key={r.id} className="hover:bg-slate-50">
+                <td className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    aria-label={`Markera ${r.title}`}
+                    checked={selected.has(r.id)}
+                    onChange={() => setSelected(prev => { const n = new Set(prev); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n; })}
+                  />
+                </td>
                 <td className="px-4 py-3 max-w-xs">
                   <Link to={`/admin/trainings/${r.id}/edit`} className="font-medium text-slate-900 hover:text-blue-600 truncate block">{r.title}</Link>
                   <div className="text-xs text-slate-500 flex flex-wrap items-center gap-x-2">
