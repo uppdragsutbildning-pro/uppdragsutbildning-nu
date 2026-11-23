@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router';
 import { Check, X, Eye, TrendingUp, Users, Building, GraduationCap, Mail, Sparkles, Download, UserPlus, Shield, UserCog, Search, Trash2 } from 'lucide-react';
-import { trainings, leads, providers, categories, getTrainingById, getProviderById, getCategoryById } from '../../data/mockData';
+import { trainings, leads, providers, categories, getTrainingById } from '../../data/mockData';
 import { toast } from 'sonner';
-import { exportLeadsToCSV, exportTrainingsToCSV } from '../../utils/exportUtils';
+import { exportLeadsToCSV } from '../../utils/exportUtils';
 import type { Profile, Provider } from '../../../lib/supabase';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -11,6 +11,7 @@ import { MarketplacesTab } from '../admin/MarketplacesTab';
 import { ProviderMarketplacesDialog } from '../admin/ProviderMarketplacesDialog';
 import { TrainingRequestsTab, useOpenTrainingRequestsCount } from '../admin/TrainingRequestsTab';
 import { BillingTab, useBillingAttentionCount } from '../admin/BillingTab';
+import { TrainingsTab } from '../admin/TrainingsTab';
 import { ContractsTab, useContractsAttentionCount } from '../admin/ContractsTab';
 import { CpiRecordDrawer } from '../admin/CpiRecordDrawer';
 import { CpiDashboard, type CourseCoverage, type ReportStats } from '../admin/CpiDashboard';
@@ -52,7 +53,7 @@ export function AdminDashboard() {
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState<Tab>(
-    tabParam === 'fakturering' || tabParam === 'efterfragningar' || tabParam === 'avtal' ? tabParam : 'overview'
+    tabParam === 'trainings' || tabParam === 'fakturering' || tabParam === 'efterfragningar' || tabParam === 'avtal' ? tabParam : 'overview'
   );
   const openTrainingRequests = useOpenTrainingRequestsCount();
   const billingAttention = useBillingAttentionCount();
@@ -669,79 +670,7 @@ export function AdminDashboard() {
         )}
 
         {/* Trainings Tab */}
-        {activeTab === 'trainings' && (
-          <div>
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-slate-900 mb-1">
-                Alla Utbildningsprogram
-              </h2>
-              <p className="text-sm text-slate-600">
-                Granska och hantera utbildningsannonser
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              {trainings.map(training => {
-                const provider = getProviderById(training.providerId);
-                const category = getCategoryById(training.categoryId);
-
-                return (
-                  <div key={training.id} className="bg-white rounded-xl border border-slate-200 p-6">
-                    <div className="flex items-start justify-between gap-4 mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-slate-900">{training.title}</h3>
-                          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                            {category?.name}
-                          </span>
-                          {training.featured && (
-                            <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">
-                              Utvald
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-slate-600 mb-2">
-                          Leverantör: {provider?.name}
-                        </p>
-                        <div className="flex items-center gap-4 text-xs text-slate-500">
-                          <span>{training.views} visningar</span>
-                          <span>•</span>
-                          <span>{training.leads} förfrågningar</span>
-                          <span>•</span>
-                          <span className="capitalize">{training.format}</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button className="p-2 hover:bg-green-50 text-green-600 rounded-lg transition-colors">
-                          <Check className="w-5 h-5" />
-                        </button>
-                        <button className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors">
-                          <X className="w-5 h-5" />
-                        </button>
-                        <button className="p-2 hover:bg-slate-100 text-slate-600 rounded-lg transition-colors">
-                          <Eye className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-6">
-              <button
-                onClick={() => {
-                  exportTrainingsToCSV(trainings);
-                  toast.success('Utbildningar exporterade till CSV!');
-                }}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                <Download className="w-5 h-5" />
-                Exportera Utbildningar
-              </button>
-            </div>
-          </div>
-        )}
+        {activeTab === 'trainings' && <TrainingsTab />}
 
         {/* Providers Tab */}
         {activeTab === 'providers' && (
